@@ -1,0 +1,41 @@
+# Build output
+build/
+.buddd/
+
+# Compiled object files
+*.o
+*.obj
+*.exe
+*.so
+*.a
+*.dll
+*.lib
+*.out
+
+# Editor swap files
+*.swp
+*.swo
+*~
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Intermediate build directories
+bin/
+obj/
+out/
+
+# IDE
+.idea/
+*.iml
+.vs/
+.vscode/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*

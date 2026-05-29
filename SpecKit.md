@@ -59,13 +59,13 @@ Human intent
 
 1. `docs/constitution/**`
 2. `docs/specs/**`
-3. `docs/adr/accepted/**`
+3. `docs/adr/**`
 4. `docs/wiki/**`
 5. Existing code conventions
 
 ## Documents (`docs/`)
 
-- `adr/` — Architectural Decision Records (proposed + accepted)
+- `adr/` — Architectural Decision Records
 - `constitution/` — Mandatory project rules
 - `reviews/` — Review reports
 - `specs/` — Functional specs (proposed + accepted)
