@@ -1,6 +1,7 @@
 # SPEC-YYYY-NNNN - Title
 
 ## Status
+
 Proposed
 
 ## Problem
@@ -13,10 +14,33 @@ Proposed
 
 ## User-visible behavior
 
+## User stories
+
+### Story 1 - [Title] (Priority: P1)
+
+[Description]
+
+**Given** [initial state] **When** [action] **Then** [expected outcome]
+
+### Story 2 - [Title] (Priority: P2)
+
+[Description]
+
+**Given** [initial state] **When** [action] **Then** [expected outcome]
+
 ## Acceptance criteria
 
-- AC-001:
-- AC-002:
+| ID | Description | Verification |
+|---|---|---|
+| AC-001 | | |
+| AC-002 | | |
+
+## Success criteria
+
+| ID | Metric |
+|---|---|
+| SC-001 | |
+| SC-002 | |
 
 ## Edge cases
 
@@ -27,5 +51,7 @@ Proposed
 ## Observability
 
 ## Out of scope
+
+## Assumptions
 
 ## Open questions
