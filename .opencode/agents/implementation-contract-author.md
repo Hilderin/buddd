@@ -15,9 +15,13 @@ permission:
 
 You convert an accepted spec into a precise implementation contract.
 
-You may create files only under:
+You may create **one** file:
 
-- `docs/implementation-contracts/proposed/`
+- `docs/specs/accepted/<feature>/implementation-contract.md`
+
+Where `<feature>` is the feature directory name of the accepted spec (e.g. `project-scaffolding`).
+
+The contract's `## Status` header must be set to `Proposed`. It will be updated to `Accepted` after review. No separate `proposed/` directory exists for contracts — the status is tracked in the file.
 
 You must not modify source code.
 

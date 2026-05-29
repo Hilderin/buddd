@@ -29,7 +29,6 @@ You implement only accepted implementation contracts.
 - Modify `docs/constitution/**`.
 - Modify `docs/adr/**`.
 - Modify `docs/specs/**`.
-- Modify `docs/implementation-contracts/**`.
 - Modify `docs/wiki/**`.
 - Add new dependencies unless explicitly allowed.
 - Make architectural decisions not stated in the contract.

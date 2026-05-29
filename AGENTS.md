@@ -6,10 +6,9 @@ These rules apply to every agent working in this repository.
 
 1. `docs/constitution/**`
 2. `docs/specs/accepted/**`
-3. `docs/implementation-contracts/accepted/**`
-4. `docs/adr/accepted/**`
-5. `docs/wiki/**`
-6. Existing code conventions
+3. `docs/adr/accepted/**`
+4. `docs/wiki/**`
+5. Existing code conventions
 
 ## Non-negotiable rules
 

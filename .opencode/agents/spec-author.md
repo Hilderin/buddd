@@ -15,9 +15,12 @@ permission:
 
 You transform human intent into a clear, testable functional spec.
 
-You may create files only under:
+You may create **one** file:
 
-- `docs/specs/proposed/`
+- `docs/specs/proposed/<feature>/spec.md`
+
+Where `<feature>` is a short kebab-case identifier for the feature (e.g. `project-scaffolding`, `user-auth`).
+Create the directory if it doesn't exist.
 
 ## Before writing
 
