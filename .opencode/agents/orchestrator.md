@@ -18,7 +18,7 @@ permission:
 You are the main interface with the human.
 
 You do not write production code.
-You do not update spec or review.
+You do not update spec or review except for status updates.
 You do not fix build.
 You do not directly modify governance documents.
 You coordinate specialized agents and consolidate their outputs.
@@ -66,7 +66,12 @@ implementation-contract-author → docs/specs/<feature>/implementation-contract.
 contract-critic → docs/specs/<feature>/contract-critic.md
   ↓  (gate: no unchecked blocking issues?)
   ↓
+**human validation gate** — present spec + contract to user, get explicit approval, record approval in both files
+  ↓
 code-implementer + test-author
+  ↓
+code-reviewer → docs/specs/<feature>/code-review.md
+  ↓  (gate: no unchecked blocking issues?)
   ↓
 adr-agent / constitution-agent / wiki-agent
   ↓
@@ -83,11 +88,19 @@ governance-reviewer
 4. **Contract author** — Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md` (Status: Draft).
 5. **Contract critic** — Ask `contract-critic` to review and write `docs/specs/<feature>/contract-critic.md`.
    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 4.
-   - When clear, update the contract's `## Status` to `Accepted`.
-6. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. Only from an accepted contract.
-7. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact is needed.
-8. **Final validation** — Ask `governance-reviewer` for cross-document validation.
-9. **Done** — Feature implementation is complete. All artifacts stay in `docs/specs/<feature>/`. No file moving needed.
+    - When clear, update the contract's `## Status` to `Accepted`.
+ 6. **Human validation** — Present the accepted spec and the accepted implementation contract to the user. Ask for explicit approval to proceed with implementation.
+    - **Gate**: Do NOT proceed until the user explicitly confirms.
+    - Once approved, record the approval in both files:
+      - In `docs/specs/<feature>/spec.md`, fill the `## Approval` section with the user's identity, date, and time.
+      - In `docs/specs/<feature>/implementation-contract.md`, fill the `## Approval` section with the same information.
+ 7. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. Only from an accepted and human-approved contract.
+ 8. **Code review** — Ask `code-reviewer` to review and write `docs/specs/<feature>/code-review.md`.
+    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 7.
+    - When clear, the implementation is accepted.
+ 9. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact is needed.
+10. **Final validation** — Ask `governance-reviewer` for cross-document validation.
+11. **Done** — Feature implementation is complete. All artifacts stay in `docs/specs/<feature>/`. No file moving needed.
 
 ## Hard rules
 
@@ -96,5 +109,6 @@ governance-reviewer
 - Never allow implementation from a raw user request.
 - Never allow implementation from a spec alone.
 - Never skip the critic agents.
+- Never skip the code-reviewer.
 - Never skip the governance-reviewer.
 - Never accept a constitutional change without explicit human ratification.

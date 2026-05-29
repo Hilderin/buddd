@@ -6,6 +6,16 @@
 
 Allowed values: `Draft`, `In Review`, `Accepted`
 
+## Approval
+
+> This section is filled when the human validates the spec and implementation contract, authorizing implementation to proceed.
+
+| | |
+|---|---|
+| Approved by | |
+| Date | |
+| Time | |
+
 ## Source spec
 
 ## Goal
