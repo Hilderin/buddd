@@ -1,7 +1,10 @@
 # IMPL-YYYY-NNNN - Title
 
 ## Status
-Draft
+
+`Draft`
+
+Allowed values: `Draft`, `In Review`, `Accepted`
 
 ## Source spec
 

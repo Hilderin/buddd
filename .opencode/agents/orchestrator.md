@@ -55,12 +55,16 @@ Human
 orchestrator
   ↓
 spec-author → docs/specs/backlog/<feature>/spec.md
-  ↓  (spec-critic reviews, status: Draft → Accepted)
+  ↓
+spec-critic → docs/specs/backlog/<feature>/spec-critic.md
+  ↓  (gate: no unchecked blocking issues?)
   ↓
 docs/specs/active/<feature>/spec.md
   ↓
 implementation-contract-author → docs/specs/active/<feature>/implementation-contract.md
-  ↓  (contract-critic reviews, status: Draft → Accepted)
+  ↓
+contract-critic → docs/specs/active/<feature>/contract-critic.md
+  ↓  (gate: no unchecked blocking issues?)
   ↓
 code-implementer + test-author
   ↓
@@ -73,9 +77,13 @@ docs/specs/done/<feature>/
 
 1. **Clarify** — Understand and validate the human intent.
 2. **Spec author** — Ask `spec-author` to draft a spec into `docs/specs/backlog/<feature>/spec.md` (Status: Draft).
-3. **Spec critic** — Ask `spec-critic` to review. If rejected, spec-author fixes in-place. When accepted, update Status to `Accepted` and move `<feature>` to `docs/specs/active/`.
+3. **Spec critic** — Ask `spec-critic` to review and write `docs/specs/backlog/<feature>/spec-critic.md`.
+   - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 2.
+   - When clear, update the spec's `## Status` to `Accepted` and move `<feature>` to `docs/specs/active/`.
 4. **Contract author** — Ask `implementation-contract-author` to create `docs/specs/active/<feature>/implementation-contract.md` (Status: Draft).
-5. **Contract critic** — Ask `implementation-contract-critic` to review. If rejected, fixes in-place. When accepted, update Status to `Accepted`.
+5. **Contract critic** — Ask `contract-critic` to review and write `docs/specs/active/<feature>/contract-critic.md`.
+   - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 4.
+   - When clear, update the contract's `## Status` to `Accepted`.
 6. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. Only from an accepted contract.
 7. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact is needed.
 8. **Final validation** — Ask `governance-reviewer` for cross-document validation.

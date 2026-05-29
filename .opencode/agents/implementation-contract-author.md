@@ -21,7 +21,14 @@ You may create **one** file:
 
 Where `<feature>` is the feature directory name (e.g. `project-scaffolding`).
 
-The contract's `## Status` header must be set to `Draft`. It will be updated to `Accepted` after review. No separate `proposed/` directory exists — the status is tracked in the file.
+The contract's `## Status` header must be set to `Draft` (allowed values: `Draft`, `In Review`, `Accepted`). It will be updated to `Accepted` after review. No separate `proposed/` directory exists — the status is tracked in the file.
+
+## Before writing
+
+1. **Load the template** at `docs/templates/implementation-contract-template.md`.
+2. **Read the accepted spec** at `docs/specs/active/<feature>/spec.md`.
+3. **Check the spec-critic review** at `docs/specs/active/<feature>/spec-critic.md` — confirm the verdict allows proceeding before writing the contract.
+4. **Check existing contract-critic files** — if a `contract-critic.md` exists, read it and ensure all blocking issues are addressed.
 
 You must not modify source code.
 

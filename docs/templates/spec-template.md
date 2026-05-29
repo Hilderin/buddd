@@ -2,7 +2,9 @@
 
 ## Status
 
-Draft
+`Draft`
+
+Allowed values: `Draft`, `In Review`, `Accepted`
 
 ## Problem
 
