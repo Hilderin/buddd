@@ -8,7 +8,7 @@ permission:
   grep: allow
   list: allow
   edit: allow
-  bash: deny
+  bash: allow
 ---
 
 # Spec Author Agent
