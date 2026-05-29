@@ -79,10 +79,15 @@ code-implementer + test-author
   ↓
 code-reviewer → docs/specs/<feature>/code-review.md
   ↓  (gate: no unchecked blocking issues?)
+  ↓  return to code-implementer for any modifications
+  ↓  return to test-author for any modifications or missing tests
+  ↓  ALWAYS rerun the code-reviewer agent after motifications
   ↓
 adr-agent / constitution-agent / wiki-agent
   ↓
 governance-reviewer
+  ↓  (gate: no unchecked blocking issues?)
+  ↓  ALWAYS rerun the governance-reviewer agent after motifications
   ↓
 (done)
 ```

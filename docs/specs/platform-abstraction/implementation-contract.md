@@ -11,10 +11,10 @@ Allowed values: `Draft`, `In Review`, `Accepted`
 > This section is filled when the human validates the spec and implementation contract, authorizing implementation to proceed.
 
 | | |
-|---|---|
-| Approved by | |
-| Date | |
-| Time | |
+|---|---|---|
+| Approved by | Guillaume (user) |
+| Date | 2026-05-29 |
+| Time | ~16:30 UTC |
 
 ## Source spec
 
@@ -52,13 +52,13 @@ Implement the Platform Abstraction Layer for the Buddd Engine, providing:
 
 ## Relevant constitution rules
 
-- **CONST-001-architecture-boundaries.md**: Contains placeholder "TODO" text. No active rule applies.
+- **CONST-001-architecture-boundaries.md**: Enforces the architecture boundary: no code outside `src/engine/` may include SDL3, OpenGL, or graphics library headers. This feature implements and satisfies that rule.
 - **CONST-002-testing-policy.md**: Requires unit tests for all testable code. This contract specifies required tests (see Required tests section).
 - **CONST-003-documentation-policy.md** and **CONST-004-security-policy.md**: Contain placeholder "TODO" text. No active rule applies.
 
 ## Relevant ADRs
 
-No accepted ADRs exist. This contract does not require an ADR.
+- **ADR-001**: `docs/adr/001-result-error-pattern.md` — Establishes `Result<T>` / `Error` as the project-wide error handling pattern. This contract implements that pattern via `error.h`.
 
 ## Files to inspect
 
@@ -142,6 +142,7 @@ Must contain:
 
 #include <expected>
 #include <string>
+#include <utility>
 
 namespace buddd::engine {
 
@@ -337,7 +338,7 @@ private:
 
 ```cpp
 #include "platform_sdl3.h"
-#include "window_sdl3.h"
+#include "window/window_sdl3.h"
 
 #include <SDL3/SDL.h>
 #include <iostream>
@@ -412,7 +413,7 @@ private:
 
 ```cpp
 #include "platform_headless.h"
-#include "window_headless.h"
+#include "window/window_headless.h"
 
 #include <iostream>
 
@@ -657,6 +658,9 @@ protected:
 #include "render_device_opengl.h"
 #include "render_device_headless.h"
 
+#include "window/window.h"
+
+#include <SDL3/SDL.h>
 #include <iostream>
 
 namespace buddd::engine {

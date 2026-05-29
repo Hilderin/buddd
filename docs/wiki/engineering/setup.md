@@ -8,6 +8,13 @@
 | Ninja | >= 1.11 | Build system generator |
 | C++ compiler | C++26-capable | GCC 14+ (reference), Clang 19+ |
 | clang-format | >= 18 | Optional — needed only for the `format` target |
+| OpenGL | 4.5 Core | System headers and library (e.g., `libgl-dev` on Debian/Ubuntu, `mesa-libGL-devel` on Fedora) |
+
+### Auto-fetched dependencies
+
+The following are downloaded automatically at configure time via CMake's `FetchContent` — no manual installation required:
+- **Catch2 v3.7.0** (test framework)
+- **SDL3 release-3.2.30** (windowing and graphics context management)
 
 ## Quick start
 
@@ -16,7 +23,7 @@
 git clone <repository-url>
 cd buddd2
 
-# Configure in Debug mode
+# Configure in Debug mode (fetches Catch2 and SDL3 automatically)
 cmake --preset debug
 
 # Build all targets
@@ -26,7 +33,7 @@ cmake --build --preset debug
 ./build/debug/src/cmd/buddd                   # prints "Buddd Engine v0.1.0"
 ./build/debug/src/cmd/buddd --version          # prints "buddd 0.1.0"
 
-# Run tests
+# Run tests (all headless tests pass without a display)
 ctest --preset debug                           # 100% tests passed
 ```
 
@@ -69,3 +76,5 @@ These files require the [C/C++ extension](https://marketplace.visualstudio.com/i
 
 - Spec: [SPEC-001 Project Setup Bootstrap](/docs/specs/project-setup/spec.md) — Acceptance criteria AC-001 through AC-004 (build), AC-011 through AC-015 (formatting and IDE)
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — Done criteria and verification commands
+- Spec: [SPEC-002 Platform Abstraction](/docs/specs/platform-abstraction/spec.md) — Build system integration, SDL3/OpenGL dependencies
+- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt modifications, FetchContent SDL3, find_package OpenGL

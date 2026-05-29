@@ -11,10 +11,10 @@ Allowed values: `Draft`, `In Review`, `Accepted`
 > This section is filled when the human validates the spec and implementation contract, authorizing implementation to proceed.
 
 | | |
-|---|---|
-| Approved by | |
-| Date | |
-| Time | |
+|---|---|---|
+| Approved by | Guillaume (user) |
+| Date | 2026-05-29 |
+| Time | ~16:30 UTC |
 
 ## Problem
 

@@ -25,6 +25,7 @@
 |---|---|---|
 | `ctest` reports 0 tests | Tests not built, or `catch_discover_tests` not run | Run `cmake --build --preset debug` first |
 | Test binary crashes | Linking issue or missing symbol | Verify `buddd_tests` links `buddd_engine` |
+| SDL3 tests fail on CI | No display server available | These tests require a display; use headless tests (`[headless]` tag) which run without a display |
 
 ## Binary behavior
 
@@ -34,7 +35,24 @@
 | `buddd arg1 arg2` prints the greeting | Only `--version` as the sole argument is special-cased; everything else prints the greeting |
 | Incremental build says "no work to do" | No source files changed — this is correct behavior |
 
+## Platform abstraction layer
+
+| Symptom | Likely cause | Solution |
+|---|---|---|
+| `Platform::create(Backend::SDL3)` fails with `InitFailed` | No display server available (e.g., headless CI, SSH session without X11 forwarding) | Use `Platform::create(Backend::Headless)` for headless environments |
+| `SDL_CreateWindow` returns null | Display unavailable, or window dimensions exceed desktop limits | Verify display is available; check window dimensions |
+| `SDL_GL_CreateContext` fails | OpenGL 4.5 Core profile not available on the system | Ensure the GPU driver supports OpenGL 4.5; try updating graphics drivers |
+| `find_package(OpenGL REQUIRED)` fails | OpenGL development headers not installed | Install `libgl-dev` (Debian/Ubuntu) or `mesa-libGL-devel` (Fedora) |
+| `FetchContent` for SDL3 fails | Network unavailable during first configure | Ensure network access; after first successful configure, SDL3 is cached locally |
+| `SDL_GL_SetAttribute` errors not reported | Return values are not checked individually — they may fail silently | If context creation fails shortly after, the `SDL_GL_CreateContext` failure will produce the error |
+| Architecture boundary violation (SDL3/OpenGL includes outside `src/engine/`) | Code in `src/cmd/`, `src/editor/`, or `tests/` includes SDL3 or OpenGL headers | Use the abstract `Platform`/`Window`/`RenderDevice` interfaces instead |
+| Multiple windows from a single Platform instance | Multiple `create_window()` calls on the same Platform | This is undefined behavior — only one window is supported at this stage |
+| Window destroyed before RenderDevice | Incorrect lifecycle ordering | Ensure `Window` outlives the `RenderDevice` created from it |
+| Platform destroyed before Window or RenderDevice | Incorrect lifecycle ordering | Ensure `Platform` outlives all `Window` and `RenderDevice` instances |
+
 ## Reference
 
 - Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Edge cases and Error cases sections
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — Edge cases section
+- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Error cases, Edge cases sections
+- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Edge cases section

@@ -1,4 +1,7 @@
-add_executable(buddd_tests version_test.cpp)
+add_executable(buddd_tests
+    version_test.cpp
+    platform_abstraction_test.cpp
+)
 
 target_link_libraries(buddd_tests PRIVATE
     buddd_engine

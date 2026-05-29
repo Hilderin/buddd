@@ -21,11 +21,46 @@ Both Debug and Release presets include a `testPreset` that runs all registered t
 
 ## Current tests
 
-At the bootstrap stage, there is a single sanity test:
+### Sanity test (bootstrap)
 
 | Test case | Tags | Source | Verification |
 |---|---|---|---|
 | `engine version is non-empty` | `[sanity]` | `tests/version_test.cpp` | `buddd::engine::version()` returns a non-empty `std::string_view` |
+
+### Headless platform abstraction tests
+
+The platform abstraction layer introduces headless backend tests that run **without a display or GPU** — they are safe for CI:
+
+| ID | Test case | Tags | Verification |
+|---|---|---|---|
+| T-01 | `Platform::create(Headless) succeeds` | `[headless]` `[platform]` | Returns valid `unique_ptr<Platform>` |
+| T-02 | `Headless Platform creates Window with valid config` | `[headless]` `[window]` | `create_window()` returns valid window |
+| T-03 | `Headless Window creates RenderDevice` | `[headless]` `[render]` | `RenderDevice::create()` returns valid device |
+| T-04 | `Headless frame cycle completes` | `[headless]` `[render]` | `begin_frame()` / `end_frame()` sequence completes |
+| T-05 | `Headless RenderDevice::size() returns correct dimensions` | `[headless]` `[render]` | `size()` matches window config |
+| T-06 | `Headless Window::native_handle() returns nullptr` | `[headless]` `[window]` | `native_handle()` is `nullptr` |
+| T-07 | `WindowConfig negative dimensions return error` | `[headless]` `[window]` | Returns `WindowCreationFailed` error |
+| T-08 | `Error struct construction and to_string` | `[headless]` `[error]` | `to_string()` format is correct |
+| T-09 | `make_error helper compiles and returns correct category` | `[headless]` `[error]` | Category and message are correct |
+| T-10 | `make_error with explicit code` | `[headless]` `[error]` | `code` field is set correctly |
+| T-11 | `Result<T> compiles with unique_ptr` | `[headless]` `[error]` | `Result<std::unique_ptr<int>>` compiles and works |
+
+### SDL3/OpenGL tests (require display)
+
+These tests require a display server and may be skipped or marked as `[!mayfail]` in CI environments without a display:
+
+| ID | Test case | Tags | Verification |
+|---|---|---|---|
+| T-12 | `Backend enum values exist` | `[sdl3]` `[platform]` | `Backend::SDL3` and `Backend::Headless` are valid identifiers |
+| T-13 | `Platform::create(SDL3) success` | `[sdl3]` `[platform]` | Returns valid Platform (requires display) |
+
+SDL3-specific tests that require a display should be conditionally compiled (e.g., guarded by `#ifdef BUDDD_HAS_DISPLAY`) or tagged appropriately so CI does not fail.
+
+## Test conventions
+
+- All assertions use `REQUIRE`/`REQUIRE_FALSE` (not `CHECK`).
+- Headless tests are tagged `[headless]` plus a subsystem tag (`[platform]`, `[window]`, `[render]`, `[error]`).
+- Test files go in `tests/` and are registered in `tests/CMakeLists.txt`.
 
 ## Adding tests
 
@@ -43,3 +78,5 @@ At the bootstrap stage, there is a single sanity test:
 
 - Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — AC-007 (version sanity test), AC-008 (FetchContent), AC-010 (ctest passes)
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 9 and 10 (test structure)
+- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Acceptance criteria, User stories (headless testing)
+- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required tests (T-01 through T-13)

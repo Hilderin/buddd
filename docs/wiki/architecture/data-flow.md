@@ -53,7 +53,79 @@ It is consumed by:
 
 The version in `CMakeLists.txt` (`project(buddd VERSION 0.1.0 ...)`) must be kept in sync with `version.cpp` manually — no automation is introduced at bootstrap.
 
+## Platform abstraction lifecycle
+
+The platform abstraction layer follows a linear three-phase lifecycle:
+
+```
+Platform::create(Backend)
+        │
+        ▼
+  [Platform initialized]
+  - SDL3 backend: SDL_Init(SDL_INIT_VIDEO) called
+  - Headless backend: no-op initialization
+        │
+        ▼
+platform->create_window(WindowConfig{title, width, height})
+        │
+        ├── Valid config (width>0, height>0)
+        │       │
+        │       ▼
+        │   [Window created]
+        │   - SDL3 backend: SDL_CreateWindow with SDL_WINDOW_OPENGL flag
+        │   - Headless backend: in-memory width/height storage
+        │
+        └── Invalid config (width≤0 or height≤0)
+                │
+                ▼
+            Error{WindowCreationFailed, "Invalid window dimensions"}
+        │
+        ▼
+RenderDevice::create(window)
+        │
+        ├── native_handle() != nullptr (SDL3 backend)
+        │       │
+        │       ▼
+        │   [OpenGL 4.5 Core context created]
+        │   - SDL_GL_SetAttribute for Core profile 4.5
+        │   - SDL_GL_CreateContext
+        │   - SDL_GL_MakeCurrent
+        │       │
+        │       ▼
+        │   device->begin_frame() → glClear(GL_COLOR_BUFFER_BIT)
+        │   device->end_frame()   → SDL_GL_SwapWindow()
+        │
+        └── native_handle() == nullptr (Headless backend)
+                │
+                ▼
+            [Headless render device]
+            - begin_frame() and end_frame() are no-ops
+            - size() returns stored dimensions
+        │
+        ▼
+    [Destruction order: RenderDevice → Window → Platform]
+    - ~RenderDeviceOpenGL: SDL_GL_DestroyContext
+    - ~WindowSDL3: SDL_DestroyWindow
+    - ~PlatformSDL3: SDL_Quit()
+```
+
+### Error propagation
+
+All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
+- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `Unsupported`, `Unknown`
+- `code`: backend-specific numeric error code (defaults to 0)
+- `message`: human-readable description
+
+### Lifecycle rules
+
+- `Platform` must outlive any `Window` and `RenderDevice` created from it.
+- `Window` must outlive the `RenderDevice` that was created from it.
+- Violating these rules is undefined behavior at the abstract level.
+- The backend is fixed for the lifetime of a `Platform` instance — no runtime switching.
+
 ## Reference
 
 - Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — User-visible behavior, User stories 1-3
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — section 7 (`main.cpp` behavior)
+- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — User stories 1-5, Edge cases, Error cases
+- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior

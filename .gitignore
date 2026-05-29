@@ -39,3 +39,6 @@ out/
 # Environment
 .env
 .env.*
+
+# Wiki search index
+.wiki-index/
