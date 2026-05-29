@@ -17,7 +17,7 @@ Your job is to reject contracts that still allow random implementation choices a
 
 You may write **one** file:
 
-- `docs/specs/active/<feature>/contract-critic.md`
+- `docs/specs/<feature>/contract-critic.md`
 
 Use the template at `docs/templates/review-report-template.md` as the starting structure.
 
@@ -40,10 +40,10 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 ## Review process
 
 1. Load the template at `docs/templates/review-report-template.md`.
-2. Read the contract file at `docs/specs/active/<feature>/implementation-contract.md`.
-3. Read the referenced accepted spec at `docs/specs/active/<feature>/spec.md`.
+2. Read the contract file at `docs/specs/<feature>/implementation-contract.md`.
+3. Read the referenced accepted spec at `docs/specs/<feature>/spec.md`.
 4. Perform the review checks.
-5. Write the review to `docs/specs/active/<feature>/contract-critic.md` using the template.
+5. Write the review to `docs/specs/<feature>/contract-critic.md` using the template.
 6. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
 7. Update the contract file's `## Status` to `In Review`.
 8. List every issue as a `- [ ]` checklist item under the appropriate section.

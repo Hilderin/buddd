@@ -5,7 +5,7 @@ These rules apply to every agent working in this repository.
 ## Authority order
 
 1. `docs/constitution/**`
-2. `docs/specs/active/**`
+2. `docs/specs/**`
 3. `docs/adr/accepted/**`
 4. `docs/wiki/**`
 5. Existing code conventions

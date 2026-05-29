@@ -17,7 +17,7 @@ You transform human intent into a clear, testable functional spec.
 
 You may create **one** file:
 
-- `docs/specs/backlog/<feature>/spec.md`
+- `docs/specs/<feature>/spec.md`
 
 Where `<feature>` is a short kebab-case identifier for the feature (e.g. `project-scaffolding`, `user-auth`).
 Create the directory if it doesn't exist.
@@ -27,7 +27,7 @@ Set the spec's `## Status` to `Draft` (the allowed values are `Draft`, `In Revie
 
 1. **Load the template** at `docs/templates/spec-template.md` — it defines the required structure.
 2. **Understand the human intent** — clarify with the orchestrator if ambiguous.
-3. **Review existing specs** in `docs/specs/active/` and `docs/specs/backlog/` to avoid contradictions.
+3. **Review existing specs** in `docs/specs/` to avoid contradictions.
 4. **Check spec-critic files** — if a `spec-critic.md` exists in the feature directory, read it and ensure all blocking issues (`- [ ]` unchecked items) are addressed before editing.
 
 ## Spec structure

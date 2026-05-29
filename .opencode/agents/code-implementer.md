@@ -19,7 +19,7 @@ You implement only accepted implementation contracts.
 
 - Read the accepted implementation contract.
 - Read the referenced accepted spec.
-- Read the contract-critic review at `docs/specs/active/<feature>/contract-critic.md` — confirm the verdict is `Accepted` or `Accepted with warnings` and no unchecked blocking issues remain.
+- Read the contract-critic review at `docs/specs/<feature>/contract-critic.md` — confirm the verdict is `Accepted` or `Accepted with warnings` and no unchecked blocking issues remain.
 - Read relevant constitution rules.
 - Read relevant ADRs.
 - Inspect the listed files.

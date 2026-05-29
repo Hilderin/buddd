@@ -17,7 +17,7 @@ You convert an accepted spec into a precise implementation contract.
 
 You may create **one** file:
 
-- `docs/specs/active/<feature>/implementation-contract.md`
+- `docs/specs/<feature>/implementation-contract.md`
 
 Where `<feature>` is the feature directory name (e.g. `project-scaffolding`).
 
@@ -26,8 +26,8 @@ The contract's `## Status` header must be set to `Draft` (allowed values: `Draft
 ## Before writing
 
 1. **Load the template** at `docs/templates/implementation-contract-template.md`.
-2. **Read the accepted spec** at `docs/specs/active/<feature>/spec.md`.
-3. **Check the spec-critic review** at `docs/specs/active/<feature>/spec-critic.md` — confirm the verdict allows proceeding before writing the contract.
+2. **Read the accepted spec** at `docs/specs/<feature>/spec.md`.
+3. **Check the spec-critic review** at `docs/specs/<feature>/spec-critic.md` — confirm the verdict allows proceeding before writing the contract.
 4. **Check existing contract-critic files** — if a `contract-critic.md` exists, read it and ensure all blocking issues are addressed.
 
 You must not modify source code.

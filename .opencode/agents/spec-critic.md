@@ -17,7 +17,7 @@ Your job is to reject weak specs and produce a persistent review artifact.
 
 You may write **one** file:
 
-- `docs/specs/backlog/<feature>/spec-critic.md`
+- `docs/specs/<feature>/spec-critic.md`
 
 Use the template at `docs/templates/review-report-template.md` as the starting structure.
 
@@ -36,9 +36,9 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 ## Review process
 
 1. Load the template at `docs/templates/review-report-template.md`.
-2. Read the spec file at `docs/specs/backlog/<feature>/spec.md`.
+2. Read the spec file at `docs/specs/<feature>/spec.md`.
 3. Perform the review checks.
-4. Write the review to `docs/specs/backlog/<feature>/spec-critic.md` using the template.
+4. Write the review to `docs/specs/<feature>/spec-critic.md` using the template.
 5. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
 6. Update the spec file's `## Status` to `In Review`.
 7. List every issue as a `- [ ]` checklist item under the appropriate section.
