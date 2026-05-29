@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "CMake: configure debug",
+            "command": "cmake",
+            "args": ["--preset", "debug"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "CMake: build debug",
+            "command": "cmake",
+            "args": ["--build", "--preset", "debug"],
+            "group": {"kind": "build", "isDefault": true},
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "type": "shell",
+            "label": "CTest: run tests debug",
+            "command": "ctest",
+            "args": ["--preset", "debug"],
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}
