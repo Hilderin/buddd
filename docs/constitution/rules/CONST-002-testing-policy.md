@@ -2,11 +2,11 @@
 
 ## Rule
 
-TODO.
+All testable code added or modified in this project must have corresponding unit tests. Those tests must pass (i.e., the code must work).
 
 ## Rationale
 
-TODO.
+Unit tests provide a safety net for refactoring, document expected behavior, and prevent regressions. Requiring tests to pass ensures that the codebase remains in a working state at all times.
 
 ## Enforcement
 
@@ -14,4 +14,4 @@ Blocking.
 
 ## Exceptions
 
-Only by accepted constitutional amendment.
+None.

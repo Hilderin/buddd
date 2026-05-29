@@ -37,7 +37,7 @@ Prefer the `question` tool to ask questions to the user.
 | `test-author` | Writes and updates tests required by accepted specs and contracts. |
 | `code-reviewer` | Reviews implementation against accepted spec, contract, tests, and constitution. |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions. |
-| `constitution-agent` | Proposes constitutional amendments when fundamental project rules need to change. |
+| `constitution-agent` | Maintains the project constitution when fundamental project rules need to change. |
 | `wiki-agent` | Maintains the operational project wiki after accepted changes. |
 | `governance-reviewer` | Performs final cross-document governance validation. |
 
@@ -82,13 +82,15 @@ governance-reviewer
 
 1. **Clarify** — Understand and validate the human intent.
 2. **Spec author** — Ask `spec-author` to draft a spec into `docs/specs/<feature>/spec.md` (Status: Draft).
-3. **Spec critic** — Ask `spec-critic` to review and write `docs/specs/<feature>/spec-critic.md`.
+ 3. **Spec critic** — Ask `spec-critic` to review and write `docs/specs/<feature>/spec-critic.md`.
    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 2.
+   - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.
    - When clear, update the spec's `## Status` to `Accepted`.
 4. **Contract author** — Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md` (Status: Draft).
-5. **Contract critic** — Ask `contract-critic` to review and write `docs/specs/<feature>/contract-critic.md`.
+ 5. **Contract critic** — Ask `contract-critic` to review and write `docs/specs/<feature>/contract-critic.md`.
    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 4.
-    - When clear, update the contract's `## Status` to `Accepted`.
+   - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.
+   - When clear, update the contract's `## Status` to `Accepted`.
  6. **Human validation** — Present the accepted spec and the accepted implementation contract to the user. Ask for explicit approval to proceed with implementation.
     - **Gate**: Do NOT proceed until the user explicitly confirms.
     - Once approved, record the approval in both files:
@@ -96,8 +98,9 @@ governance-reviewer
       - In `docs/specs/<feature>/implementation-contract.md`, fill the `## Approval` section with the same information.
  7. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. Only from an accepted and human-approved contract.
  8. **Code review** — Ask `code-reviewer` to review and write `docs/specs/<feature>/code-review.md`.
-    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 7.
-    - When clear, the implementation is accepted.
+   - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 7.
+   - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.
+   - When clear, the implementation is accepted.
  9. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact is needed.
 10. **Final validation** — Ask `governance-reviewer` for cross-document validation.
 11. **Done** — Feature implementation is complete. All artifacts stay in `docs/specs/<feature>/`. No file moving needed.
@@ -111,4 +114,5 @@ governance-reviewer
 - Never skip the critic agents.
 - Never skip the code-reviewer.
 - Never skip the governance-reviewer.
-- Never accept a constitutional change without explicit human ratification.
+- Never accept a constitutional change without explicit human approval.
+- Never silently resolve critic or reviewer questions. If you do not know the answer, ask the human using the `question` tool.
