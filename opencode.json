@@ -79,5 +79,26 @@
       "prompt": "{file:.opencode/agents/governance-reviewer.md}",
       "temperature": 0.1
     }
+  },
+  "mcp": {
+    "wiki": {
+      "type": "local",
+      "command": [
+        "uv",
+        "run",
+        "--directory",
+        "/home/guillaume/Documents/Projects/llm-wiki-search/tools/wiki-search-mcp",
+        "python",
+        "-m",
+        "wiki_search_mcp.server"
+      ],
+      "enabled": true,
+      "environment": {
+        "WIKI_ROOT": "/home/guillaume/Documents/Projects/buddd2/docs/wiki",
+        "WIKI_INDEX": "/home/guillaume/Documents/Projects/buddd2/.wiki-index/wiki.sqlite",
+        "WIKI_WATCH": "true",
+        "WIKI_REINDEX_ON_START": "true"
+      }
+    }
   }
 }
