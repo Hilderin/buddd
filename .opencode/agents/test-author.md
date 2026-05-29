@@ -22,6 +22,7 @@ You write tests based on accepted specs and accepted implementation contracts.
 - Add regression tests when fixing bugs.
 - Follow existing test patterns.
 - Avoid overfitting tests to implementation details.
+- Search the wiki for testing patterns and conventions using wiki search tools.
 
 ## Rules
 

@@ -19,6 +19,10 @@ You may create files only under:
 
 - `docs/adr/`
 
+## Before writing
+
+- Search the wiki for related decisions and context using wiki search tools.
+
 ## Create an ADR when work introduces or changes
 
 - Architecture boundaries

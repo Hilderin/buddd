@@ -39,3 +39,16 @@ Escalate to the Orchestrator when:
 - The implementation contract does not constrain the work enough.
 - A new architectural decision is required.
 - A dependency, framework, service, or persistence strategy must change.
+
+## Wiki tools
+
+All agents have access to wiki search tools that query the operational wiki at `docs/wiki/**`:
+- `wiki_wiki_search` — hybrid full-text and semantic search
+- `wiki_wiki_search_exact` — exact lexical/FTS search
+- `wiki_wiki_read_section` — read a specific section by path and heading
+- `wiki_wiki_status` — check index status
+- `wiki_wiki_reindex` — force reindex
+
+Before making decisions, writing documents, reviewing work, or implementing code, agents should proactively search the wiki for relevant operational context. The wiki captures current understanding of architecture, domain concepts, engineering practices, and decisions.
+
+The wiki sits at authority order #4 — above existing code conventions — and should be consulted as a primary reference for operational knowledge.

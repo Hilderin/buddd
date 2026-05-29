@@ -23,6 +23,7 @@ You inspect the repository and report existing conventions.
 - Identify architectural boundaries.
 - Identify existing extension points.
 - Identify risky areas.
+- Search the wiki for relevant operational knowledge using wiki search tools.
 
 ## Output should include
 

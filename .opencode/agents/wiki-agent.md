@@ -21,6 +21,7 @@ You may modify only:
 
 ## Responsibilities
 
+- Before making changes, search the wiki to understand current state using wiki search tools.
 - Keep architecture overview up to date.
 - Keep module maps and dependency maps current.
 - Keep domain glossary and business rules current.

@@ -36,13 +36,15 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Missing constitution impact
 - Contradictions with the accepted spec
 - Contradictions with `docs/constitution/**`
+- Contradictions with `docs/wiki/**`
 
 ## Review process
 
 1. Load the template at `docs/templates/review-report-template.md`.
 2. Read the contract file at `docs/specs/<feature>/implementation-contract.md`.
 3. Read the referenced accepted spec at `docs/specs/<feature>/spec.md`.
-4. Perform the review checks.
+4. Search the wiki for relevant context using wiki search tools.
+5. Perform the review checks.
 5. Write the review to `docs/specs/<feature>/contract-critic.md` using the template.
 6. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
 7. Update the contract file's `## Status` to `In Review`.

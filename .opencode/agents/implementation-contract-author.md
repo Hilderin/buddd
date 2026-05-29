@@ -27,8 +27,9 @@ The contract's `## Status` header must be set to `Draft` (allowed values: `Draft
 
 1. **Load the template** at `docs/templates/implementation-contract-template.md`.
 2. **Read the accepted spec** at `docs/specs/<feature>/spec.md`.
-3. **Check the spec-critic review** at `docs/specs/<feature>/spec-critic.md` — confirm the verdict allows proceeding before writing the contract.
-4. **Check existing contract-critic files** — if a `contract-critic.md` exists, read it and ensure all blocking issues are addressed.
+3. **Search the wiki** — Use wiki search tools to find relevant architecture context, dependency maps, module boundaries, and existing conventions.
+4. **Check the spec-critic review** at `docs/specs/<feature>/spec-critic.md` — confirm the verdict allows proceeding before writing the contract.
+5. **Check existing contract-critic files** — if a `contract-critic.md` exists, read it and ensure all blocking issues are addressed.
 
 You must not modify source code.
 

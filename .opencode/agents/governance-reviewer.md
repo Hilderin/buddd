@@ -43,7 +43,7 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 6. Read the code review at `docs/specs/<feature>/code-review.md`.
 7. Read the constitution at `docs/constitution/**`.
 8. Read relevant ADRs at `docs/adr/**`.
-9. Read the wiki at `docs/wiki/**`.
+9. Search the wiki using wiki search tools, then read relevant sections at `docs/wiki/**`.
 10. Perform the governance checks.
 11. Write the review to `docs/specs/<feature>/governance-review.md` using the template.
 12. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.

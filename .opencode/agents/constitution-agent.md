@@ -27,6 +27,7 @@ You must not directly modify accepted constitution rules.
 - Detect when a new durable rule may be needed.
 - Propose rule changes only when justified.
 - Keep rules stable, testable, and enforceable.
+- Search the wiki for context before proposing changes using wiki search tools.
 
 ## Rules
 
