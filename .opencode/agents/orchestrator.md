@@ -81,12 +81,13 @@ code-reviewer → docs/specs/<feature>/code-review.md
   ↓  return to code-implementer for any modifications
   ↓  ALWAYS rerun the code-reviewer agent after motifications
   ↓
-adr-agent
-  ↓
-constitution-agent
+Can be run in parallele:
+- adr-agent
+- constitution-agent
   ↓
 wiki-agent
   ↓
+** wait before all other agents are done**
 governance-reviewer
   ↓  (gate: no unchecked blocking issues?)
   ↓  ALWAYS rerun the governance-reviewer agent after motifications
