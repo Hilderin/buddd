@@ -185,7 +185,7 @@ jobs:
             libgl1-mesa-dev
 
       - name: Configure with BUDDD_HAS_DISPLAY=OFF
-        run: cmake -DBUDDD_HAS_DISPLAY=OFF -DCMAKE_CXX_COMPILER=g++-14 --preset debug
+        run: cmake -DBUDDD_HAS_DISPLAY=OFF -DSDL_UNIX_CONSOLE_BUILD=ON -DCMAKE_CXX_COMPILER=g++-14 --preset debug
 
       - name: Build
         run: cmake --build --preset debug
@@ -197,7 +197,7 @@ jobs:
 Requirements:
 - Runs on push/PR to `main`.
 - Installs C++ compiler (g++-14), CMake, Ninja, and Mesa OpenGL headers.
-- Configures with `BUDDD_HAS_DISPLAY=OFF` and `CMAKE_CXX_COMPILER=g++-14` to select the C++26-capable compiler.
+- Configures with `BUDDD_HAS_DISPLAY=OFF`, `SDL_UNIX_CONSOLE_BUILD=ON` (to skip SDL3's X11/Wayland check), and `CMAKE_CXX_COMPILER=g++-14` to select the C++26-capable compiler.
 - Uses `--output-on-failure` for detailed test results.
 
 ### 4. `tests/platform_abstraction_test.cpp` — remove T-13

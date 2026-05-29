@@ -54,8 +54,8 @@ Additionally, the implementation contract (IMPL-002, "Required tests" section) e
 
 A GitHub Actions CI workflow `.github/workflows/ci.yml` is added with the following job:
 
-- **Build and test with `BUDDD_HAS_DISPLAY=OFF`**: Configures with `cmake -DBUDDD_HAS_DISPLAY=OFF --preset debug`, builds, and runs `ctest --preset debug`.
-- Runs on `ubuntu-latest` with standard dependencies (C++26 compiler, CMake, Ninja, SDL3 via `FetchContent`).
+- **Build and test with `BUDDD_HAS_DISPLAY=OFF`**: Configures with `cmake -DBUDDD_HAS_DISPLAY=OFF -DSDL_UNIX_CONSOLE_BUILD=ON --preset debug`, builds, and runs `ctest --preset debug`.
+- Runs on `ubuntu-latest` with standard dependencies (C++26 compiler, CMake, Ninja, SDL3 via `FetchContent`). The `SDL_UNIX_CONSOLE_BUILD=ON` flag tells SDL3 to skip the X11/Wayland check since the CI runner has no display server.
 - The job verifies that:
   - The project builds without SDL3 backend tests.
   - All headless tests (T-01 through T-11) pass.
