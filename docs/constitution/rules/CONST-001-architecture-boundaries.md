@@ -14,4 +14,4 @@ Blocking.
 
 ## Exceptions
 
-Only by accepted constitutional amendment.
+None.

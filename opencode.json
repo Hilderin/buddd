@@ -56,7 +56,7 @@
       "temperature": 0.1
     },
     "constitution-agent": {
-      "description": "Proposes constitutional amendments when project-level rules need to change.",
+      "description": "Maintains the project constitution when project-level rules need to change.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/constitution-agent.md}",
       "temperature": 0.1

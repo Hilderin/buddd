@@ -38,7 +38,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Did it add the required tests?
 - Did it introduce hidden architecture decisions?
 - Did it violate the constitution?
-- Did it require an ADR or amendment?
+- Did it require an ADR or constitution update?
 
 ## Review process
 

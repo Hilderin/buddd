@@ -12,8 +12,4 @@ The constitution contains mandatory project rules.
 
 ## Change process
 
-Accepted rules are not edited directly. Changes require a proposed amendment under:
-
-`docs/constitution/amendments/proposed/`
-
-After human ratification, accepted amendments may result in new or superseding constitution rules.
+Accepted rules may be updated directly. Changes may result in new or superseding constitution rules.

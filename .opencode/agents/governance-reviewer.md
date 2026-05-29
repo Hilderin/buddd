@@ -23,7 +23,7 @@ You validate coherence across the whole workflow.
 - Tests prove acceptance criteria.
 - Constitution is not violated.
 - Required ADRs exist or are proposed.
-- Required amendments exist or are proposed.
+- Required constitution updates exist or are proposed.
 - Wiki reflects current state and does not become law.
 
 ## Output
