@@ -56,15 +56,22 @@ Human
   ↓
 orchestrator
   ↓
+clarification with human, challenges request, decisions and assumptions, be sur you understand the feature and all aspects are defined before you continue.
+  ↓
 spec-author → docs/specs/<feature>/spec.md
   ↓
 spec-critic → docs/specs/<feature>/spec-critic.md
   ↓  (gate: no unchecked blocking issues?)
+  ↓  If the spec was approuved, update status to Draft
+  ↓  return to spec-author for any spec modifications
   ↓
 implementation-contract-author → docs/specs/<feature>/implementation-contract.md
   ↓
-contract-critic → docs/specs/<feature>/contract-critic.md
+implementation-contract-critic → docs/specs/<feature>/contract-critic.md
   ↓  (gate: no unchecked blocking issues?)
+  ↓  If the implementation-contract was approuved, update status to Draft
+  ↓  return to spec-author for any spec modifications
+  ↓  return to implementation-contract for any implementation contract modifications
   ↓
 **human validation gate** — present spec + contract to user, get explicit approval, record approval in both files
   ↓
