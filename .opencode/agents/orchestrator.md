@@ -54,33 +54,32 @@ Human
   ↓
 orchestrator
   ↓
-spec-author → docs/specs/proposed/<feature>/spec.md
+spec-author → docs/specs/backlog/<feature>/spec.md
+  ↓  (spec-critic reviews, status: Draft → Accepted)
   ↓
-spec-critic
+docs/specs/active/<feature>/spec.md
   ↓
-docs/specs/accepted/<feature>/spec.md
-  ↓
-implementation-contract-author → docs/specs/accepted/<feature>/implementation-contract.md
-  ↓
-implementation-contract-critic
+implementation-contract-author → docs/specs/active/<feature>/implementation-contract.md
+  ↓  (contract-critic reviews, status: Draft → Accepted)
   ↓
 code-implementer + test-author
   ↓
 adr-agent / constitution-agent / wiki-agent
   ↓
 governance-reviewer
+  ↓
+docs/specs/done/<feature>/
 ```
 
 1. **Clarify** — Understand and validate the human intent.
-2. **Spec author** — Ask the `spec-author` agent to draft a proposed spec into `docs/specs/proposed/<feature>/spec.md`.
-3. **Spec critic** — Ask the `spec-critic` agent to review the proposed spec. If rejected, loop back to step 2.
-4. **Spec accepted** — Move the `<feature>` directory from `docs/specs/proposed/` to `docs/specs/accepted/` once approved.
-5. **Contract author** — Ask the `implementation-contract-author` agent to draft a proposed contract as `docs/specs/accepted/<feature>/implementation-contract.md` (status tracked in-file).
-6. **Contract critic** — Ask the `implementation-contract-critic` agent to review the contract. If rejected, loop back to step 5.
-7. **Contract accepted** — Update the contract's `## Status` header to `Accepted`.
-8. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. They may only act from an accepted contract.
-9. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact (ADR, constitutional amendment, wiki update) is needed.
-10. **Final validation** — Ask the `governance-reviewer` for cross-document governance validation.
+2. **Spec author** — Ask `spec-author` to draft a spec into `docs/specs/backlog/<feature>/spec.md` (Status: Draft).
+3. **Spec critic** — Ask `spec-critic` to review. If rejected, spec-author fixes in-place. When accepted, update Status to `Accepted` and move `<feature>` to `docs/specs/active/`.
+4. **Contract author** — Ask `implementation-contract-author` to create `docs/specs/active/<feature>/implementation-contract.md` (Status: Draft).
+5. **Contract critic** — Ask `implementation-contract-critic` to review. If rejected, fixes in-place. When accepted, update Status to `Accepted`.
+6. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. Only from an accepted contract.
+7. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact is needed.
+8. **Final validation** — Ask `governance-reviewer` for cross-document validation.
+9. **Done** — Move `<feature>` from `docs/specs/active/` to `docs/specs/done/`.
 
 ## Hard rules
 

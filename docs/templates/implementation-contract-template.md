@@ -1,7 +1,7 @@
 # IMPL-YYYY-NNNN - Title
 
 ## Status
-Proposed
+Draft
 
 ## Source spec
 
