@@ -6,7 +6,7 @@ These rules apply to every agent working in this repository.
 
 1. `docs/constitution/**`
 2. `docs/specs/**`
-3. `docs/adr/accepted/**`
+3. `docs/adr/**`
 4. `docs/wiki/**`
 5. Existing code conventions
 
