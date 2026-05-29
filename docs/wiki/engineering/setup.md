@@ -40,6 +40,9 @@ ctest --preset debug                           # 100% tests passed
 cmake -DBUDDD_HAS_DISPLAY=OFF --preset debug
 cmake --build --preset debug
 ctest --preset debug
+
+# On a headless CI runner without X11/Wayland development headers, also pass SDL_UNIX_CONSOLE_BUILD=ON:
+cmake -DBUDDD_HAS_DISPLAY=OFF -DSDL_UNIX_CONSOLE_BUILD=ON --preset debug
 ```
 
 ## Build presets

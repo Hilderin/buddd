@@ -10,6 +10,7 @@
 | `Failed to download Catch2` | Network unavailable during first configure | Ensure network access; after first successful configure, FetchContent is cached |
 | `Unknown argument --preset invalid` | Typo in preset name | Run `cmake --list-presets` to see available presets |
 | `Catch2 repository or tag not found` | Git tag `v3.7.0` was deleted or moved | Check the tag in `CMakeLists.txt` and update if needed |
+| `SDL could not find X11 or Wayland development libraries` | SDL3 requires X11 or Wayland headers to build on Linux. CI runners or minimal containers may lack these. | Pass `-DSDL_UNIX_CONSOLE_BUILD=ON` to skip the X11/Wayland check (use when `BUDDD_HAS_DISPLAY=OFF` and display is not needed). To install the headers: `sudo apt install libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxss-dev` |
 
 ## Build failures
 
