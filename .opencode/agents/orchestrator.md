@@ -34,7 +34,6 @@ Prefer the `question` tool to ask questions to the user.
 | `implementation-contract-author` | Converts accepted specs into precise implementation contracts. |
 | `implementation-contract-critic` | Critiques and validates implementation contracts. |
 | `code-implementer` | Implements only accepted implementation contracts. |
-| `test-author` | Writes and updates tests required by accepted specs and contracts. |
 | `code-reviewer` | Reviews implementation against accepted spec, contract, tests, and constitution. |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions. |
 | `constitution-agent` | Maintains the project constitution when fundamental project rules need to change. |
@@ -67,7 +66,7 @@ spec-critic → docs/specs/<feature>/spec-critic.md
   ↓
 implementation-contract-author → docs/specs/<feature>/implementation-contract.md
   ↓
-implementation-contract-critic → docs/specs/<feature>/contract-critic.md
+implementation-contract-critic → docs/specs/<feature>/implementation-contract-critic.md
   ↓  (gate: no unchecked blocking issues?)
   ↓  If the implementation-contract was approuved, update status to Draft
   ↓  return to spec-author for any spec modifications
@@ -75,15 +74,18 @@ implementation-contract-critic → docs/specs/<feature>/contract-critic.md
   ↓
 **human validation gate** — present spec + contract to user, get explicit approval, record approval in both files
   ↓
-code-implementer + test-author
+code-implementer
   ↓
 code-reviewer → docs/specs/<feature>/code-review.md
   ↓  (gate: no unchecked blocking issues?)
   ↓  return to code-implementer for any modifications
-  ↓  return to test-author for any modifications or missing tests
   ↓  ALWAYS rerun the code-reviewer agent after motifications
   ↓
-adr-agent / constitution-agent / wiki-agent
+adr-agent
+  ↓
+constitution-agent
+  ↓
+wiki-agent
   ↓
 governance-reviewer
   ↓  (gate: no unchecked blocking issues?)
@@ -99,7 +101,7 @@ governance-reviewer
    - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.
    - When clear, update the spec's `## Status` to `Accepted`.
 4. **Contract author** — Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md` (Status: Draft).
- 5. **Contract critic** — Ask `contract-critic` to review and write `docs/specs/<feature>/contract-critic.md`.
+ 5. **Contract critic** — Ask `implementation-contract-critic` to review and write `docs/specs/<feature>/implementation-contract-critic.md`.
    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 4.
    - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.
    - When clear, update the contract's `## Status` to `Accepted`.
@@ -108,7 +110,7 @@ governance-reviewer
     - Once approved, record the approval in both files:
       - In `docs/specs/<feature>/spec.md`, fill the `## Approval` section with the user's identity, date, and time.
       - In `docs/specs/<feature>/implementation-contract.md`, fill the `## Approval` section with the same information.
- 7. **Implement** — Delegate to `code-implementer` and `test-author` in parallel. Only from an accepted and human-approved contract.
+ 7. **Implement** — Delegate to `code-implementer`. Only from an accepted and human-approved contract.
  8. **Code review** — Ask `code-reviewer` to review and write `docs/specs/<feature>/code-review.md`.
    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 7.
    - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.

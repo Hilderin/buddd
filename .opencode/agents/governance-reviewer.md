@@ -39,7 +39,7 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 2. Read the spec file at `docs/specs/<feature>/spec.md`.
 3. Read the implementation contract at `docs/specs/<feature>/implementation-contract.md`.
 4. Read the spec-critic review at `docs/specs/<feature>/spec-critic.md`.
-5. Read the contract-critic review at `docs/specs/<feature>/contract-critic.md`.
+5. Read the implementation-contract-critic review at `docs/specs/<feature>/implementation-contract-critic.md`.
 6. Read the code review at `docs/specs/<feature>/code-review.md`.
 7. Read the constitution at `docs/constitution/**`.
 8. Read relevant ADRs at `docs/adr/**`.

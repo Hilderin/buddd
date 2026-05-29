@@ -14,7 +14,6 @@ This starter kit provides a full multi-agent workflow for spec-driven developmen
 | `implementation-contract-critic` | Critiques and validates implementation contracts |
 | `code-implementer` | Implements only accepted implementation contracts |
 | `code-reviewer` | Reviews implementation against spec, contract, tests, and constitution |
-| `test-author` | Writes and updates tests required by accepted specs and contracts |
 | `constitution-agent` | Maintains the project constitution when project rules need to change |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions |
 | `wiki-agent` | Maintains the operational project wiki after accepted changes |
