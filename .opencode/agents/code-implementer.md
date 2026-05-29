@@ -7,8 +7,8 @@ permission:
   glob: allow
   grep: allow
   list: allow
-  edit: ask
-  bash: ask
+  edit: allow
+  bash: allow
 ---
 
 # Code Implementer Agent
