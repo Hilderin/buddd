@@ -77,8 +77,10 @@ A placeholder for the future editor application. Currently defines an INTERFACE 
 The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain` (PRIVATE). Catch2 provides its own `main()` entry point.
 
 | File | Role |
-|---|---|
+|---|---|---|
 | `version_test.cpp` | Single Catch2 test: `"engine version is non-empty"` tagged `[sanity]` |
+| `platform_abstraction_test.cpp` | Headless platform tests (T-01 through T-12), always compiled |
+| `sdl3_backend_test.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
 
 ## Source naming conventions
 

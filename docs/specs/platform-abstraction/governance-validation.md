@@ -34,7 +34,7 @@ Contradictions or gaps between spec, contract, code, tests, and wiki:
 - [x] **B-04 — Contract code-block include paths differ from implementation.** ✅ Fixed: Contract updated to use subdirectory-qualified paths.
   The code review identified that the implementation uses subdirectory-qualified includes (e.g., `#include "window/window_sdl3.h"`) while the contract's code blocks use flat includes (e.g., `#include "window_sdl3.h"`). These differences were necessary for compilation given the directory structure. The contract should be reconciled with the actual implementation.
 
-- [x] **B-01/B-02/B-03 from earlier review cycles** — All resolved in prior review cycles (spec-critic, contract-critic). ✅
+- [x] **B-01/B-02/B-03 from earlier review cycles** — All resolved in prior review cycles (spec-critic, implementation-contract-critic). ✅
 
 When re-reviewing, mark resolved items with `[x]`. Add new items as `[ ]`.
 
@@ -116,7 +116,7 @@ Concrete changes to governance documents:
 
 4. **`docs/specs/platform-abstraction/implementation-contract.md`** — Reconcile include paths in code blocks (e.g., `#include "window_sdl3.h"` → `#include "window/window_sdl3.h"`) to match the actual implementation.
 
-5. **`docs/specs/platform-abstraction/implementation-contract.md`** — Consider updating the "Files allowed to change" and "Files forbidden to change" sections to clarify test-author permissions, following the lessons from code review.
+5. **`docs/specs/platform-abstraction/implementation-contract.md`** — Consider updating the "Files allowed to change" and "Files forbidden to change" sections to clarify code-implementer permissions, following the lessons from code review.
 
 ## Warnings
 

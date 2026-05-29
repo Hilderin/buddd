@@ -1,0 +1,5 @@
+if(EXISTS "/home/guillaume/Documents/Projects/buddd2/tests/buddd_tests-b12d07c_tests.cmake")
+  include("/home/guillaume/Documents/Projects/buddd2/tests/buddd_tests-b12d07c_tests.cmake")
+else()
+  add_test(buddd_tests_NOT_BUILT-b12d07c buddd_tests_NOT_BUILT-b12d07c)
+endif()

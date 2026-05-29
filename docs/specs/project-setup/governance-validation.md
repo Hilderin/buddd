@@ -13,7 +13,7 @@
 | 1. Spec authored | `docs/specs/project-setup/spec.md` (SPEC-001) | ✅ Accepted |
 | 2. Spec critiqued | `docs/specs/project-setup/spec-critic.md` | ✅ Accepted with warnings (all blocking issues resolved) |
 | 3. Contract authored | `docs/specs/project-setup/implementation-contract.md` (IMPL-001) | ✅ Accepted |
-| 4. Contract critiqued | `docs/specs/project-setup/contract-critic.md` | ✅ Accepted (B-01 resolved, then accepted) |
+| 4. Contract critiqued | `docs/specs/project-setup/implementation-contract-critic.md` | ✅ Accepted (B-01 resolved, then accepted) |
 | 5. Human approved | Approval section in spec and contract | ✅ Authorized by Guillaume on 2026-05-29 |
 | 6. Code implemented | 14 files under `CMakeLists.txt`, `CMakePresets.json`, `src/`, `tests/`, `.clang-format`, `.vscode/` | ✅ All files exist with correct content |
 | 7. Code reviewed | `docs/specs/project-setup/code-review.md` | ✅ Accepted with warnings |

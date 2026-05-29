@@ -17,6 +17,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
+option(BUDDD_HAS_DISPLAY "Enable SDL3 backend tests (requires display or offscreen driver)" ON)
+
 enable_testing()
 
 add_subdirectory(tests)

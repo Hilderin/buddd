@@ -27,6 +27,13 @@ bin/
 obj/
 out/
 
+# CMake
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+cmake_install.cmake
+Makefile
+
 # IDE
 .idea/
 *.iml

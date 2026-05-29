@@ -22,6 +22,8 @@
 | **CMake preset** | A named build configuration defined in `CMakePresets.json`. The project has `debug` and `release` presets. |
 | **FetchContent** | CMake module used to automatically download Catch2 v3.7.0 and SDL3 (release-3.2.30) at configure time. No manual installation required. |
 | **Catch2 v3** | The C++ unit testing framework used by the project. Fetched via `FetchContent` at version v3.7.0. |
+| **BUDDD_HAS_DISPLAY** | CMake option (default `ON`) that controls whether SDL3 backend tests are compiled. Set to `OFF` (e.g., `cmake -DBUDDD_HAS_DISPLAY=OFF`) to exclude SDL3 backend tests in headless environments like CI. |
+| **Offscreen video driver** | An SDL3 video driver (set via `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`) that renders to an offscreen framebuffer instead of a physical display. Used by SDL3 backend tests so they run in any environment without requiring a display server. |
 
 ## Version scheme
 

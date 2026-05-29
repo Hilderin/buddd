@@ -35,6 +35,11 @@ cmake --build --preset debug
 
 # Run tests (all headless tests pass without a display)
 ctest --preset debug                           # 100% tests passed
+
+# Build without SDL3 backend tests (headless-only, e.g., for CI)
+cmake -DBUDDD_HAS_DISPLAY=OFF --preset debug
+cmake --build --preset debug
+ctest --preset debug
 ```
 
 ## Build presets
@@ -78,3 +83,5 @@ These files require the [C/C++ extension](https://marketplace.visualstudio.com/i
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — Done criteria and verification commands
 - Spec: [SPEC-002 Platform Abstraction](/docs/specs/platform-abstraction/spec.md) — Build system integration, SDL3/OpenGL dependencies
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt modifications, FetchContent SDL3, find_package OpenGL
+- Spec: [SPEC-003 SDL3 Backend Tests](/docs/specs/sdl3-backend-tests/spec.md) — BUDDD_HAS_DISPLAY option
+- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — Build system changes, CI integration

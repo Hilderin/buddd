@@ -43,12 +43,6 @@
       "prompt": "{file:.opencode/agents/code-implementer.md}",
       "temperature": 0.1
     },
-    "test-author": {
-      "description": "Writes and updates tests required by accepted specs and implementation contracts.",
-      "mode": "subagent",
-      "prompt": "{file:.opencode/agents/test-author.md}",
-      "temperature": 0.1
-    },
     "code-reviewer": {
       "description": "Reviews implementation against the accepted spec, contract, tests, and constitution.",
       "mode": "subagent",

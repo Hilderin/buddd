@@ -78,12 +78,14 @@ src/engine/
 - `ctest --preset debug` — runs tests, all pass
 - `cmake --build --preset debug --target format` — formats all C++ sources
 - `Platform::create(Backend::Headless)` — creates a headless platform (no display needed, used for testing)
-- `Platform::create(Backend::SDL3)` — creates an SDL3-based platform (requires a display)
+- `Platform::create(Backend::SDL3)` — creates an SDL3-based platform (uses offscreen video driver in tests; requires a display in production)
 - Factory methods return `Result<T>` (`std::expected<T, Error>`) for error propagation
 
 ## Architecture boundary
 
 A hard architecture boundary is enforced: **no code outside `src/engine/`** may `#include` SDL3 or OpenGL headers. All access to windowing and graphics functionality goes through the abstract `Platform`, `Window`, and `RenderDevice` interfaces. Concrete backend implementations live entirely within `src/engine/`.
+
+**Narrow exception (AMEND-2026-001):** SDL3 test files (`tests/*_sdl3*.cpp` or similar) that are conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` **only** for setting video driver hints (e.g., `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`) before calling `Platform::create()`. This exception applies only to test files that test the SDL3 backend, only to `<SDL3/SDL.h>`, and only for setting video driver hints. All other platform, graphics, or windowing library headers remain prohibited outside `src/engine/`.
 
 ## Reference
 
@@ -91,3 +93,5 @@ A hard architecture boundary is enforced: **no code outside `src/engine/`** may 
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md)
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md)
+- Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md)
+- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md)

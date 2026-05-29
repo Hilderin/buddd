@@ -25,7 +25,8 @@
 |---|---|---|
 | `ctest` reports 0 tests | Tests not built, or `catch_discover_tests` not run | Run `cmake --build --preset debug` first |
 | Test binary crashes | Linking issue or missing symbol | Verify `buddd_tests` links `buddd_engine` |
-| SDL3 tests fail on CI | No display server available | These tests require a display; use headless tests (`[headless]` tag) which run without a display |
+| SDL3 backend tests fail | Offscreen driver hint not set, or SDL3 initialization issue | Verify tests call `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")` before `Platform::create()`; CI uses `BUDDD_HAS_DISPLAY=OFF` to exclude these tests entirely |
+| SDL3 backend tests unexpectedly compiled in CI | `BUDDD_HAS_DISPLAY` default is ON | Pass `-DBUDDD_HAS_DISPLAY=OFF` explicitly in CI configuration |
 
 ## Binary behavior
 
@@ -45,7 +46,7 @@
 | `find_package(OpenGL REQUIRED)` fails | OpenGL development headers not installed | Install `libgl-dev` (Debian/Ubuntu) or `mesa-libGL-devel` (Fedora) |
 | `FetchContent` for SDL3 fails | Network unavailable during first configure | Ensure network access; after first successful configure, SDL3 is cached locally |
 | `SDL_GL_SetAttribute` errors not reported | Return values are not checked individually — they may fail silently | If context creation fails shortly after, the `SDL_GL_CreateContext` failure will produce the error |
-| Architecture boundary violation (SDL3/OpenGL includes outside `src/engine/`) | Code in `src/cmd/`, `src/editor/`, or `tests/` includes SDL3 or OpenGL headers | Use the abstract `Platform`/`Window`/`RenderDevice` interfaces instead |
+| Architecture boundary violation (SDL3/OpenGL includes outside `src/engine/`) | Code in `src/cmd/`, `src/editor/`, or `tests/` includes SDL3 or OpenGL headers | Use the abstract `Platform`/`Window`/`RenderDevice` interfaces instead. Exception: test files under `tests/*_sdl3*.cpp` conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` for video driver hints per AMEND-2026-001 |
 | Multiple windows from a single Platform instance | Multiple `create_window()` calls on the same Platform | This is undefined behavior — only one window is supported at this stage |
 | Window destroyed before RenderDevice | Incorrect lifecycle ordering | Ensure `Window` outlives the `RenderDevice` created from it |
 | Platform destroyed before Window or RenderDevice | Incorrect lifecycle ordering | Ensure `Platform` outlives all `Window` and `RenderDevice` instances |
@@ -56,3 +57,5 @@
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — Edge cases section
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Error cases, Edge cases sections
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Edge cases section
+- Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md) — Error cases, Constraints
+- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — Edge cases

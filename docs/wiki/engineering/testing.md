@@ -45,16 +45,22 @@ The platform abstraction layer introduces headless backend tests that run **with
 | T-10 | `make_error with explicit code` | `[headless]` `[error]` | `code` field is set correctly |
 | T-11 | `Result<T> compiles with unique_ptr` | `[headless]` `[error]` | `Result<std::unique_ptr<int>>` compiles and works |
 
-### SDL3/OpenGL tests (require display)
+### SDL3 backend tests (offscreen driver)
 
-These tests require a display server and may be skipped or marked as `[!mayfail]` in CI environments without a display:
+SDL3 backend tests use SDL3's **offscreen video driver** (`SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`), so they do **not** require a physical display. They are conditionally compiled via the `BUDDD_HAS_DISPLAY` CMake option (default `ON`). Set `-DBUDDD_HAS_DISPLAY=OFF` to exclude them (e.g., in CI).
 
-| ID | Test case | Tags | Verification |
+The `<SDL3/SDL.h>` include in these test files is permitted by constitutional amendment [AMEND-2026-001](/docs/constitution/rules/CONST-001-architecture-boundaries.md#amendment-amend-2026-001--sdl3-test-file-exception) — a narrow exception to CONST-001 for setting video driver hints.
+
+| Test case | Tags | Source file | Verification |
 |---|---|---|---|
-| T-12 | `Backend enum values exist` | `[sdl3]` `[platform]` | `Backend::SDL3` and `Backend::Headless` are valid identifiers |
-| T-13 | `Platform::create(SDL3) success` | `[sdl3]` `[platform]` | Returns valid Platform (requires display) |
+| `Platform::create(SDL3) succeeds with offscreen driver` | `[sdl3][platform]` | `tests/sdl3_backend_test.cpp` | Returns valid `Platform` |
+| `SDL3 Platform creates Window with valid config` | `[sdl3][window]` | `tests/sdl3_backend_test.cpp` | `create_window()` returns valid window |
+| `SDL3 Window::native_handle() returns non-null` | `[sdl3][window]` | `tests/sdl3_backend_test.cpp` | `native_handle()` is non-null |
+| `SDL3 Window dimensions match config` | `[sdl3][window]` | `tests/sdl3_backend_test.cpp` | `width()`/`height()` match config |
+| `SDL3 RenderDevice creation` | `[sdl3][render]` | `tests/sdl3_backend_test.cpp` | `RenderDevice::create()` succeeds, `size()` matches |
+| `SDL3 frame cycle completes` | `[sdl3][render]` | `tests/sdl3_backend_test.cpp` | `begin_frame()`/`end_frame()` sequence completes |
 
-SDL3-specific tests that require a display should be conditionally compiled (e.g., guarded by `#ifdef BUDDD_HAS_DISPLAY`) or tagged appropriately so CI does not fail.
+The old `T-13` (formerly `Platform::create(SDL3) success` with `[!mayfail]`) has been removed from `platform_abstraction_test.cpp`. It is replaced by the offscreen-driver-based test above (first row), which runs reliably in any environment including headless CI.
 
 ## Test conventions
 
@@ -79,4 +85,6 @@ SDL3-specific tests that require a display should be conditionally compiled (e.g
 - Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — AC-007 (version sanity test), AC-008 (FetchContent), AC-010 (ctest passes)
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 9 and 10 (test structure)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Acceptance criteria, User stories (headless testing)
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required tests (T-01 through T-13)
+- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required tests (T-01 through T-12)
+- Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md) — SDL3 backend test specification
+- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — SDL3 backend test implementation

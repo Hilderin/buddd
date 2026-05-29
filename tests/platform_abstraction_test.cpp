@@ -143,8 +143,4 @@ TEST_CASE("Backend enum values exist", "[sdl3][platform]") {
     REQUIRE(true); // If it compiles, it passes
 }
 
-// T-13 — Requires a display; marked mayfail so CI does not fail
-TEST_CASE("Platform::create(SDL3) success", "[sdl3][platform][!mayfail]") {
-    auto platform = Platform::create(Backend::SDL3);
-    REQUIRE(platform.has_value());
-}
+
