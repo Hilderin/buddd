@@ -45,12 +45,17 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 1. Load the template at `docs/templates/review-report-template.md`.
 2. Read the spec file at `docs/specs/<feature>/spec.md`.
 3. Read the implementation contract at `docs/specs/<feature>/implementation-contract.md`.
-4. Read the test files for the feature.
-5. Read the implemented code files.
-6. Perform the review checks.
-7. Write the review to `docs/specs/<feature>/code-review.md` using the template.
-8. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
-9. List every issue as a `- [ ]` checklist item under the appropriate section.
+4. **Examine the git context:**
+   - Run `git diff` to see all uncommitted changes (the current work to review).
+   - Run `git log --oneline -20` to see recent commits.
+   - If a feature branch is provided, run `git log --oneline HEAD ^main` (or `^master`) to see commits specific to this branch.
+   - Note any prior commits that appear related to the same feature — these are part of the review scope.
+5. Read the test files for the feature.
+6. Read the implemented code files.
+7. Perform the review checks against the full diff and any prior related commits.
+8. Write the review to `docs/specs/<feature>/code-review.md` using the template.
+9. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
+10. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
 
