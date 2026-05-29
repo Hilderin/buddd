@@ -6,7 +6,7 @@ The project is composed of four CMake targets organized into four source directo
 
 ## `buddd_engine` — Static library (`src/engine/`)
 
-The engine library is the core of the project. It provides a version API and a platform abstraction layer. All source files under `src/engine/` are collected automatically via `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)` in `CMakeLists.txt`.
+The engine library is the core of the project. It provides a version API, a math foundations module, and a platform abstraction layer. All source files under `src/engine/` are collected automatically via `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)` in `CMakeLists.txt`.
 
 ### Version module
 
@@ -20,6 +20,23 @@ The engine library is the core of the project. It provides a version API and a p
 | File | Role |
 |---|---|
 | `error.h` | Public header: defines `Error` struct (with `Category` enum, `int code`, `std::string message`), `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
+
+### Math submodule (`math/`)
+
+All types in namespace `buddd::engine::math`. The math module wraps GLM (`glm`) with zero-overhead C++ wrapper types — header-only (except `Camera`). GLM headers are included only inside `src/engine/math/`.
+
+| File | Role |
+|---|---|
+| `math.h` | Convenience header: includes all math types, provides `radians()`, `degrees()`, math constants (`pi`, `half_pi`, `two_pi`, `epsilon`), and common math functions (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sqrt`) |
+| `vec2.h` | `Vec2` struct — 2D vector (x, y), wrapper around `glm::vec2`. Header-only. |
+| `vec3.h` | `Vec3` struct — 3D vector (x, y, z), wrapper around `glm::vec3`. Header-only. |
+| `vec4.h` | `Vec4` struct — 4D vector (x, y, z, w), wrapper around `glm::vec4`. Header-only. |
+| `mat4.h` | `Mat4` struct — 4×4 column-major matrix, wrapper around `glm::mat4`. Header-only. |
+| `quat.h` | `Quat` struct — quaternion (w, x, y, z), wrapper around `glm::quat`. Header-only. |
+| `camera.h` | `Camera` class — perspective camera with position, orientation, and perspective parameters. Computes view, projection, and view-projection matrices. |
+| `camera.cpp` | Camera method implementations (only type with a `.cpp` file). Contains GLM includes for implementation only. |
+
+Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, guarded by `static_assert(std::is_standard_layout_v<T>)`, `static_assert(sizeof(T) == sizeof(GLMType))`, and `static_assert(std::is_trivially_copyable_v<T>)`.
 
 ### Platform submodule (`platform/`)
 
@@ -81,6 +98,7 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | `version_test.cpp` | Single Catch2 test: `"engine version is non-empty"` tagged `[sanity]` |
 | `platform_abstraction_test.cpp` | Headless platform tests (T-01 through T-12), always compiled |
 | `sdl3_backend_test.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
+| `math_test.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
 
 ## Source naming conventions
 
@@ -95,3 +113,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 3-10 (individual target specifications)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Platform, Window, RenderDevice module definitions
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — File directory structure, Existing conventions to follow
+- Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Math type specifications, memory layout, operations, GLM integration
+- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File list, header structure, delegation pattern

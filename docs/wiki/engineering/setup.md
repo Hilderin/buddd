@@ -15,6 +15,7 @@
 The following are downloaded automatically at configure time via CMake's `FetchContent` — no manual installation required:
 - **Catch2 v3.7.0** (test framework)
 - **SDL3 release-3.2.30** (windowing and graphics context management)
+- **GLM 1.0.1** (header-only math library — provides the implementation backend for Vec2, Vec3, Vec4, Mat4, Quat wrappers)
 
 ## Quick start
 
@@ -88,3 +89,5 @@ These files require the [C/C++ extension](https://marketplace.visualstudio.com/i
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt modifications, FetchContent SDL3, find_package OpenGL
 - Spec: [SPEC-003 SDL3 Backend Tests](/docs/specs/sdl3-backend-tests/spec.md) — BUDDD_HAS_DISPLAY option
 - Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — Build system changes, CI integration
+- Spec: [SPEC-004 Math Foundations](/docs/specs/math-foundations/spec.md) — GLM FetchContent dependency, math module build integration
+- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — CMakeLists.txt GLM FetchContent block, link configuration

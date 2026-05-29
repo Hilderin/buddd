@@ -4,11 +4,12 @@
 
 ```
 buddd ──PRIVATE──► buddd_engine ──PUBLIC──► SDL3::SDL3
-                      │                    └──► OpenGL::GL
-                      │
+                       │                    ├──► OpenGL::GL
+                       │                    └──► glm::glm
+                       │
 buddd_tests ──PRIVATE─┤
-             ──PRIVATE──► Catch2::Catch2WithMain (external)
-                         │
+              ──PRIVATE──► Catch2::Catch2WithMain (external)
+                          │
 buddd_editor            (standalone, no dependencies)
 ```
 
@@ -20,6 +21,7 @@ buddd_editor            (standalone, no dependencies)
 | `buddd_tests` | `Catch2::Catch2WithMain` | PRIVATE | Catch2 provides `main()` and test runner |
 | `buddd_engine` | `SDL3::SDL3` | PUBLIC | SDL3 library for windowing, input, and GL context management |
 | `buddd_engine` | `OpenGL::GL` | PUBLIC | OpenGL rendering (4.5 Core profile) |
+| `buddd_engine` | `glm::glm` | PUBLIC | GLM header-only math library — provides underlying implementation for Vec2, Vec3, Vec4, Mat4, Quat wrappers |
 
 ## External dependencies
 
@@ -27,9 +29,10 @@ buddd_editor            (standalone, no dependencies)
 |---|---|---|---|
 | **Catch2** | v3.7.0 | `https://github.com/catchorg/Catch2.git` | CMake `FetchContent` (automatic download at configure time) |
 | **SDL3** | release-3.2.30 | `https://github.com/libsdl-org/SDL.git` | CMake `FetchContent` (automatic download at configure time) |
+| **GLM** | 1.0.1 | `https://github.com/g-truc/glm.git` | CMake `FetchContent` (automatic download at configure time) — header-only, no compiled library |
 | **OpenGL** | 4.5 Core | System-provided (`libgl-dev` or equivalent) | `find_package(OpenGL REQUIRED)` |
 
-- Catch2 and SDL3 are fetched once and cached in the build directory; subsequent configures use the cached copy.
+- Catch2, SDL3, and GLM are fetched once and cached in the build directory; subsequent configures use the cached copy.
 - No network access is required after the initial fetch of each dependency.
 - SDL3 is linked to `buddd_engine` as PUBLIC so that all consumers of the engine have access to SDL3 headers (only within `src/engine/` — external consumers must not include them directly).
 - The headless backend of the platform layer has **zero** external dependencies — it uses only the C++ standard library and is always compiled.
@@ -53,11 +56,17 @@ The project requires OpenGL 4.5 Core profile headers at build time. On Linux the
 - The editor target produces **no binary** and links **nothing** — it is a structural placeholder.
 - Catch2 is **not** a dependency of the engine or the CLI — only of the test binary.
 - The headless backend has **zero** external dependencies and is always compiled alongside the SDL3+OpenGL backend.
-- `buddd_engine` links `SDL3::SDL3` and `OpenGL::GL` as **PUBLIC** so that consumers inheriting the include paths can use SDL3 and OpenGL types **inside** `src/engine/` only.
+- `buddd_engine` links `SDL3::SDL3`, `OpenGL::GL`, and `glm::glm` as **PUBLIC** so that consumers inheriting the include paths can use SDL3, OpenGL, and GLM types **inside** `src/engine/` only.
+- GLM is header-only — no compiled library, no system dependency. GLM types are never to be included directly outside `src/engine/math/` (enforced by code review).
 
 ## Architecture boundary
 
-A hard architecture boundary is enforced by convention: **no code outside `src/engine/`** may `#include <SDL3/`, `<GL/`, `<glad/`, or any graphics-library header. All platform/graphics access goes through the abstract `Platform`, `Window`, and `RenderDevice` interfaces. Violations are caught by code review (automated enforcement is a future goal).
+A hard architecture boundary is enforced by convention: **no code outside `src/engine/`** may `#include <SDL3/`, `<GL/`, `<glad/`, or any graphics-library header. Similarly, **no code outside `src/engine/math/`** may include any `glm/` header directly — all math access goes through the wrapper types (`Vec2`, `Vec3`, `Vec4`, `Mat4`, `Quat`, `Camera`). Violations are caught by code review (automated enforcement is a future goal).
+
+The GLM boundary specifically:
+- GLM headers may be included inside `src/engine/math/` (the wrapper headers and `camera.cpp`).
+- Outside `src/engine/math/`, all math operations go through the wrapper types — the `.glm()` accessor is the sole interop path.
+- Test files comparing against GLM reference output include GLM headers directly; this is acknowledged as a design tension but accepted at this stage (no automated guard).
 
 ## Reference
 
@@ -65,3 +74,5 @@ A hard architecture boundary is enforced by convention: **no code outside `src/e
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 3-10 (target definitions)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Architecture boundary, Goals, Assumptions
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt requirements, Done criteria
+- Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Architecture boundary (no GLM outside `src/engine/math/`), GLM integration
+- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — Files allowed to change, Architecture boundary enforcement

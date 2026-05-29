@@ -5,6 +5,7 @@ if(BUDDD_HAS_DISPLAY)
         version_test.cpp
         platform_abstraction_test.cpp
         sdl3_backend_test.cpp
+        math_test.cpp
     )
 
     target_compile_definitions(buddd_tests PRIVATE BUDDD_HAS_DISPLAY)
@@ -14,6 +15,7 @@ else()
     add_executable(buddd_tests
         version_test.cpp
         platform_abstraction_test.cpp
+        math_test.cpp
     )
 endif()
 

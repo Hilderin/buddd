@@ -7,6 +7,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL3)
 
+# ----- GLM (header-only math library) -----
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+)
+FetchContent_MakeAvailable(glm)
+
 find_package(OpenGL REQUIRED)
 
 # Collect all engine source files automatically using GLOB.
@@ -25,4 +33,5 @@ target_include_directories(buddd_engine PUBLIC
 target_link_libraries(buddd_engine PUBLIC
     SDL3::SDL3
     OpenGL::GL
+    glm::glm
 )
