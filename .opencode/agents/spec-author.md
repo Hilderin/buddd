@@ -67,7 +67,7 @@ Set the spec's `## Status` to `Draft` (the allowed values are `Draft`, `In Revie
 - **Prioritize user stories** — assign P1 (critical), P2 (important), P3 (nice-to-have). Each story must be an independently testable slice of value.
 - **Use Given/When/Then** — acceptance scenarios follow Gherkin format for clarity and testability.
 - **Prefer informed guesses** — make reasonable defaults based on context and industry standards. Document them in `Assumptions`.
-- **Limit clarifications** — maximum 3 `[NEEDS CLARIFICATION]` markers per spec. Only use when:
+- **Limit clarifications** — maximum 10 `[NEEDS CLARIFICATION]` markers per spec. Only use when:
   - The choice significantly impacts scope or user experience.
   - Multiple reasonable interpretations exist with different implications.
   - No reasonable default exists.
@@ -83,7 +83,7 @@ After drafting, review your own spec against these checks:
 3. Are there any hidden implementation decisions?
 4. Are success criteria measurable and technology-agnostic?
 5. Are user stories prioritized and independently testable?
-6. Are there no more than 3 `[NEEDS CLARIFICATION]` markers?
+6. Are there no more than 10 `[NEEDS CLARIFICATION]` markers?
 7. Does the spec contradict any accepted spec or constitution rule?
 8. Are assumptions documented for every reasonable default made?
 
