@@ -77,6 +77,9 @@ RenderDeviceOpenGL::~RenderDeviceOpenGL() {
 }
 
 auto RenderDeviceOpenGL::begin_frame() -> void {
+    int w, h;
+    SDL_GetWindowSize(window_, &w, &h);
+    glViewport(0, 0, w, h);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -190,30 +193,36 @@ auto RenderDeviceOpenGL::create_vertex_buffer(
             "Vertex format must have at least one attribute");
     }
 
-    GLuint vao;
-    glCreateVertexArrays(1, &vao);
+    GLuint vao, vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
 
-    GLuint vbo;
-    glCreateBuffers(1, &vbo);
-    glNamedBufferStorage(vbo, data.size(), data.data(), GL_DYNAMIC_DRAW);
+    // Upload vertex data (non-DSA for maximum compatibility)
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, data.size(), data.data(), GL_DYNAMIC_DRAW);
 
-    // Configure VAO
-    glVertexArrayVertexBuffer(vao, 0, vbo, 0, static_cast<GLsizei>(format.stride));
-
+    // Configure vertex attributes
     for (const auto& attr : format.attributes) {
         auto [gl_type, component_count] = vertex_attribute_type_to_gl(attr.type);
 
-        glEnableVertexArrayAttrib(vao, attr.location);
-        glVertexArrayAttribFormat(
-            vao,
+        glEnableVertexAttribArray(attr.location);
+        glVertexAttribFormat(
             attr.location,
             component_count,
             gl_type,
             attr.normalized ? GL_TRUE : GL_FALSE,
             static_cast<GLuint>(attr.offset)
         );
-        glVertexArrayAttribBinding(vao, attr.location, 0);
+        glVertexAttribBinding(attr.location, 0);
     }
+
+    // Bind the VBO to the VAO at binding index 0
+    glBindVertexBuffer(0, vbo, 0, static_cast<GLsizei>(format.stride));
+
+    // Unbind to clean up state (avoids accidental state leaks)
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     uint32_t vertex_count = static_cast<uint32_t>(data.size() / format.stride);
     std::cerr << "Vertex buffer created (" << vertex_count
@@ -234,8 +243,10 @@ auto RenderDeviceOpenGL::create_index_buffer(
     }
 
     GLuint ibo;
-    glCreateBuffers(1, &ibo);
-    glNamedBufferStorage(ibo, data.size(), data.data(), GL_DYNAMIC_DRAW);
+    glGenBuffers(1, &ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.size(), data.data(), GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     std::cerr << "Index buffer created (" << data.size() << " bytes, "
               << (type == IndexType::Uint16 ? "Uint16" : "Uint32") << ")\n";
@@ -290,6 +301,7 @@ auto RenderDeviceOpenGL::draw_indexed(
 
     glUseProgram(mat.program());
     glBindVertexArray(vb.vao());
+    // The index buffer binding is part of the VAO state, so we bind it before drawing
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.handle());
     glDrawElements(
         primitive_topology_to_gl(topology),
