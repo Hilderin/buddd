@@ -186,60 +186,48 @@ Use focused follow-up scout passes if deeper inspection is needed.
 
 ## Required workflow
 
-```text
+```
 Human
   ↓
 orchestrator
   ↓
-clarification with human, challenge the request, identify decisions and assumptions, ensure the feature and its boundaries are understood
-  ↓
-optional scout pass when project context is needed
+clarification with human, challenges request, decisions and assumptions, be sur you understand the feature and all aspects are defined before you continue.
   ↓
 spec-author → docs/specs/<feature>/spec.md
   ↓
 spec-critic → docs/specs/<feature>/spec-critic.md
-  ↓
-gate: no unchecked blocking issues and status is not Rejected
-  ↓
-loop to spec-author if modifications are required
-  ↓
-when clear, update spec status to Accepted
+  ↓  (gate: no unchecked blocking issues?)
+  ↓  If the spec was approuved, update status to Draft
+  ↓  return to spec-author for any spec modifications
   ↓
 implementation-contract-author → docs/specs/<feature>/implementation-contract.md
   ↓
 implementation-contract-critic → docs/specs/<feature>/implementation-contract-critic.md
+  ↓  (gate: no unchecked blocking issues?)
+  ↓  If the implementation-contract was approuved, update status to Draft
+  ↓  return to spec-author for any spec modifications
+  ↓  return to implementation-contract for any implementation contract modifications
   ↓
-gate: no unchecked blocking issues and status is not Rejected
-  ↓
-loop to implementation-contract-author if modifications are required
-  ↓
-when clear, update contract status to Accepted
-  ↓
-human validation gate — present spec + contract to user and get explicit approval
-  ↓
-record approval in both files
+**human validation gate** — present spec + contract to user, get explicit approval, record approval in both files
   ↓
 code-implementer
   ↓
 code-reviewer → docs/specs/<feature>/code-review.md
+  ↓  (gate: no unchecked blocking issues?)
+  ↓  return to code-implementer for any modifications
+  ↓  ALWAYS rerun the code-reviewer agent after motifications
   ↓
-gate: no unchecked blocking issues and status is not Rejected
+adr-agent
+constitution-agent (parallel)
   ↓
-loop to code-implementer if modifications are required
-  ↓
-always rerun code-reviewer after modifications
-  ↓
-adr-agent and constitution-agent when governance impact may exist
-  ↓
-wiki-agent when operational knowledge should be updated
+wiki-agent
   ↓
 governance-reviewer
+  ↓  (gate: no unchecked blocking issues?)
+  ↓  ALWAYS rerun the governance-reviewer agent after motifications
   ↓
-gate: no unchecked blocking issues and status is not Rejected
-  ↓
-always rerun governance-reviewer after modifications
-  ↓
-done
+(done)
+
 ```
 
 ## Workflow details
@@ -263,13 +251,7 @@ Do not let the workflow continue if the feature is too vague to specify.
 
 ### 2. Spec author
 
-Ask `spec-author` to draft:
-
-```text
-docs/specs/<feature>/spec.md
-```
-
-The initial status should be `Draft`.
+Ask `spec-author` to draft a spec into `docs/specs/<feature>/spec.md` (Status: Draft).
 
 Give the spec-author:
 
@@ -280,11 +262,7 @@ Give the spec-author:
 
 ### 3. Spec critic
 
-Ask `spec-critic` to review the spec and write:
-
-```text
-docs/specs/<feature>/spec-critic.md
-```
+Ask `spec-critic` to review and write `docs/specs/<feature>/spec-critic.md`.
 
 Gate:
 
@@ -297,11 +275,7 @@ When clear, update the spec's `## Status` to `Accepted`.
 
 ### 4. Implementation contract author
 
-Ask `implementation-contract-author` to create:
-
-```text
-docs/specs/<feature>/implementation-contract.md
-```
+Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md` (Status: Draft).
 
 The initial status should be `Draft`.
 
@@ -314,11 +288,7 @@ Give the contract author:
 
 ### 5. Implementation contract critic
 
-Ask `implementation-contract-critic` to review the contract and write:
-
-```text
-docs/specs/<feature>/implementation-contract-critic.md
-```
+Ask `implementation-contract-critic` to review and write `docs/specs/<feature>/implementation-contract-critic.md`.
 
 Gate:
 
@@ -360,11 +330,7 @@ Do not allow implementation from a spec alone.
 
 ### 8. Code review
 
-Ask `code-reviewer` to review and write:
-
-```text
-docs/specs/<feature>/code-review.md
-```
+Ask `code-reviewer` to review and write `docs/specs/<feature>/code-review.md`.
 
 Gate:
 
@@ -373,26 +339,19 @@ Gate:
 - if any unchecked `- [ ]` item remains under `## Blocking issues`, loop back to `code-implementer`
 - always rerun `code-reviewer` after implementation modifications
 - if the reviewer raises questions you cannot answer from evidence, ask the human using the `question` tool
+- be sure to analyse rendering and confirm functional display using `budd capture` and vision analyse tool.
 
 When clear, the implementation is accepted.
 
 ### 9. Governance update
 
-Ask `adr-agent` and `constitution-agent` whether governance artifacts are needed.
-
-Use them when:
-
-- a meaningful architectural decision was made
-- existing ADRs are contradicted
-- project rules need to change
-- the constitution needs clarification
-- the implementation introduces a recurring convention
+Ask `adr-agent` and `constitution-agent` in parallel whether any governance artifact is needed.
 
 Never accept a constitutional change without explicit human approval.
 
 ### 10. Wiki update
 
-Ask `wiki-agent` whether operational wiki content should be created or updated.
+Ask `wiki-agent` to update the wiki content.
 
 Use it when:
 
@@ -449,5 +408,8 @@ No file moving is needed.
 - Never silently resolve critic or reviewer questions.
 - Never ask the scout for repository dumps in normal mode.
 - Never ask the scout to return all file contents unless `DEEP_AUDIT` is explicitly required.
+- Never create or update ADR yourself, ask `adr-agent`.
+- Never create or update constitution yourself, ask `adr-agent`.
+- Never create or update wiki yourself, ask `wiki-agent`.
 
 If you do not know the answer to a blocking question, ask the human using the `question` tool.
