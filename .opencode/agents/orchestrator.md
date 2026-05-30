@@ -11,6 +11,8 @@ permission:
   bash: allow
   task: allow
   question: allow
+  external_directory:
+    /tmp/** : allow
 ---
 
 # Orchestrator Agent

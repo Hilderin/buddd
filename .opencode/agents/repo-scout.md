@@ -9,6 +9,7 @@ permission:
   list: allow
   edit: deny
   bash: allow
+  external_directory: allow
 ---
 
 # Repo Scout Agent

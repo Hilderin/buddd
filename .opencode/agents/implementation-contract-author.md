@@ -9,6 +9,8 @@ permission:
   list: allow
   edit: allow
   bash: allow
+  external_directory:
+    /tmp/** : allow
 ---
 
 # Implementation Contract Author Agent
