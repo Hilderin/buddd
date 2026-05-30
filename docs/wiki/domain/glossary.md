@@ -56,6 +56,21 @@
 | **Architecture boundary (math)** | The rule that no GLM headers may be `#include`d outside `src/engine/math/`. All math operations outside that directory must use the wrapper types. The `.glm()` accessor is the sole interop path. |
 | **`.glm()` accessor** | A method on each wrapper type (Vec2, Vec3, Vec4, Mat4, Quat) that returns a `T&` / `const T&` reference to the underlying GLM type via `reinterpret_cast`. Safe because `static_assert` guarantees identical layout, size, and standard-layout conformance. |
 
+### Scene graph terms
+
+| Term | Definition |
+|---|---|
+| **Scene graph** | The module under `src/engine/scene/` providing a lightweight entity system with hierarchy, transforms, and polymorphic component dispatch. All types in namespace `buddd::engine`. |
+| **World** | Top-level container class (`buddd::engine::World`) that manages entity lifecycle, tree hierarchy, and per-entity component storage. The sole owner of all entity data. Non-copyable, non-movable. |
+| **Entity** | Lightweight 16-byte handle class (`buddd::engine::Entity`) wrapping a `World*` and `EntityId`. Delegates all operations to `World`. Created via `Entity::create(world)` or `entity.create_child()`. Default-constructed entities are null. |
+| **EntityId** | 8-byte handle struct (`buddd::engine::EntityId`) with `uint32_t index` and `uint32_t generation`. Provides `none()` sentinel and `==`/`!=` comparison. Trivially copyable. The generation counter detects stale handles after slot reuse. |
+| **Transform** | Value type struct (`buddd::engine::Transform`) with `position` (`Vec3`), `rotation` (`Quat`), `scale` (`Vec3`). Default values: zero position, identity rotation, unit scale. `local_matrix()` returns T×R×S. `world_matrix(entity)` walks the parent chain accumulating transforms. |
+| **Component** | Polymorphic base class (`buddd::engine::Component`) with virtual destructor only. Non-copyable, non-movable. Protected default constructor — only derived types may construct. Concrete components inherit publicly and require no boilerplate beyond `struct MyComp : Component { ... };`. |
+| **Deferred destruction** | Entity lifecycle pattern where `entity.destroy()` marks entities and descendants for removal (pre-order, iterative traversal), and `world.flush_destroyed()` actually reclaims resources in reverse depth order (deepest first). Between `destroy()` and `flush()`, entities remain visible in their parent's children list for iteration consistency. |
+| **Pending-destroy entity** | An entity that has been marked for destruction via `destroy()` but has not yet been flushed. Read-only safe: `get_component<T>()` returns `std::nullopt`, `transform()` is still accessible, `is_pending_destroy()` returns `true`. Mutating operations (`add_component`, `remove_component`, `create_child`, `reparent`) are undefined behavior. |
+| **Component dispatch** | The mechanism to identify which component in an entity's `vector<unique_ptr<Component>>` matches a requested type `T`. Uses `dynamic_cast<T*>()` (RTTI) — see ADR-006. Zero boilerplate in component types; requires `-frtti`. |
+| **Singleton-per-type** | The model where an entity can have at most one component of each type `T` (matching Unity's `GetComponent<T>()` semantics). Adding a duplicate type is undefined behavior. |
+
 ## Version scheme
 
 The project uses [Semantic Versioning](https://semver.org/) (major.minor.patch). The initial version is `0.1.0`.
@@ -70,3 +85,5 @@ The project uses [Semantic Versioning](https://semver.org/) (major.minor.patch).
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File definitions, delegation patterns
 - Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology definitions
 - Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — Implementation behaviour, Error::Category values, draw-methods-as-void exception
+- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph types, hierarchy, deferred destruction, component lifecycle, pending-destroy contract
+- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — EntityNode structure, noexcept specification, RTTI requirement, std::optional<T&> compiler support note

@@ -59,6 +59,22 @@ Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, gu
 | `window_headless.h` | Private header: `WindowHeadless` concrete class |
 | `window_headless.cpp` | Headless implementation: stores width/height, `native_handle()` returns `nullptr` |
 
+### Scene submodule (`scene/`)
+
+All types in namespace `buddd::engine`. The scene graph module provides a lightweight entity system with hierarchy, transforms, and polymorphic component dispatch. It depends on math wrapper types (`Vec3`, `Quat`, `Mat4`) from `src/engine/math/` and standard C++ headers only — no GLM, SDL3, or OpenGL dependencies.
+
+Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieval, with zero boilerplate in component types. See ADR-006 for the decision rationale.
+
+| File | Role |
+|---|---|
+| `entity_id.h` | `EntityId` struct — 8-byte handle (index + generation) for safe entity references. Header-only. |
+| `transform.h` | `Transform` struct — position (`Vec3`), rotation (`Quat`), scale (`Vec3`) value type with `local_matrix()` and `world_matrix()`. Header-only. |
+| `component.h` | `Component` base class — virtual destructor only, non-copyable, non-movable. Header-only. |
+| `entity.h` | `Entity` class — 16-byte lightweight handle (`World*` + `EntityId`). Inline template methods for component operations. |
+| `entity.cpp` | Entity non-inline method implementations — all delegate to `World`. |
+| `world.h` | `World` class — top-level container managing entity lifecycle, tree hierarchy, deferred destruction. Template methods for component dispatch (`add_component`, `get_component`, `remove_component`) defined inline. |
+| `world.cpp` | World implementation including internal `EntityNode` type, slot-based storage, `flush_destroyed()` logic, and `mark_for_destroy()` iterative traversal. |
+
 ### Render submodule (`render/`)
 
 The render submodule now provides a full pipeline abstraction: shader compilation, material linking, vertex/index buffer management, and draw calls. All abstract types are backend-agnostic; concrete implementations exist for OpenGL 4.5 Core and Headless.
@@ -154,6 +170,7 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | `platform_abstraction_test.cpp` | Headless platform tests (T-01 through T-12), always compiled |
 | `sdl3_backend_test.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
 | `math_test.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
+| `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 
 ## Source naming conventions
 
@@ -176,3 +193,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, CONST-001 compliance
 - Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Replacement of TestCommand with DemoCommand, per-demo files, RunCommand simplification
+- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
+- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Files allowed to create/modify, entity node structure, template method inline conventions, noexcept specification table, test requirements (T-01 through T-49)

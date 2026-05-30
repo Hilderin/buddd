@@ -6,6 +6,7 @@ if(BUDDD_HAS_DISPLAY)
         platform_abstraction_test.cpp
         sdl3_backend_test.cpp
         math_test.cpp
+        scene_graph_tests.cpp
     )
 
     target_compile_definitions(buddd_tests PRIVATE BUDDD_HAS_DISPLAY)
@@ -16,6 +17,7 @@ else()
         version_test.cpp
         platform_abstraction_test.cpp
         math_test.cpp
+        scene_graph_tests.cpp
     )
 endif()
 

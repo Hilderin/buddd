@@ -19,6 +19,7 @@ buddd2/
 │   ├── engine/              # Engine library (static lib)
 │   │   ├── error.h          # Project-wide Error/Result types
 │   │   ├── math/            # Math foundations (Vec2, Vec3, Vec4, Mat4, Quat, Camera)
+│   │   ├── scene/           # Scene graph (World, Entity, Transform, Component)
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
 │   │   └── render/          # Render device abstraction (RenderDevice)
@@ -44,7 +45,7 @@ buddd2/
 
 | Target | Type | Directory | Description |
 |---|---|---|---|
-| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, and math foundations module. Links SDL3, OpenGL, and GLM. |
+| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, and scene graph module. Links SDL3, OpenGL, and GLM. |
 | `buddd` | Executable | `src/cmd/` | CLI binary; links `buddd_engine` |
 | `buddd_editor` | INTERFACE library | `src/editor/` | Placeholder — no compiled sources |
 | `buddd_tests` | Executable | `tests/` | Catch2 test binary; links `buddd_engine` |
@@ -65,6 +66,14 @@ src/engine/
 │   ├── quat.h               # Quat — quaternion wrapper around glm::quat
 │   ├── camera.h             # Camera — perspective camera (declarations)
 │   └── camera.cpp           # Camera — method implementations
+├── scene/                    # Scene graph (World, Entity, Transform, Component)
+│   ├── entity_id.h           # EntityId — 8-byte handle (index + generation)
+│   ├── transform.h           # Transform — position/rotation/scale with matrix computation
+│   ├── component.h           # Component — polymorphic base class (virtual destructor only)
+│   ├── entity.h              # Entity — 16-byte lightweight handle
+│   ├── entity.cpp            # Entity method implementations (delegates to World)
+│   ├── world.h               # World — top-level container, entity lifecycle, deferred destruction
+│   └── world.cpp             # World implementation (internal EntityNode storage)
 ├── platform/
 │   ├── platform.h           # Abstract Platform class, Backend enum
 │   ├── platform.cpp         # Platform::create() factory
@@ -121,6 +130,15 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 
 **Narrow exception (AMEND-2026-001):** SDL3 test files (`tests/*_sdl3*.cpp` or similar) that are conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` **only** for setting video driver hints (e.g., `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`) before calling `Platform::create()`. This exception applies only to test files that test the SDL3 backend, only to `<SDL3/SDL.h>`, and only for setting video driver hints. All other platform, graphics, windowing, or math library headers remain prohibited outside `src/engine/`.
 
+## Key behaviors (scene graph)
+
+- Entity creation, hierarchy, and component management are available after including `<scene/entity.h>`.
+- Components use `dynamic_cast<T*>()` for type-safe dispatch (requires RTTI, enabled by default).
+- `get_component<T>()` returns `std::optional<T&>` (C++26) — a type-safe optional reference.
+- Entity destruction is deferred: `entity.destroy()` marks for destruction; `world.flush_destroyed()` reclaims resources in reverse depth order.
+- The scene graph uses per-entity `std::vector<std::unique_ptr<Component>>` storage (no ECS flat arrays in v1). The storage strategy is hidden behind the `World` implementation for forward compatibility.
+- Scene graph types are pure memory management and spatial computation — no display, GPU, or external dependencies beyond math wrappers.
+
 ## Reference
 
 - Spec: [SPEC-001](/docs/specs/project-setup/spec.md)
@@ -137,3 +155,5 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md)
 - Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md)
+- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
+- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md)

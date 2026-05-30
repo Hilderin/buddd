@@ -79,6 +79,27 @@ The `<SDL3/SDL.h>` include in these test files is permitted by constitutional am
 
 The old `T-13` (formerly `Platform::create(SDL3) success` with `[!mayfail]`) has been removed from `platform_abstraction_test.cpp`. It is replaced by the offscreen-driver-based test above (first row), which runs reliably in any environment including headless CI.
 
+### Scene graph tests
+
+The scene graph test suite (`tests/scene_graph_tests.cpp`) provides 49 Catch2 v3 test cases covering all acceptance criteria from SPEC-008. All tests are **headless** (no display, no GPU required) and are compiled in **both** `BUDDD_HAS_DISPLAY` branches. The test file is registered in `tests/CMakeLists.txt`.
+
+Tags used: `[scene]`, `[entity_id]`, `[transform]`, `[component]`, `[entity]`, `[world]`, `[hierarchy]`, `[destroy]`, `[null_entity]`, `[pending_destroy]`.
+
+| Category | Test range | Coverage |
+|---|---|---|
+| EntityId | T-01 to T-04 | Default construction, `none()` sentinel, comparison, `static_assert` checks |
+| Transform | T-05 to T-09 | Default values, `local_matrix()` TRS order, `world_matrix()` with parent/grandparent chains |
+| Component | T-10 to T-16 | Base class, `add_component`/`get_component`/`remove_component`, unique per type, pending-destroy nullopt, const overload |
+| Entity lifecycle | T-17 to T-22 | Create returns valid entity, `none()` null entity, comparison, transform modify persists, destroy/is_pending_destroy, idempotent destroy |
+| World | T-23 to T-26 | `flush_destroyed` empty/when entities exist, reclaims entities, `destroy_entity` equivalence, flush idempotent |
+| Hierarchy | T-27 to T-31 | `create_child` parent link, `child_count`/`get_child`, reparent to root/another parent, reparent no-op |
+| Destroy cascade | T-32 to T-35 | Cascade to children, flush reclaims all, deep hierarchy (10,000) no stack overflow, no-op flush |
+| world_matrix | T-36 to T-37 | Convenience method equivalence, chain with different transforms |
+| Null entity safety | T-38 | Safe operations: `id()`, `is_pending_destroy()`, comparison |
+| Pending-destroy | T-39 to T-40 | `get_component` returns nullopt, `transform()` accessible |
+| UB contract | T-41 to T-42 | Null entity `get_component` nullopt, null entity `child_count` zero |
+| Edge cases | T-43 to T-49 | Multiple flushes, World destructor with pending entities, destroyed visible in parent before flush, reverse depth order, component destructor called, World destruction with pending, stale EntityId after flush |
+
 ## Test conventions
 
 - All assertions use `REQUIRE`/`REQUIRE_FALSE` (not `CHECK`).
@@ -107,3 +128,5 @@ The old `T-13` (formerly `Platform::create(SDL3) success` with `[!mayfail]`) has
 - Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — SDL3 backend test implementation
 - Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Test implications, new CLI test cases
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Required tests (demo no name, demo unknownname, test unknown, demo triangle)
+- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph: Acceptance criteria (AC-001 through AC-032), Edge cases, Test coverage requirements
+- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Required tests (T-01 through T-49), test conventions, pending-destroy contract verification

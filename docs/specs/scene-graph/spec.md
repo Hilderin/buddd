@@ -12,9 +12,9 @@ Allowed values: `Draft`, `In Review`, `Accepted`
 
 | | |
 |---|---|
-| Approved by | |
-| Date | |
-| Time | |
+| Approved by | Guillaume |
+| Date | 2026-05-30 |
+| Time | (not specified — approved via conversation) |
 
 ## Problem
 
