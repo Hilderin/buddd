@@ -80,16 +80,17 @@
       "command": [
         "uv",
         "run",
-        "--directory",
+        "--project",
         "../llm-wiki-search/tools/wiki-search-mcp",
         "python",
         "-m",
         "wiki_search_mcp.server"
       ],
+      "workdir": ".",
       "enabled": true,
       "environment": {
-        "WIKI_ROOT": "./docs/wiki",
-        "WIKI_INDEX": "./.wiki-index/wiki.sqlite",
+        "WIKI_ROOT": "docs/wiki",
+        "WIKI_INDEX": ".wiki-index/wiki.sqlite",
         "WIKI_WATCH": "true",
         "WIKI_REINDEX_ON_START": "true"
       }
