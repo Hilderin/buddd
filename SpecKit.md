@@ -7,7 +7,7 @@ This starter kit provides a full multi-agent workflow for spec-driven developmen
 | Agent | Role |
 |---|---|
 | `orchestrator` | Main interface with the human; coordinates the full workflow |
-| `repo-scout` | Reads the repository to discover conventions and relevant files |
+| `scout` | General scout. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize context for the orchestrator |
 | `spec-author` | Drafts functional specs from human intent and project context |
 | `spec-critic` | Critiques and validates specs for ambiguity, testability, and scope |
 | `implementation-contract-author` | Converts accepted specs into precise implementation contracts |

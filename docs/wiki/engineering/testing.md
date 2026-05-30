@@ -42,7 +42,8 @@ The project includes CLI integration tests tagged `[cli]` that invoke the `buddd
 | `buddd demo with no name prints usage and exits 1` | stderr contains `"Usage: buddd demo <demo>"`; exit code 1 |
 | `buddd demo unknownname prints error and exits 1` | stderr contains `"Unknown demo: 'unknownname'"`; exit code 1 |
 | `buddd test is unknown command` | stderr contains `"Unknown command: 'test'"`; exit code 1 |
-| `buddd demo triangle runs and completes` (guarded by `BUDDD_HAS_DISPLAY`) | stderr contains `"Demo complete: triangle (120 frames rendered)"` or an engine init error |
+| `buddd demo triangle runs and completes` | stderr contains `"Demo complete: triangle (120 frames rendered)"` or an engine init error |
+| `buddd demo cube runs and completes` | stderr contains `"Demo complete: cube (120 frames rendered)"` or an engine init error |
 
 ### Headless platform abstraction tests
 
@@ -100,18 +101,34 @@ Tags used: `[scene]`, `[entity_id]`, `[transform]`, `[component]`, `[entity]`, `
 | UB contract | T-41 to T-42 | Null entity `get_component` nullopt, null entity `child_count` zero |
 | Edge cases | T-43 to T-49 | Multiple flushes, World destructor with pending entities, destroyed visible in parent before flush, reverse depth order, component destructor called, World destruction with pending, stale EntityId after flush |
 
+### Model / cube tests
+
+The model test suite (`tests/model_tests.cpp`) provides 24 Catch2 v3 test cases covering the `Model` utility class and cube data verification. All tests are **headless** (no display, no GPU required) and are compiled in **both** `BUDDD_HAS_DISPLAY` branches. The test file is registered in `tests/CMakeLists.txt`.
+
+Tags used: `[model]`, `[cube]`.
+
+| Category | Test range | Coverage |
+|---|---|---|
+| Model factory | T-01 to T-08 | Default construction (null model), non-copyable/movable, `Model::create` and `create_indexed` with valid data, validation errors (empty data, zero stride, zero attributes) |
+| Model accessors | T-09 to T-12 | `material()` (mutable and const), `vertices()`, `indices()` / `has_indices()` |
+| Model draw | T-13 to T-16 | Draw on non-indexed, indexed, null, and moved-from models |
+| Move semantics | T-17 to T-18 | Move constructor and move assignment transfer ownership |
+| Cube data | T-19 to T-22 | 24 vertices/36 indices verification, `u_mvp` / `u_color` uniform checks, `set_uniform("u_mvp")` success |
+| Demo run | T-23 | Simulated `run_cube_demo` loop (headless, 5 frames) completes without crash |
+| Shared ownership | T-24 | Material stays alive via `shared_ptr` when original shared_ptr is reset |
+
 ## Test conventions
 
 - All assertions use `REQUIRE`/`REQUIRE_FALSE` (not `CHECK`).
 - Headless tests are tagged `[headless]` plus a subsystem tag (`[platform]`, `[window]`, `[render]`, `[error]`).
-- Test files go in `tests/` and are registered in `tests/CMakeLists.txt`.
+- Test files go in `tests/` with the plural suffix `_tests.cpp` (per ADR-009). They are automatically discovered via `file(GLOB_RECURSE ... *_tests.cpp CONFIGURE_DEPENDS)` in `tests/CMakeLists.txt`.
 
 ## Adding tests
 
 1. Add a new `.cpp` file in `tests/`.
 2. Include the appropriate Catch2 header (`<catch2/catch_test_macros.hpp>`).
 3. Write `TEST_CASE` blocks with descriptive names and tags.
-4. Register the new source file in `tests/CMakeLists.txt` (append to the `add_executable` call).
+4. New `*_tests.cpp` files are **auto-discovered** by `file(GLOB_RECURSE ... *_tests.cpp CONFIGURE_DEPENDS)` in `tests/CMakeLists.txt` — no manual CMakeLists.txt edit is needed. If the file is not picked up, re-run CMake configure (`cmake --build build/debug` or `cmake --preset debug`).
 5. Tests are automatically discovered by `catch_discover_tests()`.
 
 ## Constitution reference
@@ -130,3 +147,5 @@ Tags used: `[scene]`, `[entity_id]`, `[transform]`, `[component]`, `[entity]`, `
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Required tests (demo no name, demo unknownname, test unknown, demo triangle)
 - Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph: Acceptance criteria (AC-001 through AC-032), Edge cases, Test coverage requirements
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Required tests (T-01 through T-49), test conventions, pending-destroy contract verification
+- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Acceptance criteria (AC-001 through AC-027), test coverage requirements
+- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Required tests (T-01 through T-24), headless test conventions

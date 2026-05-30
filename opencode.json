@@ -31,10 +31,10 @@
       "prompt": "{file:.opencode/agents/implementation-contract-critic.md}",
       "temperature": 0.1
     },
-    "repo-scout": {
-      "description": "Reads the repository to discover existing conventions and relevant files.",
+    "scout": {
+      "description": "General scout. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize context for the orchestrator.",
       "mode": "subagent",
-      "prompt": "{file:.opencode/agents/repo-scout.md}",
+      "prompt": "{file:.opencode/agents/scout.md}",
       "temperature": 0.1
     },
     "code-implementer": {

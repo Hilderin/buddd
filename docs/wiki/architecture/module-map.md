@@ -109,6 +109,8 @@ The render submodule now provides a full pipeline abstraction: shader compilatio
 | `index_buffer_opengl.cpp` | OpenGL index buffer backend: buffer creation via `glCreateBuffers`/`glNamedBufferStorage` |
 | `index_buffer_headless.h` | Private header: `IndexBufferHeadless` storing type and index data in memory |
 | `index_buffer_headless.cpp` | Headless index buffer backend: data stored in `std::vector<std::byte>` |
+| `model.h` | Public header: `Model` concrete class — bundles `VertexBuffer` + optional `IndexBuffer` + `std::shared_ptr<Material>` with static factory methods (`create`, `create_indexed`) and `draw()` dispatch. Non-copyable, movable, default-constructible (null model). |
+| `model.cpp` | Implementation of Model factory methods (argument validation, buffer creation, RAII cleanup) and draw dispatch (indexed vs non-indexed). |
 
 The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` (i.e., `src/engine/`), allowing consumers to `#include "error.h"`, `#include "platform/platform.h"`, etc.
 
@@ -143,13 +145,14 @@ Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::c
 
 | File | Role |
 |---|---|
-| `demo_helpers.h` / `demo_helpers.cpp` | **Moved** from `src/cmd/`. Header declaring `buddd::cmd::demo::setup_triangle()` — shared helper for rendering a coloured triangle (used by `triangle_demo`). |
+| `demo_helpers.h` / `demo_helpers.cpp` | **Moved** from `src/cmd/`. Header declaring `buddd::cmd::demo::setup_triangle()` — shared helper for rendering a coloured triangle (used by `triangle_demo`). Also declares `CubeResources` struct and `setup_cube()` — shared helper for creating a unit cube (24 vertices, 36 indices, per-face colours) with material, used by `cube_demo`. |
 | `triangle_demo.h` / `triangle_demo.cpp` | Declares `buddd::cmd::demo::run_triangle_demo()` — 120-frame render loop with a coloured triangle (extracted from the old `test_command.cpp`). |
+| `cube_demo.h` / `cube_demo.cpp` | Declares `buddd::cmd::demo::run_cube_demo()` — 120-frame render loop with a rotating per-face-coloured cube using Camera + MVP. Header exposes no backend types (only forward declarations). |
 
 ### Subcommand behavior
 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
-- `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
+- `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames) and `cube` (120 frames, rotating coloured cube). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
 - `buddd version` → prints `buddd 0.1.0` to stdout
 - `buddd help` → prints usage information listing all four commands (`run`, `demo`, `version`, `help`)
 - Unknown command → prints `"Unknown command: '<cmd>'"` followed by updated usage to stderr, exits with code 1
@@ -165,19 +168,24 @@ A placeholder for the future editor application. Currently defines an INTERFACE 
 The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain` (PRIVATE). Catch2 provides its own `main()` entry point.
 
 | File | Role |
-|---|---|---|
-| `version_test.cpp` | Single Catch2 test: `"engine version is non-empty"` tagged `[sanity]` |
-| `platform_abstraction_test.cpp` | Headless platform tests (T-01 through T-12), always compiled |
-| `sdl3_backend_test.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
-| `math_test.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
+| |---|---|---|
+| `version_tests.cpp` | Single Catch2 test: `"engine version is non-empty"` tagged `[sanity]` |
+| `cmd_tests.cpp` | CLI command integration tests (tagged `[cli]`): argument parsing, error handling, default command — uses shared helpers from `test_helpers.h` |
+| `demo_tests.cpp` | Demo execution tests (tagged `[cli][demo]`): triangle and cube demos run as subprocesses with timeout — uses shared helpers from `test_helpers.h` |
+| `platform_abstraction_tests.cpp` | Headless platform tests (T-01 through T-12), always compiled |
+| `sdl3_backend_tests.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
+| `math_tests.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
 | `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
+| `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
+| `test_helpers.h` | Shared CLI test utilities: `buddd_binary_path()`, `temp_filename()`, `run_buddd()`, `CommandResult` |
 
 ## Source naming conventions
 
-- Source files: `snake_case` (e.g., `version.h`, `main.cpp`, `version_test.cpp`)
+- Source files: `snake_case` (e.g., `version.h`, `main.cpp`, `version_tests.cpp`)
 - Directories: `snake_case` (e.g., `src/engine/`, `src/cmd/`, `tests/`)
 - CMake target names: `snake_case` (e.g., `buddd_engine`, `buddd_tests`)
 - Test case names: sentence case (e.g., `"engine version is non-empty"`)
+- Test files: plural `_tests.cpp` suffix (e.g., `cmd_tests.cpp`, `math_tests.cpp`) — per ADR-009. The GLOB pattern `*_tests.cpp` in `tests/CMakeLists.txt` enforces this convention. New test files must use the `_tests.cpp` suffix or they will be silently excluded from the build.
 
 ## Reference
 
@@ -195,3 +203,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Replacement of TestCommand with DemoCommand, per-demo files, RunCommand simplification
 - Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Files allowed to create/modify, entity node structure, template method inline conventions, noexcept specification table, test requirements (T-01 through T-49)
+- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo (Model class, CubeResources, cube demo)
+- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Files allowed to create/modify, factory method signatures, test requirements (T-01 through T-24), draw-methods-as-void exception extension

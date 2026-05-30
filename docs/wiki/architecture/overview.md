@@ -101,13 +101,16 @@ src/engine/
     ├── vertex_buffer_opengl.h/cpp  # OpenGL vertex buffer backend (VertexBufferOpenGL)
     ├── vertex_buffer_headless.h/cpp# Headless vertex buffer backend (VertexBufferHeadless)
     ├── index_buffer_opengl.h/cpp   # OpenGL index buffer backend (IndexBufferOpenGL)
-    └── index_buffer_headless.h/cpp # Headless index buffer backend (IndexBufferHeadless)
+    ├── index_buffer_headless.h/cpp # Headless index buffer backend (IndexBufferHeadless)
+    ├── model.h                     # Model — concrete utility class bundling VertexBuffer + optional IndexBuffer + shared_ptr<Material>
+    └── model.cpp                   # Model implementation (factory methods, draw dispatch)
 ```
 
 ## Key behaviors
 
 - `./build/debug/src/cmd/buddd` (or `buddd run`) — opens a window (1024×768), clears the framebuffer each frame (no draw calls), runs until the user closes the window
 - `./build/debug/src/cmd/buddd demo triangle` — opens a window (800×600, title "Buddd Engine — Demo: triangle"), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically. `buddd demo` (no name) or `buddd demo <unknown>` prints an error to stderr.
+- `./build/debug/src/cmd/buddd demo cube` — opens a window (800×600, title "Buddd Engine — Demo: cube"), renders a rotating per-face-coloured cube (24 vertices, 36 indices) for 120 frames at ~60 FPS with MVP computed from a Camera at (3,2,3), then exits. `buddd demo` lists `cube` as available.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd help` — prints usage information listing all four commands (`run`, `demo`, `version`, `help`)
 - `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
@@ -157,3 +160,5 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md)
 - Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md)
+- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo (Model class, CubeResources, cube demo)
+- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md)

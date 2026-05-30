@@ -25,6 +25,13 @@
 | **BUDDD_HAS_DISPLAY** | CMake option (default `ON`) that controls whether SDL3 backend tests are compiled. Set to `OFF` (e.g., `cmake -DBUDDD_HAS_DISPLAY=OFF`) to exclude SDL3 backend tests in headless environments like CI. |
 | **Offscreen video driver** | An SDL3 video driver (set via `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`) that renders to an offscreen framebuffer instead of a physical display. Used by SDL3 backend tests so they run in any environment without requiring a display server. |
 
+### Model utility term
+
+| Term | Definition |
+|---|---|
+| **Model** | Concrete utility class (`buddd::engine::Model`) bundling a `VertexBuffer`, optional `IndexBuffer`, and a `std::shared_ptr<Material>`. Provides static factory methods (`create`, `create_indexed`) that return `Result<Model>` and a `draw(RenderDevice&)` method that dispatches to the appropriate indexed or non-indexed draw call. Non-copyable, movable. Default-constructed models are null (draw is a no-op). The material is shared (not exclusively owned) — multiple models can share the same `Material` via `shared_ptr`. See also: `CubeResources`. |
+| **CubeResources** | Aggregate struct (`buddd::cmd::demo::CubeResources`) with `std::shared_ptr<buddd::engine::Material> material` and `buddd::engine::Model model`. Created by `setup_cube()` in `demo_helpers.h`. Represents a complete unit cube (24 vertices with per-face colours, 36 indices) ready for drawing. |
+
 ### Render pipeline terms
 
 | Term | Definition |
@@ -87,3 +94,5 @@ The project uses [Semantic Versioning](https://semver.org/) (major.minor.patch).
 - Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — Implementation behaviour, Error::Category values, draw-methods-as-void exception
 - Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph types, hierarchy, deferred destruction, component lifecycle, pending-destroy contract
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — EntityNode structure, noexcept specification, RTTI requirement, std::optional<T&> compiler support note
+- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Model class definition, CubeResources, face colour scheme
+- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Model API details, shared ownership pattern, test specification

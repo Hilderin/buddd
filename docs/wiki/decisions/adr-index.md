@@ -1,9 +1,16 @@
 # ADR Index
 
-- **ADR-001**: `docs/adr/001-result-error-pattern.md` — Establishes `Result<T>` / `Error` as the project-wide error handling pattern.
-- **ADR-005**: `docs/adr/005-optional-ref-component-api.md` — `std::optional<T&>` for component lookup API in the scene graph module.
-- **ADR-006**: `docs/adr/006-rtti-component-dispatch.md` — RTTI-based `dynamic_cast<T*>()` for type-safe component dispatch in the scene graph module.
-- **ADR-008**: `docs/adr/008-ci-docker-infrastructure.md` — Docker-based CI infrastructure with GCC 16+, latest CMake, and reproducible builds.
+| ADR | Title | Status |
+|---|---|---|
+| ADR-001 | `docs/adr/001-result-error-pattern.md` — `Result<T>` / `Error` as the project-wide error handling pattern | Accepted |
+| ADR-002 | `docs/adr/002-glm-wrapper-math.md` — GLM wrapper pattern for math types (Vec2/3/4, Mat4, Quat) | Accepted |
+| ADR-003 | `docs/adr/003-render-pipeline-architecture.md` — Render pipeline architecture (void draw, poll_events) | Accepted |
+| ADR-004 | `docs/adr/004-demo-system-architecture.md` — Per-demo files and extensible dispatch | Accepted |
+| ADR-005 | `docs/adr/005-optional-ref-component-api.md` — `std::optional<T&>` for component lookup API | Accepted |
+| ADR-006 | `docs/adr/006-rtti-component-dispatch.md` — RTTI-based `dynamic_cast<T*>()` for component dispatch | Accepted |
+| ADR-007 | `docs/adr/007-release-dependency-build.md` — Build fetched dependencies in Release mode | Accepted |
+| ADR-008 | `docs/adr/008-ci-docker-infrastructure.md` — Docker-based CI infrastructure | Accepted |
+| ADR-009 | `docs/adr/009-test-file-naming-convention.md` — Plural `_tests.cpp` suffix for test files | Accepted |
 
 The current project state was established via:
 
@@ -15,6 +22,8 @@ The current project state was established via:
 | [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) | Implementation contract | Accepted |
 | [SPEC-005](/docs/specs/render-pipeline/spec.md) | Product specification | Accepted |
 | [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) | Implementation contract | Accepted |
+| [SPEC-009](/docs/specs/3d-cube-demo/spec.md) | Product specification | Accepted |
+| [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) | Implementation contract | Accepted |
 
 The following design decisions established by SPEC-002 are recorded as accepted specifications (not ADRs — they remain within the spec/contract framework):
 
@@ -26,7 +35,7 @@ The following design decisions established by SPEC-002 are recorded as accepted 
 | `FetchContent` for SDL3 | Consistent with how Catch2 is already handled; no system package dependency required |
 | Architecture boundary by convention (no automated guard yet) | Manual code review is sufficient at this stage; automated CI enforcement deferred to future work |
 
-### Scene graph decisions
+## Scene graph decisions
 
 The following design decisions are recorded as accepted ADRs:
 
