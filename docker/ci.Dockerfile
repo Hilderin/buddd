@@ -18,8 +18,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Build essentials
     build-essential \
-    cmake \
     ninja-build \
+    python3-pip \
     # GCC 16 from the toolchain PPA
     software-properties-common \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
@@ -31,7 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev \
     libglu1-mesa-dev \
     # Cleanup to reduce image size
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Install latest CMake from pip (apt version 3.28 doesn't know GCC 16 + C++26 flags)
+    && pip3 install --break-system-packages cmake
 
 # Set GCC 16 as the default compiler
 ENV CC=gcc-16
