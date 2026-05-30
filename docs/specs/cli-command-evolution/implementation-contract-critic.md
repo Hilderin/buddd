@@ -2,7 +2,7 @@
 
 ## Status
 
-`Accepted`
+`Accepted with warnings`
 
 Allowed values: `Accepted`, `Accepted with warnings`, `Rejected`
 
@@ -10,160 +10,208 @@ Allowed values: `Accepted`, `Accepted with warnings`, `Rejected`
 
 ## Summary
 
-IMPL-007 is a well-structured and generally thorough implementation contract that faithfully translates most of SPEC-007's requirements into actionable code. The file change list is precise, the Done criteria map directly to all spec ACs/SCs, the tests cover the required CONST-002 testable paths, and the constitution compliance checks (CONST-001, CONST-002) are correctly referenced.
+IMPL-007 has been updated to address all previous blocking issues and warnings from the first review. The contract now faithfully translates SPEC-007 into precise, compilable code with correct dereference patterns, minimal includes, and correct API understanding.
 
-**However, a blocking code correctness issue exists**: the call to `run_triangle_demo()` in `demo_command.cpp` uses single-dereference (`*platform`, `*device`) where double-dereference (`**platform`, `**device`) is required. The code as written would not compile, because `*platform` evaluates to `std::unique_ptr<buddd::engine::Platform>&` (not `buddd::engine::Platform&`) and `*device` evaluates to `std::unique_ptr<buddd::engine::RenderDevice>&` (not `buddd::engine::RenderDevice&`). This is confirmed by the existing codebase pattern: `test_command.cpp` uses `**device` for `setup_triangle(RenderDevice&)` at line 54, and `run_command.cpp` uses `**device` at line 42 for the same signature.
+**Changes verified since last review:**
+1. Backend selection via `BUDDD_HAS_DISPLAY` compile-time define using `constexpr` IIFE — correct C++ ✓
+2. Demo name validation before resource creation — matches actual code ✓
+3. CMakeLists.txt propagates `BUDDD_HAS_DISPLAY` to the `buddd` target — present and correct ✓
+4. CLI tests no longer guarded by `BUDDD_HAS_DISPLAY` — works with headless backend on CI ✓
+5. Done criteria updated for backend selection items — complete and verifiable ✓
 
-This bug originates from a contradiction in the source spec (SPEC-007). The spec's **Key entities** section correctly stipulates `(**platform)` and `(**device)` (matching the `Result<unique_ptr<T>>` semantics), but the spec's **Required implementation behavior** section incorrectly shows `*platform` and `*device`. The contract copies the erroneous form.
+**Remaining issue**: The CONST-001 compliance grep pattern in the contract still uses the bare regex `(SDL3|GL/|glad|glm)` which produces false positives against `be::Backend::SDL3` enum values. The source spec (SPEC-007) was already fixed for this (W-07 in spec-critic), but the fix was not propagated to the contract. This is a warning-level documentation inaccuracy — the enum values are not CONST-001 violations, but the verification command as documented will incorrectly report matches.
 
-**Verdict**: Rejected. The contract must be fixed to resolve the single-dereference bug before implementation can proceed. The fix is straightforward (change two characters in `demo_command.cpp`), but it is a blocking issue because the code is not compilable as written.
+No blocking issues remain.
 
 ## Blocking issues
 
 Items that must be resolved before the artifact can be accepted.
 
-- [x] **B-01: `run_triangle_demo(*platform, *device, ...)` uses single-dereference instead of double-dereference in `demo_command.cpp`**
+When re-reviewing, mark resolved items with `[x]`. Add new items as `[ ]`.
 
-  **Description**: In the contract's `demo_command.cpp` (lines 265–266 of the contract), the call:
-  ```cpp
-  return bc::run_triangle_demo(*platform, *device, argc - 2, argv + 2);
-  ```
-  passes `*platform` and `*device`, but `platform` is `Result<std::unique_ptr<buddd::engine::Platform>>` and `device` is `Result<std::unique_ptr<buddd::engine::RenderDevice>>`. Dereferencing a `Result<unique_ptr<T>>` once gives `unique_ptr<T>&`, not `T&`. The `run_triangle_demo` function signature takes `buddd::engine::Platform&` and `buddd::engine::RenderDevice&`. The correct call requires double-dereference:
-  ```cpp
-  return bc::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
-  ```
+### Previously resolved (from 1st review)
 
-  **Evidence**: The existing codebase confirms this pattern:
-  - `src/cmd/commands/test_command.cpp` line 54: `bc::setup_triangle(**device)` — `setup_triangle` takes `RenderDevice&`
-  - `src/cmd/commands/run_command.cpp` line 42: `bc::setup_triangle(**device)` — same signature
-  - The spec's **Key entities > DemoCommand** section correctly says: _"Passes `(**platform)` and `(**device)` to the selected demo function."_
+- [x] **B-01: `run_triangle_demo(*platform, *device, ...)` uses single-dereference instead of double-dereference**
 
-  The spec's **Required implementation behavior** section (which the contract copied) incorrectly uses `*platform, *device`. The contract should follow the correct semantics, not the erroneous spec text.
+  **Status**: RESOLVED. The contract now correctly shows `**platform` and `**device` (line 285). The actual source code (`src/cmd/commands/demo_command.cpp` line 99) confirms the fix: `return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);`. ✓
 
-  **Fix**: Change `*platform` to `**platform` and `*device` to `**device` at the call site in `demo_command.cpp`.
+### New in this review
+
+None.
 
 ## Warnings
 
 Non-blocking concerns for awareness:
 
+### Previously resolved (from 1st review)
+
 - [x] **W-01: Unnecessary `#include "demos/demo_helpers.h"` in `demo_command.cpp`**
 
-  `DemoCommand::run()` does not call `setup_triangle()` or use any symbol from `demo_helpers.h`. The include is unnecessary. The triangle demo header (`triangle_demo.h`) already includes `demo_helpers.h` transitively through its `.cpp` file. While harmless (the include guard prevents actual recompilation cost), it violates the principle of minimal includes and creates a misleading dependency. Remove it.
+  **Status**: RESOLVED. `demo_command.cpp` no longer includes `demo_helpers.h`. The actual source includes only `"demo_command.h"` and `"demo/triangle_demo.h"`. ✓
 
-- [x] **W-02: Misleading comment about `WindowConfig::title` type in `demo_command.cpp`**
+- [x] **W-02: Misleading comment about `WindowConfig::title` type**
 
-  The contract's `demo_command.cpp` code block contains this comment:
-  ```cpp
-  // We construct the title in a local buffer since WindowConfig takes a
-  // std::string_view — the buffer must outlive the create_window call.
-  ```
-  However, `WindowConfig::title` is `std::string` (defined in `src/engine/window/window.h` line 9), **not** `std::string_view`. The local `std::string` variable is unnecessary for lifetime reasons (the designated initializer copies into the `std::string` member), though the code compiles and works correctly regardless. The misleading comment suggests an incorrect understanding of the API and could confuse future maintainers. Update or remove the comment.
+  **Status**: RESOLVED. The contract's comment now correctly states: `// WindowConfig::title is std::string, so concatenation creates a temporary that is copied into the config.` (line 66-67). This matches the actual definition in `src/engine/window/window.h` where `WindowConfig::title` is `std::string`. ✓
 
 - [x] **W-03: Spec-internal contradiction propagated to contract**
 
-  The source spec (SPEC-007) contains a contradiction between its **Key entities** section (which correctly says `(**platform)` and `(**device)`) and its **Required implementation behavior** section (which incorrectly says `*platform` and `*device`). The contract faithfully copies the erroneous version. While this warning is redundant with B-01, it is noted here separately because the spec should also be corrected to avoid confusion in future contract iterations.
+  **Status**: RESOLVED. The source spec's Required implementation behavior section was corrected to use `**platform` and `**device` (spec-critic item resolved). The contract now matches. ✓
+
+### New in this review
+
+- [x] **W-04: CONST-001 compliance grep pattern not updated to match spec fix**
+
+  **Description**: The contract's CONST-001 compliance section (line 585) and Done criteria AC-018 (line 798) use the bare regex:
+  ```
+  grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/
+  ```
+  This grep returns **non-zero matches** against the actual source code:
+  ```
+  src/cmd/commands/run_command.cpp:19:    return be::Backend::SDL3;
+  src/cmd/commands/demo_command.cpp:22:    return be::Backend::SDL3;
+  src/cmd/CMakeLists.txt:15:    message(STATUS "buddd: BUDDD_HAS_DISPLAY=ON (SDL3 backend)")
+  ```
+  (plus build artifacts in `CMakeFiles/`)
+
+  None of these are CONST-001 violations — `be::Backend::SDL3` is an engine abstraction enum value, and the CMake messages are build system strings. However, the contract claims "zero matches" which is factually incorrect, and an implementer running this grep would incorrectly believe CONST-001 is violated.
+
+  The source spec (SPEC-007) was already fixed for this exact issue (spec-critic W-07, resolved) by refining the regex to:
+  ```
+  grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/
+  ```
+  This refined regex correctly returns zero matches against both source code and build artifacts.
+
+  **Fix**: Update both the CONST-001 compliance section (line 585) and Done criteria AC-018 (line 798) to use `#include.*(SDL3|GL/|glad|glm)` instead of the bare `(SDL3|GL/|glad|glm)`. This brings the contract in line with the already-fixed spec.
+
+  **Impact**: Low (documentation inaccuracy, does not affect code correctness or implementability).
 
 ## Required changes
 
 Concrete, actionable changes requested:
 
-1. [x] **Fix B-01**: In `src/cmd/commands/demo_command.cpp`, changed `*platform` to `**platform` and `*device` to `**device`.
-
-2. [x] **Fix W-01**: Removed `#include "demos/demo_helpers.h"` from `src/cmd/commands/demo_command.cpp`.
-
-3. [x] **Fix W-02**: Updated the comment in `src/cmd/commands/demo_command.cpp` to correctly state that `WindowConfig::title` is `std::string`.
-
-4. [x] **(Spec-level) Resolve the `*platform`/`**platform` contradiction in SPEC-007**: The **Required implementation behavior** section in `docs/specs/cli-command-evolution/spec.md` was corrected to use `**platform` and `**device`.
+1. [x] **Fix W-04**: Updated the CONST-001 compliance section and Done criteria AC-018 to use `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` instead of the bare regex.
 
 ## Suggested improvements
 
 Optional ideas (not required):
 
-- [ ] **Add explicit verification of the dereference pattern in the Done criteria**: Consider adding a Done criterion (or extending AC-022/AC-024) to verify that `demo_command.cpp` calls demo functions with `**` rather than `*` on Result-wrapped unique_ptrs. This would prevent this class of bug from recurring in future demo dispatch additions.
+- None new in this review.
 
-- [ ] **Add an include-dependency audit criterion**: Consider adding a check (or widening the existing AC-024 review) that verifies each `.cpp` file only includes what it directly uses, to prevent unnecessary includes like the `demo_helpers.h` issue identified in W-01.
+## Detailed analysis
 
-- [ ] **Consider `std::format` or string concatenation for the window title**: The current window title construction concatenates two `std::string` temporaries. This is functionally correct but could be slightly clearer with `std::format` (available in C++26). However, this is purely stylistic and the project may not have adopted `std::format` yet, so this is a low-priority suggestion.
+### 1. Backend selection via `constexpr` IIFE — correctness
+
+The contract uses:
+```cpp
+constexpr auto k_demo_backend = [] {
+#ifdef BUDDD_HAS_DISPLAY
+    return be::Backend::SDL3;
+#else
+    return be::Backend::Headless;
+#endif
+}();
+```
+
+This is a C++17-style immediately-invoked constexpr lambda. Since `be::Backend` is an `enum class` with enumerators `SDL3` and `Headless`, the return value is a valid constant expression. The preprocessor resolves `#ifdef` before constexpr evaluation, so the active branch is always a simple return statement. ✅ Correct C++.
+
+The same pattern is used for `k_run_backend` in `run_command.cpp`. ✅
+
+### 2. `#ifdef BUDDD_HAS_DISPLAY` behavior when not defined
+
+When `BUDDD_HAS_DISPLAY` is **not defined** (CI build):
+- `#ifdef` evaluates to false → `#else` branch → `return be::Backend::Headless;`
+- The binary uses the headless backend for all commands
+- Platform creation succeeds, `poll_events()` always returns `true`
+
+When `BUDDD_HAS_DISPLAY` **is defined** (display available):
+- `#ifdef` evaluates to true → `return be::Backend::SDL3;`
+- The binary uses the SDL3 backend
+- Window can be displayed, `poll_events()` returns `false` on window close ✅
+
+### 3. Demo name validation order
+
+`demo_command.cpp` validates the demo name **before** creating resources:
+```cpp
+// Line 51-55: Validate demo name BEFORE creating resources
+if (demo_name != "triangle") {
+    std::fprintf(stderr, "Unknown demo: '%s'\n\n", argv[2]);
+    std::fwrite(k_demo_usage.data(), 1, k_demo_usage.size(), stderr);
+    return EXIT_FAILURE;
+}
+
+// Line 58: Create platform, window, and render device
+auto platform = be::Platform::create(k_demo_backend);
+```
+
+This matches the contract and the spec's requirement to "fail fast on CI without display." ✅
+
+### 4. Test coverage
+
+All unconditionally testable paths have corresponding `[cli]` tests in `tests/version_test.cpp`:
+
+| Test | Present in code? | Required by |
+|------|:---:|:---:|
+| `buddd demo` with no name → usage + exit 1 | ✅ Line 160 | CONST-002 |
+| `buddd demo unknownname` → error + exit 1 | ✅ Line 170 | CONST-002 |
+| `buddd test` is unknown command → error + exit 1 | ✅ Line 180 | CONST-002 / AC-016 |
+| `buddd demo triangle` completes | ✅ Line 220 | AC-007 |
+| Help text checks for `demo` not `test` | ✅ Lines 128, 155 | AC-014 |
+| `buddd` no-args → window message | ✅ Line 190 | AC-012 |
+| `buddd version` → correct string | ✅ Line 113 | AC-013 |
+| `buddd unknowncommand` → error + exit 1 | ✅ Line 133 | AC-015 |
+| `buddd version extra_arg` → still version | ✅ Line 142 | AC-020 |
+| `buddd help extra_arg` → still help | ✅ Line 149 | AC-021 |
+
+### 5. File structure and include path correctness
+
+| Include in code | Resolution | Correct? |
+|---|---|---|
+| `demo_command.h` from `commands/demo_command.cpp` | Same directory `commands/` | ✅ |
+| `demo/triangle_demo.h` from `commands/demo_command.cpp` | Via `-Isrc/cmd` → `src/cmd/demo/triangle_demo.h` | ✅ |
+| `demo/demo_helpers.h` from `demo/triangle_demo.cpp` | Via `-Isrc/cmd` → `src/cmd/demo/demo_helpers.h` | ✅ |
+| `demo_helpers.h` from `demo/demo_helpers.cpp` | Same directory `demo/` (sibling) | ✅ |
+| `platform/platform.h` from any `src/cmd/` file | Via engine include dir → `src/engine/platform/platform.h` | ✅ |
+| `render/render_device.h` from any `src/cmd/` file | Via engine include dir → `src/engine/render/render_device.h` | ✅ |
+
+### 6. CONST-001 preservation
+
+No file under `src/cmd/` includes any SDL3, OpenGL, or GLM header. The architecture boundary is preserved. The use of `be::Backend::SDL3` in `demo_command.cpp` and `run_command.cpp` is an engine abstraction enum value, not a library header include — this is exactly what CONST-001 permits. ✅
+
+(The grep verification command should be refined to avoid false positives from the enum values — see W-04.)
+
+### 7. Edge case completeness
+
+The contract's edge case table (lines 690-714) correctly reflects the headless backend behavior (updated per spec-critic B-04 resolution). Key headless-specific edge cases:
+
+| Edge case | Contract says | Correct? |
+|---|---|---|
+| `buddd run` with no display | "Uses headless backend... runs until killed by timeout" | ✅ |
+| `buddd demo triangle` with no display | "Uses headless backend... runs normally" | ✅ |
+| `buddd run` window closed | "exits immediately" | ✅ |
+| `buddd demo triangle` early abort | "Abort message, exits 0" | ✅ |
+
+### 8. Done criteria completeness
+
+All 36 Done criteria map to spec ACs (1-24), SCs (1-3), and additional verification items (25-36). Each is verifiable. The backend selection criteria are covered by:
+- ✅ AC-029: BUDDD_HAS_DISPLAY propagation
+- ✅ AC-030: Backend selection in commands (compile-time)
+- ✅ AC-031: Demo name validated before resources
+- ✅ AC-036: CI without display (headless build + tests)
 
 ## Review summary
 
 | Category | Count |
 |---|---|
-| Blocking issues | 1 |
-| Warnings | 3 |
-| Required changes | 4 (3 contract + 1 spec) |
-| Suggested improvements | 3 |
-| Verdict | Rejected |
+| Blocking issues (new) | 0 |
+| Warnings (new) | 1 (W-04: CONST-001 grep pattern) |
+| Previously resolved blocking | 1 (B-01) — all ✅ |
+| Previously resolved warnings | 3 (W-01, W-02, W-03) — all ✅ |
+| Required changes | 2 (both for W-04) |
+| Verdict | `Accepted with warnings` |
 
-## Detailed analysis
+## Change log
 
-### 1. Does the contract faithfully implement SPEC-007?
-
-**Mostly, with one blocking exception:**
-- All user-visible output strings match the spec exactly ✓
-- The dispatch logic, help text, demo usage text, unknown command handling are all correct ✓
-- The file structure (create/remove/move/modify) matches the spec ✓
-- The `argc`/`argv` contract (`argc - 2`, `argv + 2` passed to demos) is correct ✓
-- Extra-arguments warning iterates from `argv[3]` as specified ✓
-- **BLOCKING**: The `**platform`/`**device` dereference is wrong (see B-01)
-
-### 2. Are all file changes precisely specified?
-
-Yes. The contract explicitly lists every file to create, remove, modify, and leave unchanged, with exact code content for each. ✓
-
-### 3. Are include paths correct?
-
-All include paths correctly resolve through the `src/cmd/` include root (for `demos/demo_helpers.h`) and the engine's public include directory (for `platform/platform.h` etc.). ✓
-
-One minor issue: `demo_helpers.cpp` (moved to `src/cmd/demo/`) uses `#include "demo_helpers.h"` which resolves to the sibling file via compiler's same-directory search — correct. ✓
-
-### 4. Are all exact output strings matching the spec?
-
-All verified:
-- `k_demo_usage` matches spec, including trailing `\n` ✓
-- `k_usage_text` (help) matches spec ✓
-- Triangle demo diagnostics use `"Demo"` prefix, not `"Render test"` ✓
-- Unknown demo/command messages match spec ✓
-- Warning output format matches spec ✓
-- RunCommand stdout messages match spec ✓
-
-### 5. Are the Done criteria complete and verifiable?
-
-All 32 Done criteria map to ACs 1–24 plus SCs 1–3 and the new test requirements. Each criterion specifies a verifiable condition (file existence, grep output, shell command output, stdout/stderr content, exit code, build success). ✓
-
-### 6. Does the demo function signature match the spec?
-
-```cpp
-[[nodiscard]] auto run_triangle_demo(
-    buddd::engine::Platform& platform,
-    buddd::engine::RenderDevice& device,
-    int argc, const char* const* argv) -> int;
-```
-Matches the spec exactly. ✓
-
-### 7. Is the argc/argv contract consistent?
-
-`DemoCommand::run()` correctly receives the full `argc`/`argv` and passes `argc - 2` / `argv + 2` to the per-demo function. The demo function receives `argv[0]` as the demo name. ✓
-
-### 8. Are tests adequate for CONST-002 compliance?
-
-Yes. The contract adds:
-- `buddd demo with no name prints usage and exits 1` ✓
-- `buddd demo unknownname prints error and exits 1` ✓
-- `buddd test is unknown command` ✓
-- `buddd demo triangle runs and completes` (display-guarded) ✓
-- Existing help tests updated to check for `"demo"` instead of `"test"` ✓
-
-All unconditionally testable paths are covered. CONST-002 is satisfied (assuming the blocking bug is fixed). ✓
-
-### 9. Are there any contradictions or ambiguities?
-
-- **Spec-internal contradiction**: The spec says `(**platform)` in Key entities but `*platform` in Required behavior. The contract propagates the latter. This is the root cause of B-01.
-- **No other contradictions**: The contract is internally consistent and consistent with the rest of the spec and constitution.
-
-### 10. Constitutional compliance
-
-- **CONST-001**: All files under `src/cmd/` use only engine abstraction headers (`platform/platform.h`, `window/window.h`, `render/render_device.h`, `render/primitive_topology.h`). No SDL3, OpenGL, or GLM headers are included. The grep verification command is provided ✓
-- **CONST-002**: Tests are provided for all unconditionally testable paths ✓
-- **CONST-003**: Documentation impact is correctly assessed as minimal ✓
-- **CONST-004**: Security impact is correctly assessed as none ✓
+| Review | Verdict | Key findings |
+|---|---|---|
+| 1st | `Rejected` | 1 blocking issue (B-01: single-dereference bug). 3 warnings (W-01: unnecessary include, W-02: misleading comment, W-03: spec contradiction). |
+| 2nd (this) | `Accepted with warnings` | Previous B-01 **RESOLVED** ✅. Previous W-01, W-02, W-03 **RESOLVED** ✅. **New** 1 warning (W-04: CONST-001 grep pattern not updated to match spec fix). No blocking issues. |

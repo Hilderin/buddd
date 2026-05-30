@@ -15,6 +15,7 @@ Allowed values: `Draft`, `In Review`, `Accepted`
 | Approved by | Guillaume (user) |
 | Date | 2026-05-29 |
 | Time | ~16:00 UTC |
+| Re-approved | Guillaume (user), 2026-05-29, ~17:00 UTC — backend selection + early validation update |
 
 ## Source spec
 
@@ -22,7 +23,7 @@ Allowed values: `Draft`, `In Review`, `Accepted`
 
 ## Goal
 
-Rename `TestCommand` → `DemoCommand`, create a per-file demo dispatch system under `src/cmd/demo/`, extract the triangle 120-frame loop into `src/cmd/demo/triangle_demo.cpp`, simplify `RunCommand` to an empty framebuffer-clear loop (no triangle), update help text to replace `test` with `demo`, update `main.cpp` dispatch so `"test"` becomes an unknown command, and update the build system glob to pick up `demo/*.cpp`.
+Rename `TestCommand` → `DemoCommand`, create a per-file demo dispatch system under `src/cmd/demo/`, extract the triangle 120-frame loop into `src/cmd/demo/triangle_demo.cpp`, simplify `RunCommand` to an empty framebuffer-clear loop (no triangle), update help text to replace `test` with `demo`, update `main.cpp` dispatch so `"test"` becomes an unknown command, update the build system glob to pick up `demo/*.cpp`, and make the CLI backend-aware so commands use the headless backend when `BUDDD_HAS_DISPLAY=OFF` (CI builds).
 
 ## Non-goals
 
@@ -40,7 +41,7 @@ Rename `TestCommand` → `DemoCommand`, create a per-file demo dispatch system u
 
 ## Relevant constitution rules
 
-- **CONST-001** (`docs/constitution/rules/CONST-001-architecture-boundaries.md`): No SDL3, OpenGL, or GLM headers outside `src/engine/`. All access to platform/graphics goes through engine abstractions. Must be verified by running `grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/` — zero matches.
+- **CONST-001** (`docs/constitution/rules/CONST-001-architecture-boundaries.md`): No SDL3, OpenGL, or GLM headers outside `src/engine/`. All access to platform/graphics goes through engine abstractions. Must be verified by running `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` — zero matches.
 - **AMEND-2026-001**: SDL3 test file exception — does NOT apply to `src/cmd/`. `src/cmd/` may never include `<SDL3/...>`.
 - **CONST-002** (`docs/constitution/rules/CONST-002-testing-policy.md`): All testable code added or modified must have corresponding unit tests. The unconditionally testable paths (`buddd demo` no name, `buddd demo unknownname`, `buddd test` unknown) must have `[cli]` tests.
 
@@ -141,6 +142,11 @@ add_executable(buddd ${CMD_SOURCES})
 target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(buddd PRIVATE buddd_engine)
+
+# Propagate BUDDD_HAS_DISPLAY so commands can select backend at compile time.
+if(BUDDD_HAS_DISPLAY)
+    target_compile_definitions(buddd PRIVATE BUDDD_HAS_DISPLAY)
+endif()
 ```
 
 The `target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})` line (already present) sets `src/cmd/` as the include root. This means `#include "demo/demo_helpers.h"` resolves to `src/cmd/demo/demo_helpers.h` from any file under `src/cmd/`.
@@ -197,6 +203,15 @@ public:
 namespace be = buddd::engine;
 namespace bc = buddd::cmd;
 
+// Select backend at compile time: SDL3 with display, headless on CI.
+constexpr auto k_demo_backend = [] {
+#ifdef BUDDD_HAS_DISPLAY
+    return be::Backend::SDL3;
+#else
+    return be::Backend::Headless;
+#endif
+}();
+
 namespace {
 
 /// Shared demo usage text constant.
@@ -219,8 +234,15 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
 
     const std::string_view demo_name{argv[2]};
 
+    // Validate demo name BEFORE creating resources (fails fast on CI w/o display)
+    if (demo_name != "triangle") {
+        std::fprintf(stderr, "Unknown demo: '%s'\n\n", argv[2]);
+        std::fwrite(k_demo_usage.data(), 1, k_demo_usage.size(), stderr);
+        return EXIT_FAILURE;
+    }
+
     // Create platform, window, and render device
-    auto platform = be::Platform::create(be::Backend::SDL3);
+    auto platform = be::Platform::create(k_demo_backend);
     if (!platform) {
         std::cerr << "Failed to create platform: "
                   << be::to_string(platform.error()) << "\n";
@@ -259,16 +281,9 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
         std::fprintf(stderr, "\n");
     }
 
-    // Dispatch to per-demo function using if/else chain
+    // Dispatch to per-demo function
     // Pass argc - 2, argv + 2 so the demo receives argv[0] == demo name
-    if (demo_name == "triangle") {
-        return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
-    }
-
-    // Unknown demo name
-    std::fprintf(stderr, "Unknown demo: '%s'\n\n", argv[2]);
-    std::fwrite(k_demo_usage.data(), 1, k_demo_usage.size(), stderr);
-    return EXIT_FAILURE;
+    return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
 }
 ```
 
@@ -458,8 +473,17 @@ Remove `#include "demo_helpers.h"`, remove the `setup_triangle()` call, remove t
 namespace be = buddd::engine;
 namespace bc = buddd::cmd;
 
+// Select backend at compile time: SDL3 with display, headless on CI.
+constexpr auto k_run_backend = [] {
+#ifdef BUDDD_HAS_DISPLAY
+    return be::Backend::SDL3;
+#else
+    return be::Backend::Headless;
+#endif
+}();
+
 auto bc::RunCommand::run([[maybe_unused]] int argc, [[maybe_unused]] const char* const* argv) -> int {
-    auto platform = be::Platform::create(be::Backend::SDL3);
+    auto platform = be::Platform::create(k_run_backend);
     if (!platform) {
         std::cerr << "FATAL: " << be::to_string(platform.error()) << "\n";
         return EXIT_FAILURE;
@@ -559,7 +583,7 @@ Actually, `demo_helpers.cpp` now resides in `src/cmd/demo/` and includes `"demo_
 
 ### 13. CONST-001 compliance
 
-Run `grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/` — zero matches. No file under `src/cmd/` includes any SDL3, OpenGL, or GLM headers.
+Run `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` — zero matches. No file under `src/cmd/` includes any SDL3, OpenGL, or GLM headers. (`be::Backend::SDL3` enum values are engine abstractions, not header includes — excluded by the `#include` prefix.)
 
 ## Required tests
 
@@ -613,14 +637,15 @@ TEST_CASE("buddd test is unknown command", "[cli]") {
 }
 ```
 
-#### Add display-dependent test
+#### Add tests that work with both backends
 
-Inside the `#ifdef BUDDD_HAS_DISPLAY` block (after or alongside the existing `buddd with no arguments defaults to run command` test):
+The following tests run with both SDL3 and headless backends (no `BUDDD_HAS_DISPLAY` guard needed):
 
 ```cpp
 TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
     // Run the demo with a 5-second timeout and verify the completion message.
-    // This test requires a display (guarded by BUDDD_HAS_DISPLAY).
+    // The binary uses headless backend when BUDDD_HAS_DISPLAY=OFF.
+    // The triangle demo runs 120 frames (~2 seconds with frame limiting) then exits.
     const auto binary = buddd_binary_path();
     const auto out_file = temp_filename("buddd_demo_out");
     const auto err_file = temp_filename("buddd_demo_err");
@@ -634,8 +659,9 @@ TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
     auto read_file = [](const std::string& path) -> std::string {
         std::ifstream f(path, std::ios::binary);
         if (!f) return {};
-        return std::string((std::istreambuf_iterator<char>(f)),
-                           std::istreambuf_iterator<char>());
+        std::string content((std::istreambuf_iterator<char>(f)),
+                             std::istreambuf_iterator<char>());
+        return content;
     };
 
     const auto stderr_str = read_file(err_file);
@@ -643,11 +669,7 @@ TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
     std::remove(err_file.c_str());
 
     // The demo should complete (120 frames ~2 seconds, well within 5s timeout)
-    // If the display is available, we should see the completion message.
-    // If the platform/window creation failed, we'll see an error message instead.
-    // We check that either the demo completed or an engine init error occurred.
-    REQUIRE( (stderr_str.find("Demo complete: triangle (120 frames rendered)") != std::string::npos
-              || stderr_str.find("Failed to create") != std::string::npos) );
+    REQUIRE(stderr_str.find("Demo complete: triangle (120 frames rendered)") != std::string::npos);
 }
 ```
 
@@ -658,7 +680,7 @@ TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
 | `buddd demo with no name prints usage and exits 1` | AC-006 (demo no name → usage + exit 1) |
 | `buddd demo unknownname prints error and exits 1` | AC-005 (unknown demo name → error + exit 1) |
 | `buddd test is unknown command` | AC-016 (old `test` → unknown command error + exit 1) |
-| `buddd demo triangle runs and completes` (display) | AC-007 (demo triangle completes) |
+| `buddd demo triangle runs and completes` | AC-007 (demo triangle completes) |
 | Updated `buddd help outputs usage text` | AC-014 (help text updated with `demo`, no `test`) |
 | Updated `buddd help ignores extra arguments` | AC-014, AC-021 |
 | Existing `buddd unknowncommand exits with code 1` | AC-015 (unknown command + updated usage) |
@@ -677,7 +699,8 @@ TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
 | `buddd demo ''` (empty demo name) | Empty string is not a valid demo name (`argc >= 3` but demo name is empty); treated as unknown demo. |
 | `buddd test` (old subcommand) | Unknown command error; exits 1. |
 | `buddd run` with no display (`BUDDD_HAS_DISPLAY=OFF`) | Platform creation fails at runtime; error printed to stderr; exits non-zero. |
-| `buddd demo triangle` with no display | Same — platform creation fails; error to stderr; exits non-zero. |
+| `buddd demo triangle` with no display (`BUDDD_HAS_DISPLAY=OFF`) | Uses headless backend. Demo runs 120 frames (~2s) and completes normally. |
+| `buddd run` with no display (`BUDDD_HAS_DISPLAY=OFF`) | Uses headless backend. `poll_events()` always returns `true` — runs until killed by timeout. |
 | Window closed during `buddd run` before first frame | `poll_events()` returns `false` on first call; loop exits immediately; prints "Window closed, shutting down."; exits 0. |
 | Window closed during `buddd demo triangle` on frame 0 | Abort message printed for frame 0; exits with code 0. |
 | `buddd run extra_arg` (extra arg to run) | RunCommand silently ignores extra args. |
@@ -773,7 +796,7 @@ The contract is done when ALL of the following are satisfied:
 
 17. [ ] **AC-017 (old flags rejected)**: Running `buddd --test` or `buddd --version` prints the unknown command error to stderr and exits with code 1. Verified via shell.
 
-18. [ ] **AC-018 (CONST-001 compliance)**: `grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/` returns zero matches.
+18. [ ] **AC-018 (CONST-001 compliance)**: `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` returns zero matches (engine `Backend::SDL3` enum values are not header includes).
 
 19. [ ] **AC-019 (CMake glob + build)**: `src/cmd/CMakeLists.txt` includes `demo/*.cpp` in the glob pattern. `cmake --build --preset debug` succeeds and produces `build/debug/src/cmd/buddd`.
 
@@ -793,12 +816,20 @@ The contract is done when ALL of the following are satisfied:
 
 27. [ ] **New test: `buddd test` is unknown**: `tests/version_test.cpp` has a test case that verifies `buddd test` prints `"Unknown command: 'test'"` to stderr and exits 1. Test passes.
 
-28. [ ] **Display-guarded test: `buddd demo triangle`**: `tests/version_test.cpp` has a test case guarded by `BUDDD_HAS_DISPLAY` that runs `buddd demo triangle` with a timeout. Test passes when a display is available.
+28. [ ] **Test: `buddd demo triangle`** (backends): `tests/version_test.cpp` has a test case that runs `buddd demo triangle` with a timeout. Works with both SDL3 and headless backends. Test passes.
 
-29. [ ] **Help text assertions updated**: The existing `[cli]` tests for `buddd help` now check for `"demo"` instead of `"test"` in stdout. Tests pass.
+29. [ ] **BUDDD_HAS_DISPLAY propagation**: `src/cmd/CMakeLists.txt` propagates the `BUDDD_HAS_DISPLAY` define to the `buddd` target. Verified by build: `BUDDD_HAS_DISPLAY=ON` uses SDL3 backend, `BUDDD_HAS_DISPLAY=OFF` uses headless backend.
 
-30. [ ] **SC-001 (new demo addable)**: Create a skeleton `spin_demo.h/.cpp` in `src/cmd/demo/` with a matching `else if` branch in `DemoCommand::run()`. Build succeeds without modifying any other file. Revert the skeleton after verification.
+30. [ ] **Backend selection in commands**: `demo_command.cpp` and `run_command.cpp` select the backend at compile time based on `BUDDD_HAS_DISPLAY`. Verified by inspection.
 
-31. [ ] **SC-002 (dispatch visible)**: The command dispatch if/else-if chain is contained within the first 30 lines of `main()` in `main.cpp`. Verified by inspection.
+31. [ ] **Demo name validated before resources**: `demo_command.cpp` validates the demo name before creating the platform/window/device. Verified by inspection and test: `buddd demo unknownname` produces the "Unknown demo" message without attempting display initialisation.
 
-32. [ ] **SC-003 (empty vs triangle render)**: `buddd run` produces no rendering output (empty cleared window) while `buddd demo triangle` produces the coloured triangle. Manual visual comparison confirms the split.
+32. [ ] **Help text assertions updated**: The existing `[cli]` tests for `buddd help` now check for `"demo"` instead of `"test"` in stdout. Tests pass.
+
+33. [ ] **SC-001 (new demo addable)**: Create a skeleton `spin_demo.h/.cpp` in `src/cmd/demo/` with a matching `else if` branch in `DemoCommand::run()`. Build succeeds without modifying any other file. Revert the skeleton after verification.
+
+34. [ ] **SC-002 (dispatch visible)**: The command dispatch if/else-if chain is contained within the first 30 lines of `main()` in `main.cpp`. Verified by inspection.
+
+35. [ ] **SC-003 (empty vs triangle render)**: `buddd run` produces no rendering output (empty cleared window) while `buddd demo triangle` produces the coloured triangle. Manual visual comparison confirms the split.
+
+36. [ ] **CI without display**: Building with `BUDDD_HAS_DISPLAY=OFF` succeeds. All tests pass in headless mode, including `buddd demo triangle` and `buddd` no-args. Verified by CI pipeline.

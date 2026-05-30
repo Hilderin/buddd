@@ -346,3 +346,54 @@ No blocking issues found. The implementation correctly satisfies:
 Build succeeds, all 100 tests pass (10 CLI + 90 engine), and CLI output strings match the spec exactly. File structure, namespaces, naming conventions, include discipline, and output format all conform to the spec and contract.
 
 Three non-blocking warnings are noted: manual-only coverage for early-abort, missing negative assertion for `"test"` in help-text test, and engine init logging on unknown demos due to contract-specified resource creation order.
+
+---
+
+## Re-review addendum (2026-05-30) — Backend selection update
+
+### What changed
+
+The spec and implementation contract were updated to support compile-time backend selection via `BUDDD_HAS_DISPLAY`. The following source changes were reviewed:
+
+| # | File | Change |
+|---|---|---|
+| 1 | `src/cmd/commands/demo_command.cpp` | Added `constexpr` IIFE with `#ifdef BUDDD_HAS_DISPLAY` to select `be::Backend::SDL3` (ON) or `be::Backend::Headless` (OFF). Moved demo name validation **before** resource creation (fails fast without display). |
+| 2 | `src/cmd/commands/run_command.cpp` | Added `constexpr` IIFE with `#ifdef BUDDD_HAS_DISPLAY` to select backend at compile time. |
+| 3 | `src/cmd/CMakeLists.txt` | Added `target_compile_definitions(buddd PRIVATE BUDDD_HAS_DISPLAY)` when option is ON, plus status messages for both ON/OFF. |
+| 4 | `tests/version_test.cpp` | Removed `#ifdef BUDDD_HAS_DISPLAY` guards from `buddd demo triangle` and `buddd` no-args tests. Both tests now run unconditionally (headless backend on CI). Updated comments to reflect headless-availability. |
+| 5 | `src/cmd/` (CONST-001) | `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` returns **zero matches**. Architecture boundary preserved. |
+
+Additional doc changes (not source, but part of the review scope):
+- `docs/specs/cli-command-evolution/spec.md` — Updated AC-007, AC-018, edge case table (B-04), Assumption A-10, backend selection in DemoCommand/RunCommand pseudocode, `CMakeLists.txt` with BUDDD_HAS_DISPLAY propagation.
+- `docs/specs/cli-command-evolution/implementation-contract.md` — Done criteria extended from 32 to 36 items (BUDDD_HAS_DISPLAY propagation, backend selection, demo name validation before resources, CI without display). CONST-001 grep refined to `#include.*(SDL3|GL/|glad|glm)`.
+- `docs/specs/cli-command-evolution/spec-critic.md` — Finalised as `Accepted`. B-04, W-07, W-08 resolved.
+- `docs/specs/cli-command-evolution/implementation-contract-critic.md` — Finalised as `Accepted with warnings`. W-04 resolved (CONST-001 grep pattern).
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Backend selection via `constexpr` IIFE — `demo_command.cpp` | ✅ Lines 20–26: `constexpr auto k_demo_backend = [] { #ifdef BUDDD_HAS_DISPLAY ... }();` |
+| Backend selection via `constexpr` IIFE — `run_command.cpp` | ✅ Lines 17–23: `constexpr auto k_run_backend = [] { #ifdef BUDDD_HAS_DISPLAY ... }();` |
+| Unknown demo validated before resource creation | ✅ Lines 50–55 validate `demo_name` before line 58 creates platform |
+| CMake propagates `BUDDD_HAS_DISPLAY` to `buddd` target | ✅ `src/cmd/CMakeLists.txt` lines 13–18 |
+| CLI tests no longer guarded by `#ifdef BUDDD_HAS_DISPLAY` | ✅ Lines 190–248 in `tests/version_test.cpp` — no guard |
+| CONST-001: no forbidden includes in `src/cmd/` | ✅ `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` → zero matches |
+| Build + test with `BUDDD_HAS_DISPLAY=ON` | ✅ **100%** passed (100/100 tests) |
+| Build + test with `BUDDD_HAS_DISPLAY=OFF` | ✅ **100%** passed (94/94 tests, SDL3 backend tests excluded) |
+
+The test counts differ between configurations:
+- **ON** (100 tests): SDL3 backend tests included (tests 24–29 plus SDL3-specific platform/window/render tests).
+- **OFF** (94 tests): SDL3 backend tests excluded. All CLI tests pass identically in both configurations.
+
+### Key behavioural verification
+
+With `BUDDD_HAS_DISPLAY=OFF`:
+- `buddd demo triangle` — completed in 2.01 seconds (120 frames, headless backend) ✅
+- `buddd` (no args) — runs for 2 seconds then killed by timeout (headless `poll_events()` always returns true) ✅
+- `buddd demo unknownname` — exits immediately with "Unknown demo" (validated before resource creation, no headless init) ✅
+- All other CLI tests (unknown command, `buddd test`, help, version, extra args) — pass identically to display build ✅
+
+### Conclusion
+
+All five re-review verification items are satisfied. The implementation is correct in both display and headless configurations. No new issues found. The previous verdict of **`Accepted`** stands unchanged.

@@ -15,6 +15,16 @@
 namespace be = buddd::engine;
 namespace bc = buddd::cmd;
 
+// Select backend based on display availability
+// CI builds with BUDDD_HAS_DISPLAY=OFF use the headless backend.
+constexpr auto k_demo_backend = [] {
+#ifdef BUDDD_HAS_DISPLAY
+    return be::Backend::SDL3;
+#else
+    return be::Backend::Headless;
+#endif
+}();
+
 namespace {
 
 /// Shared demo usage text constant.
@@ -37,8 +47,15 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
 
     const std::string_view demo_name{argv[2]};
 
+    // Validate demo name before creating resources (fails fast on CI without display)
+    if (demo_name != "triangle") {
+        std::fprintf(stderr, "Unknown demo: '%s'\n\n", argv[2]);
+        std::fwrite(k_demo_usage.data(), 1, k_demo_usage.size(), stderr);
+        return EXIT_FAILURE;
+    }
+
     // Create platform, window, and render device
-    auto platform = be::Platform::create(be::Backend::SDL3);
+    auto platform = be::Platform::create(k_demo_backend);
     if (!platform) {
         std::cerr << "Failed to create platform: "
                   << be::to_string(platform.error()) << "\n";
@@ -79,12 +96,5 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
 
     // Dispatch to per-demo function using if/else chain
     // Pass argc - 2, argv + 2 so the demo receives argv[0] == demo name
-    if (demo_name == "triangle") {
-        return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
-    }
-
-    // Unknown demo name
-    std::fprintf(stderr, "Unknown demo: '%s'\n\n", argv[2]);
-    std::fwrite(k_demo_usage.data(), 1, k_demo_usage.size(), stderr);
-    return EXIT_FAILURE;
+    return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
 }

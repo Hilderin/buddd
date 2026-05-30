@@ -15,6 +15,7 @@ Allowed values: `Draft`, `In Review`, `Accepted`
 | Approved by | Guillaume (user) |
 | Date | 2026-05-29 |
 | Time | ~16:00 UTC |
+| Re-approved | Guillaume (user), 2026-05-29, ~17:00 UTC — backend selection + early validation update |
 
 ## Problem
 
@@ -108,17 +109,18 @@ buddd 0.1.0
 
 #### `buddd demo <name>` (DemoCommand)
 
-Opens an SDL3 window (800×600, title `"Buddd Engine — Demo: <name>"`), runs the named demo, and exits.
+Opens a window (800×600, title `"Buddd Engine — Demo: <name>"`), runs the named demo, and exits.
 
 **Behavior details**:
-- Platform created with `be::Platform::create(be::Backend::SDL3)`.
+- Demo name is validated **before** creating platform resources: if unknown, prints error and exits immediately without attempting display initialisation.
+- Platform created using the `BUDDD_HAS_DISPLAY` compile-time define: when `ON` (display available), uses `be::Backend::SDL3`; when `OFF` (CI/headless), uses `be::Backend::Headless`.
 - Window dimensions: 800×600.
 - Window title: `"Buddd Engine — Demo: <name>"` where `<name>` is the demo name as typed (preserving case).
 - The demo name is `argv[2]`. If `argc < 3` (no demo name provided), prints usage to stderr and exits with code 1 (see below).
 - Dispatches to the matching demo function via a switch/case on the demo name.
 - Render loop runs exactly the number of frames defined by the demo (e.g., 120 frames for `triangle`).
 - Between frames, sleeps to maintain ~60 FPS (16 ms per frame).
-- If the user closes the window during the demo, the loop is aborted early, a message is printed to stderr, and the command exits with code 0 (this is not an error).
+- If the user closes the window during the demo (SDL3 backend only; headless backend never returns `false` from `poll_events()`), the loop is aborted early, a message is printed to stderr, and the command exits with code 0 (this is not an error).
 - **Extra arguments after the demo name**: if `argc > 3` and the demo name matches a known demo, prints a warning to stderr but proceeds with the demo.
 
 ##### `buddd demo triangle`
@@ -161,10 +163,10 @@ Demo names are case-sensitive.
 
 #### `buddd run` (RunCommand)
 
-Opens an SDL3 window (1024×768, title `"Buddd Engine"`), creates a render device, and runs a render loop that clears the framebuffer each frame but draws nothing. Continues until the user closes the window.
+Opens a window (1024×768, title `"Buddd Engine"`), creates a render device, and runs a render loop that clears the framebuffer each frame but draws nothing. Continues until the user closes the window (SDL3 backend) or indefinitely (headless backend, `poll_events()` always returns `true`).
 
 **Behavior details**:
-- Platform created with `be::Platform::create(be::Backend::SDL3)`.
+- Platform created using the `BUDDD_HAS_DISPLAY` compile-time define: when `ON` (display available), uses `be::Backend::SDL3`; when `OFF` (CI/headless), uses `be::Backend::Headless`.
 - Window dimensions: 1024×768.
 - Window title: `"Buddd Engine"`.
 - Prints `"Window opened: 1024x768"` to stdout.
@@ -391,7 +393,7 @@ As a developer, I want to close the demo window early and see an abort message, 
 | AC-004 | `run_triangle_demo` performs a 120-frame render loop with a coloured triangle, mirroring the current `buddd test` render behavior (same vertex data, same shaders, same triangle). | Visual inspection: the triangle appears identical to the current `buddd test` rendering. |
 | AC-005 | `DemoCommand::run()` dispatches `"triangle"` to `run_triangle_demo()`. Unknown demo names print `"Unknown demo: '<name>'"` to stderr and exit with code 1. | Run `buddd demo unknownname`; stderr contains the error. Exit code is 1. |
 | AC-006 | Running `buddd demo` with no name prints the demo usage text to stderr and exits with code 1. | Run `buddd demo`; stderr matches the exact usage output. Exit code is 1. |
-| AC-007 | Running `buddd demo triangle` opens an 800×600 window titled "Buddd Engine — Demo: triangle" (case-preserving), renders for 120 frames, prints `"Demo complete: triangle (120 frames rendered)"` to stderr, and exits with code 0. | Manual visual verification; stderr contains the completion message. |
+| AC-007 | Running `buddd demo triangle` opens a window titled "Buddd Engine — Demo: triangle" (case-preserving), renders for 120 frames, prints `"Demo complete: triangle (120 frames rendered)"` to stderr, and exits with code 0. Works with both SDL3 and headless backends. | Manual/CI verification; stderr contains the completion message. |
 | AC-008 | Running `buddd demo triangle` and closing the window before 120 frames prints `"Demo aborted by user (frame N)"` to stderr and exits with code 0. | Manual verification: close window early, check stderr, check exit code. |
 | AC-009 | Running `buddd demo triangle extra_arg` prints a warning to stderr (`"Warning: unexpected arguments after 'demo triangle': extra_arg"`) but still runs the demo and exits 0. | Run the command; stderr contains the warning and the demo completion message. |
 | AC-010 | `RunCommand` no longer includes `demo_helpers.h` and no longer calls `setup_triangle()`. It opens a 1024×768 window titled "Buddd Engine", clears the framebuffer to black each frame, and draws nothing. | Inspect `run_command.cpp` — no `#include "demo_helpers.h"` (or `"demo/demo_helpers.h"`), no call to `setup_triangle()`. Visual: window background shows black, no triangle. |
@@ -402,7 +404,7 @@ As a developer, I want to close the demo window early and see an abort message, 
 | AC-015 | Running `buddd unknowncommand` prints `"Unknown command: 'unknowncommand'"` followed by the updated usage block to stderr and exits with code 1. | Run `buddd unknowncommand`; stderr matches. Exit code is 1. |
 | AC-016 | Running `buddd test` prints `"Unknown command: 'test'"` followed by the updated usage block to stderr and exits with code 1. | Run `buddd test`; stderr matches. Exit code is 1. |
 | AC-017 | Running `buddd --test` or `buddd --version` prints the unknown command error to stderr and exits with code 1. | Run both; stderr contains `"Unknown command: '--test'"` / `"Unknown command: '--version'"`. Exit code is 1. |
-| AC-018 | No SDL3, OpenGL, or GLM headers are included from any file under `src/cmd/`. | Run `grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/` — zero matches. Architecture boundary (CONST-001) is preserved. |
+| AC-018 | No SDL3, OpenGL, or GLM headers are included from any file under `src/cmd/`. | Run `grep -rnE '#include.*(SDL3|GL/|glad|glm)' src/cmd/` — zero matches. Architecture boundary (CONST-001) is preserved. |
 | AC-019 | The `src/cmd/CMakeLists.txt` glob includes `demo/*.cpp` and the build succeeds. | `cmake --build --preset debug` succeeds; `build/debug/src/cmd/buddd` is produced. |
 | AC-020 | Running `buddd version extra_arg` still prints the version and exits 0 (extra args ignored). | Run `buddd version extra_arg`; output matches AC-013. |
 | AC-021 | Running `buddd help extra_arg` still prints the updated usage message and exits 0 (extra args ignored). | Run `buddd help extra_arg`; output matches AC-014. |
@@ -429,8 +431,8 @@ As a developer, I want to close the demo window early and see an abort message, 
 | `buddd demo triangle ` (trailing whitespace) | Shell normalises; treated as no extra args. |
 | `buddd demo ''` (empty demo name) | Empty string is not a valid demo name; treated as unknown demo. |
 | `buddd test` (old subcommand) | Unknown command error; exits 1. |
-| `buddd run` with no display (`BUDDD_HAS_DISPLAY=OFF`) | Platform creation fails at runtime; error printed to stderr; exits non-zero. |
-| `buddd demo triangle` with no display | Same — platform creation fails; error to stderr; exits non-zero. |
+| `buddd run` with no display (`BUDDD_HAS_DISPLAY=OFF`) | Uses headless backend. `poll_events()` always returns `true` — runs until killed by timeout. |
+| `buddd demo triangle` with no display (`BUDDD_HAS_DISPLAY=OFF`) | Uses headless backend. Demo runs 120 frames (~2s) and completes normally. |
 | Window closed during `buddd run` before first frame renders | `poll_events()` returns `false` on first call; loop exits immediately; prints "Window closed, shutting down."; exits 0. |
 | Window closed during `buddd demo triangle` on frame 0 | Abort message printed for frame 0; exits with code 0. |
 | `buddd run extra_arg` (extra arg to run) | RunCommand silently ignores extra args (reserved for future project path). |
@@ -501,7 +503,7 @@ New tests (required by CONST-002 — all unconditionally testable paths must hav
 | `buddd demo` with no name | Always runs (no display needed) | Verify stderr contains demo usage; exit code is 1. |
 | `buddd demo unknownname` | Always runs (no display needed) | Verify stderr contains `"Unknown demo:"`; exit code is 1. |
 | `buddd test` is unknown command | Always runs (no display needed) | Verify stderr contains `"Unknown command: 'test'"`; exit code is 1. |
-| `buddd demo triangle` | Guarded by `BUDDD_HAS_DISPLAY` | Verify the demo window opens and completes (with timeout). |
+| `buddd demo triangle` | Always runs (headless backend on CI) | Verify the demo completes with completion message (with timeout). |
 
 CONST-002 (Testing Policy) requires tests for all testable code. The following code paths are testable without a display and should have corresponding tests:
 - `buddd demo` with no name (exit code 1, stderr contains usage)
@@ -510,7 +512,7 @@ CONST-002 (Testing Policy) requires tests for all testable code. The following c
 - `buddd help` text now references `demo` instead of `test`
 - Version, unknown-command, and extra-arg tests all pass unchanged (except help text assertion)
 
-Display-dependent paths (demo mode with window, run mode with window) are guarded by `BUDDD_HAS_DISPLAY` and tested at the integration level.
+Backend-sensitive paths (demo mode with window, run mode with window) use the SDL3 backend when `BUDDD_HAS_DISPLAY=ON` and the headless backend when `BUDDD_HAS_DISPLAY=OFF`. Both backends are exercised by the `[cli]` integration tests (the headless path runs on CI).
 
 ## Out of scope
 
@@ -540,7 +542,7 @@ Display-dependent paths (demo mode with window, run mode with window) are guarde
 | A-07 | The old `test` subcommand is dropped with no deprecation period. Developers who used it will see the unknown-command error and can switch to `buddd demo triangle`. |
 | A-08 | The command namespace is `buddd::cmd`, consistent with the directory structure. |
 | A-09 | The help text is an exact string embedded in `HelpCommand` (no i18n, no templating). If the set of commands changes, `HelpCommand` must be updated manually. |
-| A-10 | When the CLI has no display (`BUDDD_HAS_DISPLAY=OFF` or no SDL3 at runtime), commands that try to open a window fail at the `Platform::create()` or `create_window()` stage with an engine error. The command's error handling is unchanged. |
+| A-10 | At compile time, `BUDDD_HAS_DISPLAY=OFF` selects the headless backend (`be::Backend::Headless`), which succeeds at platform creation. At runtime, if SDL3 is unavailable when `BUDDD_HAS_DISPLAY=ON`, the SDL3 backend fails at `Platform::create()` with an engine error. The command's error handling is unchanged. |
 | A-11 | Previous `[cli]` tests for `buddd` no-args default (in `tests/version_test.cpp`) still pass because `RunCommand` still outputs `"Window opened: 1024x768"` on stdout. The test checks for this substring and is unaffected by the triangle removal. |
 
 ## Open questions
@@ -572,12 +574,18 @@ DemoCommand::run(int argc, const char* const* argv) -> int:
       - Print demo usage to stderr
       - Return EXIT_FAILURE
    2. Extract demo_name = argv[2]
-   3. Create platform, window (800×600, title "Buddd Engine — Demo: <name>"), device
-   4. If argc > 3:
+   3. Validate demo_name **before** creating resources (fails fast on CI without display):
+      - Switch/case on demo_name:
+        - "triangle" → continue to step 4
+        - default → print "Unknown demo: '<demo_name>'\n\n" + demo usage to stderr, return EXIT_FAILURE
+   4. Select backend at compile time based on BUDDD_HAS_DISPLAY:
+      - BUDDD_HAS_DISPLAY=ON  → be::Backend::SDL3
+      - BUDDD_HAS_DISPLAY=OFF → be::Backend::Headless
+   5. Create platform, window (800×600, title "Buddd Engine — Demo: <name>"), device
+   6. If argc > 3:
       - Print warning to stderr: "Warning: unexpected arguments after 'demo <name>':" followed by argv[3..argc-1] space-separated, then "\n"
-   5. Switch/case on demo_name:
-      - "triangle" → call bc::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2), return its result
-      - default → print "Unknown demo: '<demo_name>'\n\n" + demo usage to stderr, return EXIT_FAILURE
+   7. Dispatch to per-demo function:
+      - call bc::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2), return its result
 
 **Note**: The demo function receives `argc - 2` and `argv + 2`, so `argv[0]` in the demo function is the demo name (e.g., `"triangle"`) and `argv[1..]` are any extra arguments after the demo name.
 ```
@@ -590,13 +598,15 @@ In `run_command.h`:
 In `run_command.cpp`:
 1. Remove `#include "demo_helpers.h"`.
 2. Remove the `auto [material, vb] = bc::setup_triangle(**device);` line.
-3. In the render loop, replace the `draw()` call with a framebuffer clear operation (no draw calls):
+3. Select backend at compile time: `BUDDD_HAS_DISPLAY=ON` → `be::Backend::SDL3`, `OFF` → `be::Backend::Headless`.
+4. In the render loop, replace the `draw()` call with a framebuffer clear operation (no draw calls):
    - `(*device)->begin_frame();`  — this already clears the colour buffer to black in the OpenGL backend
    - `(*device)->end_frame();`
 
 ### CMakeLists.txt changes
 
-Add `demo/*.cpp` to the glob:
+1. Add `demo/*.cpp` to the glob.
+2. Propagate the `BUDDD_HAS_DISPLAY` compile-time define to the `buddd` target so commands can select the backend at compile time.
 
 ```cmake
 file(GLOB_RECURSE CMD_SOURCES CONFIGURE_DEPENDS
@@ -604,6 +614,16 @@ file(GLOB_RECURSE CMD_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/commands/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/demo/*.cpp
 )
+
+add_executable(buddd ${CMD_SOURCES})
+
+target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(buddd PRIVATE buddd_engine)
+
+if(BUDDD_HAS_DISPLAY)
+    target_compile_definitions(buddd PRIVATE BUDDD_HAS_DISPLAY)
+endif()
 ```
 
 ### Include path considerations

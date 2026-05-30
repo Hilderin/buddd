@@ -187,12 +187,10 @@ TEST_CASE("buddd test is unknown command", "[cli]") {
     REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
-#ifdef BUDDD_HAS_DISPLAY
-
 TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
-    // This test opens a window. We run the binary with no args and use
-    // 'timeout 2' to kill it after 2 seconds. Then check the output prefix.
-    // Guarded by BUDDD_HAS_DISPLAY.
+    // Run the binary with no args and use 'timeout 2' to kill it after 2 seconds.
+    // The binary uses SDL3 backend (with display) or headless backend (without).
+    // Headless poll_events() always returns true, so the loop runs until timeout.
     const auto binary = buddd_binary_path();
     const auto out_file = temp_filename("buddd_run_out");
     const auto err_file = temp_filename("buddd_run_err");
@@ -221,7 +219,8 @@ TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
 
 TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
     // Run the demo with a 5-second timeout and verify the completion message.
-    // This test requires a display (guarded by BUDDD_HAS_DISPLAY).
+    // The binary uses headless backend when BUDDD_HAS_DISPLAY=OFF.
+    // The triangle demo runs 120 frames (~2 seconds with frame limiting) then exits.
     const auto binary = buddd_binary_path();
     const auto out_file = temp_filename("buddd_demo_out");
     const auto err_file = temp_filename("buddd_demo_err");
@@ -235,8 +234,9 @@ TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
     auto read_file = [](const std::string& path) -> std::string {
         std::ifstream f(path, std::ios::binary);
         if (!f) return {};
-        return std::string((std::istreambuf_iterator<char>(f)),
-                           std::istreambuf_iterator<char>());
+        std::string content((std::istreambuf_iterator<char>(f)),
+                             std::istreambuf_iterator<char>());
+        return content;
     };
 
     const auto stderr_str = read_file(err_file);
@@ -244,11 +244,5 @@ TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
     std::remove(err_file.c_str());
 
     // The demo should complete (120 frames ~2 seconds, well within 5s timeout)
-    // If the display is available, we should see the completion message.
-    // If the platform/window creation failed, we'll see an error message instead.
-    // We check that either the demo completed or an engine init error occurred.
-    REQUIRE( (stderr_str.find("Demo complete: triangle (120 frames rendered)") != std::string::npos
-              || stderr_str.find("Failed to create") != std::string::npos) );
+    REQUIRE(stderr_str.find("Demo complete: triangle (120 frames rendered)") != std::string::npos);
 }
-
-#endif // BUDDD_HAS_DISPLAY

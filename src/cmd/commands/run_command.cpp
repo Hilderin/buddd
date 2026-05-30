@@ -12,8 +12,18 @@
 namespace be = buddd::engine;
 namespace bc = buddd::cmd;
 
+// Select backend based on display availability
+// CI builds with BUDDD_HAS_DISPLAY=OFF use the headless backend.
+constexpr auto k_run_backend = [] {
+#ifdef BUDDD_HAS_DISPLAY
+    return be::Backend::SDL3;
+#else
+    return be::Backend::Headless;
+#endif
+}();
+
 auto bc::RunCommand::run([[maybe_unused]] int argc, [[maybe_unused]] const char* const* argv) -> int {
-    auto platform = be::Platform::create(be::Backend::SDL3);
+    auto platform = be::Platform::create(k_run_backend);
     if (!platform) {
         std::cerr << "FATAL: " << be::to_string(platform.error()) << "\n";
         return EXIT_FAILURE;
