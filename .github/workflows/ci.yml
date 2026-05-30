@@ -12,20 +12,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            cmake \
-            ninja-build \
-            g++-14 \
-            libgl1-mesa-dev
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Configure with BUDDD_HAS_DISPLAY=OFF
-        run: cmake -DBUDDD_HAS_DISPLAY=OFF -DSDL_UNIX_CONSOLE_BUILD=ON -DCMAKE_CXX_COMPILER=g++-14 --preset debug
+      - name: Build CI Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/ci.Dockerfile
+          tags: buddd-ci:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure (headless)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            --user "$(id -u):$(id -g)" \
+            buddd-ci:latest \
+            cmake --preset debug \
+              -DBUDDD_HAS_DISPLAY=OFF \
+              -DSDL_UNIX_CONSOLE_BUILD=ON \
+              -DCMAKE_CXX_COMPILER=g++-16
 
       - name: Build
-        run: cmake --build --preset debug
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            --user "$(id -u):$(id -g)" \
+            buddd-ci:latest \
+            cmake --build --preset debug
 
       - name: Test
-        run: ctest --preset debug --output-on-failure
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            --user "$(id -u):$(id -g)" \
+            buddd-ci:latest \
+            ctest --preset debug --output-on-failure
