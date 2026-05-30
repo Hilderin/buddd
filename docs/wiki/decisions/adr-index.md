@@ -3,6 +3,7 @@
 - **ADR-001**: `docs/adr/001-result-error-pattern.md` — Establishes `Result<T>` / `Error` as the project-wide error handling pattern.
 - **ADR-005**: `docs/adr/005-optional-ref-component-api.md` — `std::optional<T&>` for component lookup API in the scene graph module.
 - **ADR-006**: `docs/adr/006-rtti-component-dispatch.md` — RTTI-based `dynamic_cast<T*>()` for type-safe component dispatch in the scene graph module.
+- **ADR-008**: `docs/adr/008-ci-docker-infrastructure.md` — Docker-based CI infrastructure with GCC 16+, latest CMake, and reproducible builds.
 
 The current project state was established via:
 

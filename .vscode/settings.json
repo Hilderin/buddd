@@ -10,10 +10,13 @@
         "build/": true,
         "**/CMakeFiles/": true,
         "CMakeCache.txt": true,
-        "**/cmake_install.cmake": true,
-        "CTestTestfile.cmake": true,
+        "**/*.cmake": true,
         "**/Makefile": true,
-        ".wiki-index/": true
+        ".wiki-index/": true,
+        "**/node_modules": true,
+        "**/package-lock.json": true,
+        "**/package.json": true,
+        ".gitignore": true,
     },
     "[cpp]": {
         "editor.defaultFormatter": "ms-vscode.cpptools",
