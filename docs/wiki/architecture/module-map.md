@@ -100,15 +100,37 @@ The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` 
 
 The command-line binary. Links `buddd_engine` as PRIVATE.
 
+Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pair under `src/cmd/commands/`, and `main.cpp` is a thin dispatcher (single if/else-if chain). Shared helper code (not a command itself) lives directly in `src/cmd/`.
+
+### Build system
+
+`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering both `src/cmd/*.cpp` (for `main.cpp` and shared helpers) and `src/cmd/commands/*.cpp` (for command files). New commands can be added by creating files in `src/cmd/commands/` and wiring them into the dispatch — no CMakeLists.txt change needed.
+
+### File structure
+
 | File | Role |
 |---|---|
-| `main.cpp` | Entry point: parses `argc`/`argv`, dispatches to interactive or test mode |
+| `main.cpp` | Thin dispatcher: parse first positional argument, dispatch to the matching command via if/else-if chain, return its exit code. No static helper functions, no engine header includes. |
+| `demo_helpers.h` | Header declaring `buddd::cmd::setup_triangle()` — shared helper for rendering a coloured triangle |
+| `demo_helpers.cpp` | Implementation of `setup_triangle()` extracted from the old monolithic `main.cpp` |
 
-Behavior:
-- No arguments (default mode) → creates an SDL3 window (1024×768), renders a coloured triangle using the full render pipeline (shaders, material, vertex buffer), and runs an interactive render loop until the window is closed by the user
-- `--test` → creates an SDL3 window (800×600), renders a coloured triangle for exactly 120 frames (~2 seconds at 60 FPS), then exits automatically. Processes SDL events to allow early abort via window close
-- `--version` as sole argument → prints `buddd 0.1.0`
-- Any other argument combination → falls through to the default interactive mode
+### Command files (`src/cmd/commands/`)
+
+| File | Role |
+|---|---|
+| `version_command.h` / `version_command.cpp` | `buddd::cmd::VersionCommand` — prints `buddd <version>` from `be::version()` to stdout and exits 0. Extra args silently ignored. |
+| `test_command.h` / `test_command.cpp` | `buddd::cmd::TestCommand` — opens 800×600 window titled "Buddd Engine — Render Test", renders coloured triangle for 120 frames at ~60 FPS, then exits. Warns on stderr if extra args follow `test`. Aborts early if user closes window. |
+| `run_command.h` / `run_command.cpp` | `buddd::cmd::RunCommand` — opens 1024×768 window titled "Buddd Engine", renders coloured triangle interactively until user closes the window. Extra args silently ignored. |
+| `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Extra args silently ignored. |
+
+### Subcommand behavior
+
+- `buddd` (no arguments) or `buddd run` → opens 1024×768 window, interactive render loop until user closes window
+- `buddd test` → opens 800×600 window, automated 120-frame render test, then exits
+- `buddd version` → prints `buddd 0.1.0` to stdout
+- `buddd help` → prints usage information listing all four commands
+- Unknown command → prints `"Unknown command: '<cmd>'"` followed by usage to stderr, exits with code 1
+- Old `--test` and `--version` flags are **dropped** — they produce an unknown command error
 
 ## `buddd_editor` — INTERFACE library placeholder (`src/editor/`)
 
@@ -142,3 +164,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File list, header structure, delegation pattern
 - Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes
 - Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — File directory structure, open questions, draw-methods-as-void exception
+- Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: Command pattern, subcommand structure, file layout
+- Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, CONST-001 compliance

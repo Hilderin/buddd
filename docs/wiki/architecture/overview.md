@@ -97,9 +97,12 @@ src/engine/
 
 ## Key behaviors
 
-- `./build/debug/src/cmd/buddd` — opens a window (1024×768) and renders a coloured triangle interactively until the user closes the window
-- `./build/debug/src/cmd/buddd --test` — opens a window (800×600), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically
-- `./build/debug/src/cmd/buddd --version` — prints `buddd 0.1.0`
+- `./build/debug/src/cmd/buddd` (or `buddd run`) — opens a window (1024×768) and renders a coloured triangle interactively until the user closes the window
+- `./build/debug/src/cmd/buddd test` — opens a window (800×600), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically
+- `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
+- `./build/debug/src/cmd/buddd help` — prints usage information listing all four commands
+- `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
+- Old `--test` and `--version` flags are removed (produce an unknown command error)
 - `ctest --preset debug` — runs tests, all pass
 - `cmake --build --preset debug --target format` — formats all C++ sources
 - `Platform::create(Backend::Headless)` — creates a headless platform (no display needed, used for testing)
@@ -129,3 +132,5 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md)
 - Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Render Pipeline (Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes)
 - Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md)
+- Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System
+- Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md)

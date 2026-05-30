@@ -2,7 +2,7 @@
 
 ## CLI data flow
 
-At the bootstrap stage, the data flow through the CLI binary is minimal:
+At the bootstrap stage, the CLI binary uses a Command pattern dispatch:
 
 ```
 User invocation
@@ -10,21 +10,30 @@ User invocation
       ▼
 main(int argc, char* argv[])
       │
-      ├── argc == 2 && argv[1] == "--version" ?
-      │       ├── YES ──► printf("buddd %s\n", buddd::engine::version().data())
-      │       │               │
-      │       │               └──► stdout: "buddd 0.1.0\n"
-      │       │
-      │       └── NO  ──► printf("Buddd Engine v%s\n", buddd::engine::version().data())
-      │                       │
-      │                       └──► stdout: "Buddd Engine v0.1.0\n"
+      ├── argc < 2 or argv[1] == nullptr ?
+      │       └── YES ──► RunCommand.run(argc, argv) ← default
       │
-      └── return 0
+      ├── argv[1] == "run"     ──► RunCommand.run(argc, argv)
+      ├── argv[1] == "test"    ──► TestCommand.run(argc, argv)
+      ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
+      ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
+      │
+      └── Unknown command ──► fprintf(stderr, "Unknown command: '%s'\n", argv[1])
+                              fwrite(k_usage_text, stderr)
+                              return EXIT_FAILURE
 ```
 
-There are two distinct output formats:
-- **No arguments / unknown arguments** → `Buddd Engine v0.1.0` (human-readable greeting)
-- **`--version` (sole argument)** → `buddd 0.1.0` (machine-parseable version string)
+Each command produces its own output:
+
+| Command | stdout | stderr |
+|---|---|---|
+| `run` / (default) | `"Window opened: 1024x768"` then `"Window closed, shutting down."` | — |
+| `test` | — | `"Render test started: 120 frames"` then `"Render test complete: ..."` (or abort message) |
+| `version` | `"buddd 0.1.0"` | — |
+| `help` | Usage text (4 commands listed) | — |
+| Unknown | — | `"Unknown command: '<cmd>'"` + usage text |
+
+The old `--test` and `--version` flags are removed — they are caught by the unknown-command handler.
 
 ## Test data flow
 
@@ -48,7 +57,7 @@ src/engine/version.cpp  ──►  return "0.1.0";
 ```
 
 It is consumed by:
-- `src/cmd/main.cpp` (via `buddd::engine::version()`)
+- `src/cmd/commands/version_command.cpp` (via `buddd::engine::version()`)
 - `tests/version_test.cpp` (via `buddd::engine::version()`)
 
 The version in `CMakeLists.txt` (`project(buddd VERSION 0.1.0 ...)`) must be kept in sync with `version.cpp` manually — no automation is introduced at bootstrap.
@@ -129,3 +138,5 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — section 7 (`main.cpp` behavior)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — User stories 1-5, Edge cases, Error cases
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior
+- Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: dispatch rules, command behaviors, output contracts
+- Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — Dispatch logic, output format correctness, edge cases
