@@ -9,6 +9,7 @@ permission:
   list: allow
   edit: allow
   bash: allow
+  vision_analyze_image: allow
   external_directory:
     /tmp/** : allow
 ---
@@ -95,6 +96,27 @@ If any test fails:
 4. Repeat until all tests pass.
 
 Do not change test logic to make tests pass — fix the implementation to meet the spec.
+
+### Step 7b — Visual verification (if the feature produces rendered/visual output)
+
+If the feature involves rendering, graphics, framebuffer capture, or any visual/on-screen output:
+
+1. **Build the binary**: `cmake --build --preset debug`
+2. **Capture visual output** using `buddd capture`:
+   ```bash
+   ./build/debug/buddd capture cube [--frame N] /tmp/buddd_verify_<feature>.png
+   ```
+   - Adjust `<scenario>`, `--frame N`, and output path as appropriate for the feature.
+   - If the feature adds a new capture scenario, use that scenario instead of `cube`.
+   - Refer to the spec and implementation contract for expected visual behavior.
+3. **Analyze the captured image** using the `vision_analyze_image` tool:
+   - Call it with the captured image path.
+   - Set `acceptance_criteria` describing what the spec says the visual output should look like (colors, shapes, dimensions, camera position, objects, etc.).
+   - Use `expected` to describe what a correct rendering should show.
+   - Optionally set `known_tolerances` for acceptable deviations.
+4. **Iterate if needed**: If visual analysis reveals issues (wrong colors, wrong camera angle, missing objects, incorrect dimensions, etc.), fix the implementation, rebuild, re-capture, and re-verify.
+
+> **When to skip**: If the feature has no visual/rendered output (e.g., a pure math utility, a CLI refactor, a build system change), skip this step.
 
 ### Step 8 — Release build (if contract requires)
 
