@@ -10,6 +10,8 @@ The current project state was established via:
 | [IMPL-001](/docs/specs/project-setup/implementation-contract.md) | Implementation contract | Accepted |
 | [SPEC-002](/docs/specs/platform-abstraction/spec.md) | Product specification | Accepted |
 | [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) | Implementation contract | Accepted |
+| [SPEC-005](/docs/specs/render-pipeline/spec.md) | Product specification | Accepted |
+| [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) | Implementation contract | Accepted |
 
 The following design decisions established by SPEC-002 are recorded as accepted specifications (not ADRs — they remain within the spec/contract framework):
 

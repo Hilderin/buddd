@@ -61,14 +61,38 @@ Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, gu
 
 ### Render submodule (`render/`)
 
+The render submodule now provides a full pipeline abstraction: shader compilation, material linking, vertex/index buffer management, and draw calls. All abstract types are backend-agnostic; concrete implementations exist for OpenGL 4.5 Core and Headless.
+
 | File | Role |
 |---|---|
-| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()` |
+| `primitive_topology.h` | Public header: `PrimitiveTopology` enum (`Triangles`, `TriangleStrip`, `Lines`, `LineStrip`, `Points`). Header-only value type. |
+| `vertex_format.h` | Public header: `VertexAttributeType` enum (11 types), `VertexAttribute` struct, `VertexFormat` struct. Header-only value types. |
+| `shader.h` | Public header: `ShaderType` enum (`Vertex`, `Fragment`), abstract `Shader` class with `type()` pure virtual. Non-copyable, non-movable. |
+| `material.h` | Public header: abstract `Material` class with 6 `set_uniform` overloads (`float`, `int32_t`, `bool`, `math::Vec3`, `math::Vec4`, `math::Mat4`) and `has_uniform()`. Non-copyable, non-movable. |
+| `vertex_buffer.h` | Public header: abstract `VertexBuffer` class with `format()` pure virtual. Non-copyable, non-movable. |
+| `index_buffer.h` | Public header: `IndexType` enum (`Uint16`, `Uint32`), abstract `IndexBuffer` class with `type()` pure virtual. Non-copyable, non-movable. |
+| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_vertex_buffer`, `create_index_buffer`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. |
 | `render_device.cpp` | Factory implementation: dispatches to OpenGL or Headless backend based on `native_handle()` value |
 | `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class wrapping `SDL_Window*` and `SDL_GLContext` |
-| `render_device_opengl.cpp` | OpenGL 4.5 Core implementation: `glClear` on begin, `SDL_GL_SwapWindow` on end, `SDL_GL_DestroyContext` on destruction |
-| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class |
-| `render_device_headless.cpp` | Headless implementation: all methods no-op except `size()` |
+| `render_device_opengl.cpp` | OpenGL 4.5 Core implementation: GLSL compilation via `glCreateShader`/`glCompileShader`, program linking via `glCreateProgram`/`glLinkProgram`, VAO/VBO/IBO management via DSA APIs (`glCreateVertexArrays`, `glNamedBufferStorage`, etc.), and draw dispatch via `glDrawArrays`/`glDrawElements` |
+| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class with diagnostic counters |
+| `render_device_headless.cpp` | Headless implementation: stores shader source and vertex data in memory; simulates compilation errors via `#error` marker and linking errors via vertex/fragment I/O mismatch detection; draw calls are no-ops |
+| `shader_opengl.h` | Private header: `ShaderOpenGL` concrete class wrapping a `GLuint` shader handle |
+| `shader_opengl.cpp` | OpenGL shader backend: resource lifetime managed via `glCreateShader`/`glDeleteShader` |
+| `shader_headless.h` | Private header: `ShaderHeadless` concrete class storing type and GLSL source string |
+| `shader_headless.cpp` | Headless shader backend: stores source for linking-error simulation and uniform discovery |
+| `material_opengl.h` | Private header: `MaterialOpenGL` concrete class with `glGetUniformLocation`-based uniform management and location caching |
+| `material_opengl.cpp` | OpenGL material backend: uniform dispatch via `glUniform1f`/`glUniform1i`/`glUniform3fv`/`glUniform4fv`/`glUniformMatrix4fv`; program destruction via `glDeleteProgram` |
+| `material_headless.h` | Private header: `MaterialHeadless` concrete class with `std::unordered_set` of known uniform names and `std::variant`-based uniform value storage |
+| `material_headless.cpp` | Headless material backend: in-memory uniform state tracking; `has_uniform` checks known names + previously-set names; `set_uniform` returns `UniformNotFound` for unknown names |
+| `vertex_buffer_opengl.h` | Private header: `VertexBufferOpenGL` wrapping VAO and VBO handles |
+| `vertex_buffer_opengl.cpp` | OpenGL vertex buffer backend: VAO/VBO creation via `glCreateVertexArrays`/`glCreateBuffers`, attribute configuration via `glVertexArrayAttribFormat`, `glVertexArrayVertexBuffer`, `glVertexArrayAttribBinding` |
+| `vertex_buffer_headless.h` | Private header: `VertexBufferHeadless` storing format and vertex data in memory |
+| `vertex_buffer_headless.cpp` | Headless vertex buffer backend: data stored in `std::vector<std::byte>` |
+| `index_buffer_opengl.h` | Private header: `IndexBufferOpenGL` wrapping IBO handle |
+| `index_buffer_opengl.cpp` | OpenGL index buffer backend: buffer creation via `glCreateBuffers`/`glNamedBufferStorage` |
+| `index_buffer_headless.h` | Private header: `IndexBufferHeadless` storing type and index data in memory |
+| `index_buffer_headless.cpp` | Headless index buffer backend: data stored in `std::vector<std::byte>` |
 
 The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` (i.e., `src/engine/`), allowing consumers to `#include "error.h"`, `#include "platform/platform.h"`, etc.
 
@@ -78,12 +102,13 @@ The command-line binary. Links `buddd_engine` as PRIVATE.
 
 | File | Role |
 |---|---|
-| `main.cpp` | Entry point: parses `argc`/`argv`, calls `buddd::engine::version()`, prints output |
+| `main.cpp` | Entry point: parses `argc`/`argv`, dispatches to interactive or test mode |
 
 Behavior:
-- No arguments → prints `Buddd Engine v0.1.0`
+- No arguments (default mode) → creates an SDL3 window (1024×768), renders a coloured triangle using the full render pipeline (shaders, material, vertex buffer), and runs an interactive render loop until the window is closed by the user
+- `--test` → creates an SDL3 window (800×600), renders a coloured triangle for exactly 120 frames (~2 seconds at 60 FPS), then exits automatically. Processes SDL events to allow early abort via window close
 - `--version` as sole argument → prints `buddd 0.1.0`
-- Any other argument combination → falls through to the greeting branch
+- Any other argument combination → falls through to the default interactive mode
 
 ## `buddd_editor` — INTERFACE library placeholder (`src/editor/`)
 
@@ -115,3 +140,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — File directory structure, Existing conventions to follow
 - Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Math type specifications, memory layout, operations, GLM integration
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File list, header structure, delegation pattern
+- Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes
+- Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — File directory structure, open questions, draw-methods-as-void exception

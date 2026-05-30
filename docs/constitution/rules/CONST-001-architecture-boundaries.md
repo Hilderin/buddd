@@ -29,6 +29,9 @@ Blocking. Code that violates this boundary must not be merged.
 None. New platform or graphics library dependencies must be added inside
 `src/engine/` following the same abstraction pattern.
 
+> See also amendments AMEND-2026-001 and AMEND-2026-002 below for narrow,
+> auditable exceptions to this rule.
+
 ---
 
 ## Amendment AMEND-2026-001 — SDL3 Test File Exception
@@ -89,3 +92,17 @@ targeting the SDL3 backend. Existing code outside `tests/` is unaffected.
 - **Date:** 2026-05-29
 - **Approving authority:** Guillaume (user)
 - **Process:** Explicit human ratification of the amendment proposal.
+
+---
+
+## Amendment AMEND-2026-002 — CLI binary SDL3 event polling exception (SUPERSEDED)
+
+### Status
+`Superseded`
+
+This amendment was proposed during the SPEC-005 / IMPL-005 (Render Pipeline) implementation
+but was **superseded by design**: instead of allowing `src/cmd/main.cpp` to include
+`<SDL3/SDL.h>`, the engine added `Platform::poll_events() -> bool` to the abstract `Platform`
+interface. This preserves the CONST-001 architecture boundary without requiring an exception.
+
+See ADR-003 for the full rationale of the chosen approach.

@@ -22,6 +22,11 @@ public:
 
     virtual auto create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> = 0;
 
+    /// Polls the platform event queue.
+    /// Returns false if the user requested to quit (e.g., window close button),
+    /// true otherwise. In headless mode, always returns true.
+    virtual auto poll_events() -> bool = 0;
+
     Platform(const Platform&) = delete;
     auto operator=(const Platform&) -> Platform& = delete;
     Platform(Platform&&) = delete;

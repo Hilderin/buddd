@@ -85,7 +85,8 @@ Can be run in parallele:
 - adr-agent
 - constitution-agent
   ↓
-wiki-agent
+After adr-agent and constitution-agent which could write docs needed for the wiki, you can execute:
+- wiki-agent
   ↓
 ** wait before all other agents are done**
 governance-reviewer

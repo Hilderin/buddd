@@ -11,6 +11,11 @@ struct Error {
         InitFailed,
         WindowCreationFailed,
         RenderDeviceCreationFailed,
+        ShaderCompilationFailed,
+        LinkingFailed,
+        ResourceCreationFailed,
+        InvalidArgument,
+        UniformNotFound,
         Unsupported,
         Unknown
     };
@@ -30,8 +35,13 @@ inline auto to_string(const Error& error) -> std::string {
         case Error::Category::InitFailed:                category_str = "InitFailed"; break;
         case Error::Category::WindowCreationFailed:      category_str = "WindowCreationFailed"; break;
         case Error::Category::RenderDeviceCreationFailed: category_str = "RenderDeviceCreationFailed"; break;
-        case Error::Category::Unsupported:               category_str = "Unsupported"; break;
-        case Error::Category::Unknown:                   category_str = "Unknown"; break;
+        case Error::Category::ShaderCompilationFailed:    category_str = "ShaderCompilationFailed"; break;
+        case Error::Category::LinkingFailed:              category_str = "LinkingFailed"; break;
+        case Error::Category::ResourceCreationFailed:     category_str = "ResourceCreationFailed"; break;
+        case Error::Category::InvalidArgument:            category_str = "InvalidArgument"; break;
+        case Error::Category::UniformNotFound:            category_str = "UniformNotFound"; break;
+        case Error::Category::Unsupported:                category_str = "Unsupported"; break;
+        case Error::Category::Unknown:                    category_str = "Unknown"; break;
     }
     return category_str + ": " + error.message + " (code " + std::to_string(error.code) + ")";
 }

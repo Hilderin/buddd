@@ -25,6 +25,21 @@
 | **BUDDD_HAS_DISPLAY** | CMake option (default `ON`) that controls whether SDL3 backend tests are compiled. Set to `OFF` (e.g., `cmake -DBUDDD_HAS_DISPLAY=OFF`) to exclude SDL3 backend tests in headless environments like CI. |
 | **Offscreen video driver** | An SDL3 video driver (set via `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`) that renders to an offscreen framebuffer instead of a physical display. Used by SDL3 backend tests so they run in any environment without requiring a display server. |
 
+### Render pipeline terms
+
+| Term | Definition |
+|---|---|
+| **Shader** | Abstract interface class (`buddd::engine::Shader`) representing a single compiled shader stage (vertex or fragment). Created from GLSL source strings via `RenderDevice::create_shader()`. Non-copyable, non-movable. Backends: `ShaderOpenGL`, `ShaderHeadless`. |
+| **ShaderType** | Enum class (`buddd::engine::ShaderType`) with values `Vertex` and `Fragment`. Selects the shader stage at creation time. |
+| **Material** | Abstract interface class (`buddd::engine::Material`) representing a linked shader program combining one vertex and one fragment shader. Provides 6 `set_uniform()` overloads (`float`, `int32_t`, `bool`, `math::Vec3`, `math::Vec4`, `math::Mat4`) and `has_uniform()`. Non-copyable, non-movable. Backends: `MaterialOpenGL`, `MaterialHeadless`. |
+| **VertexFormat** | Value struct (`buddd::engine::VertexFormat`) describing the layout of vertex data. Contains `uint32_t stride` and `std::vector<VertexAttribute> attributes`. |
+| **VertexAttribute** | Value struct (`buddd::engine::VertexAttribute`) with `uint32_t location`, `VertexAttributeType type`, `uint32_t offset`, and `bool normalized` (default `false`). Describes a single vertex attribute. |
+| **VertexAttributeType** | Enum class (`buddd::engine::VertexAttributeType`) with 11 values: `Float`, `Float2`, `Float3`, `Float4`, `Int`, `Int2`, `Int3`, `Int4`, `UByte`, `UByte4`, `UByte4Norm`. Controls how vertex data is interpreted by the GPU. |
+| **PrimitiveTopology** | Enum class (`buddd::engine::PrimitiveTopology`) with values `Triangles`, `TriangleStrip`, `Lines`, `LineStrip`, `Points`. Controls the draw mode for `RenderDevice::draw()` and `draw_indexed()`. |
+| **VertexBuffer** | Abstract interface class (`buddd::engine::VertexBuffer`) representing a GPU buffer for vertex data. Created from a raw byte span with a fixed `VertexFormat`. Exposes `format()`. Non-copyable, non-movable. Backends: `VertexBufferOpenGL`, `VertexBufferHeadless`. |
+| **IndexType** | Enum class (`buddd::engine::IndexType`) with values `Uint16` and `Uint32`. Controls index buffer element size. |
+| **IndexBuffer** | Abstract interface class (`buddd::engine::IndexBuffer`) representing a GPU buffer for index data. Created from a raw byte span with a fixed `IndexType`. Exposes `type()`. Non-copyable, non-movable. Backends: `IndexBufferOpenGL`, `IndexBufferHeadless`. |
+
 ### Math module terms
 
 | Term | Definition |
@@ -53,3 +68,5 @@ The project uses [Semantic Versioning](https://semver.org/) (major.minor.patch).
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — API compatibility impact
 - Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Type specifications, memory layout, operations, GLM integration
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File definitions, delegation patterns
+- Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology definitions
+- Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — Implementation behaviour, Error::Category values, draw-methods-as-void exception

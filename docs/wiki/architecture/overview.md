@@ -75,21 +75,37 @@ src/engine/
 │   ├── window_sdl3.h/cpp    # SDL3 backend (WindowSDL3)
 │   └── window_headless.h/cpp # Headless backend (WindowHeadless)
 └── render/
-    ├── render_device.h      # Abstract RenderDevice class
-    ├── render_device.cpp    # RenderDevice::create() factory
-    ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (RenderDeviceOpenGL)
-    └── render_device_headless.h/cpp # Headless backend (RenderDeviceHeadless)
+    ├── primitive_topology.h        # PrimitiveTopology enum
+    ├── vertex_format.h             # VertexAttributeType, VertexAttribute, VertexFormat
+    ├── shader.h                    # Abstract Shader class, ShaderType enum
+    ├── material.h                  # Abstract Material class (6 set_uniform overloads)
+    ├── vertex_buffer.h             # Abstract VertexBuffer class
+    ├── index_buffer.h              # IndexType enum, abstract IndexBuffer class
+    ├── render_device.h             # Abstract RenderDevice class (factories + draw)
+    ├── render_device.cpp           # RenderDevice::create() factory
+    ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (+ factory/draw overrides)
+    ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides)
+    ├── shader_opengl.h/cpp         # OpenGL shader backend (ShaderOpenGL)
+    ├── shader_headless.h/cpp       # Headless shader backend (ShaderHeadless)
+    ├── material_opengl.h/cpp       # OpenGL material backend (MaterialOpenGL)
+    ├── material_headless.h/cpp     # Headless material backend (MaterialHeadless)
+    ├── vertex_buffer_opengl.h/cpp  # OpenGL vertex buffer backend (VertexBufferOpenGL)
+    ├── vertex_buffer_headless.h/cpp# Headless vertex buffer backend (VertexBufferHeadless)
+    ├── index_buffer_opengl.h/cpp   # OpenGL index buffer backend (IndexBufferOpenGL)
+    └── index_buffer_headless.h/cpp # Headless index buffer backend (IndexBufferHeadless)
 ```
 
 ## Key behaviors
 
-- `./build/debug/src/cmd/buddd` — prints `Buddd Engine v0.1.0`
+- `./build/debug/src/cmd/buddd` — opens a window (1024×768) and renders a coloured triangle interactively until the user closes the window
+- `./build/debug/src/cmd/buddd --test` — opens a window (800×600), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically
 - `./build/debug/src/cmd/buddd --version` — prints `buddd 0.1.0`
 - `ctest --preset debug` — runs tests, all pass
 - `cmake --build --preset debug --target format` — formats all C++ sources
 - `Platform::create(Backend::Headless)` — creates a headless platform (no display needed, used for testing)
 - `Platform::create(Backend::SDL3)` — creates an SDL3-based platform (uses offscreen video driver in tests; requires a display in production)
 - Factory methods return `Result<T>` (`std::expected<T, Error>`) for error propagation
+- **Exception to ADR-001**: `RenderDevice::draw()` and `draw_indexed()` return `void` rather than `Result<void>`, because draw calls are on a performance-sensitive hot path where per-frame error checking is impractical. Precondition violations are undefined behaviour.
 
 ## Architecture boundary
 
@@ -111,3 +127,5 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md)
 - Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Math Foundations (Vec2, Vec3, Vec4, Mat4, Quat, Camera)
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md)
+- Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Render Pipeline (Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes)
+- Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md)

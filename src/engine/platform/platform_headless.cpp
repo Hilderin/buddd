@@ -5,6 +5,10 @@
 
 namespace buddd::engine {
 
+auto PlatformHeadless::poll_events() -> bool {
+    return true;  // Headless: never quits.
+}
+
 auto PlatformHeadless::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {
     if (config.width <= 0 || config.height <= 0) {
         return make_error(Error::Category::WindowCreationFailed, "Invalid window dimensions");

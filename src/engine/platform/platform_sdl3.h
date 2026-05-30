@@ -9,6 +9,7 @@ public:
     ~PlatformSDL3() override;
 
     auto create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> override;
+    auto poll_events() -> bool override;
 
     PlatformSDL3(const PlatformSDL3&) = delete;
     auto operator=(const PlatformSDL3&) -> PlatformSDL3& = delete;

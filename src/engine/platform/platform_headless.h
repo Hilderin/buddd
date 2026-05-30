@@ -9,6 +9,7 @@ public:
     ~PlatformHeadless() override = default;
 
     auto create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> override;
+    auto poll_events() -> bool override;
 
     PlatformHeadless(const PlatformHeadless&) = delete;
     auto operator=(const PlatformHeadless&) -> PlatformHeadless& = delete;

@@ -11,6 +11,17 @@ PlatformSDL3::~PlatformSDL3() {
     std::cerr << "Platform shutdown (SDL3)\n";
 }
 
+auto PlatformSDL3::poll_events() -> bool {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_EVENT_QUIT) {
+            return false;
+        }
+        // Other events are discarded — input handling is future work.
+    }
+    return true;
+}
+
 auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {
     if (config.width <= 0 || config.height <= 0) {
         return make_error(Error::Category::WindowCreationFailed, "Invalid window dimensions");
