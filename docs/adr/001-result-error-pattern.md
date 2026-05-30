@@ -14,7 +14,7 @@ The decision was made concretely in SPEC-002 (Platform Abstraction Layer) which 
 
 The following factors influenced the decision:
 
-- **C++26 availability**: The project targets C++26 compilers (GCC 14+, Clang 19+) which provide `std::expected` natively. No external library is needed.
+- **C++26 availability**: The project targets C++26 compilers (GCC 16+, Clang 22+) which provide `std::expected` natively. No external library is needed.
 - **No-exceptions environments**: The project may target platforms or build configurations where C++ exceptions are disabled (`-fno-exceptions`). `std::expected` works in such environments; exceptions do not.
 - **Explicit error paths**: The project constitution principles prefer "explicit contracts over implicit assumptions." `std::expected` makes error paths visible in function signatures rather than hiding them in implicit exception propagation.
 - **Composability**: `std::expected` supports monadic operations (`and_then`, `or_else`, `transform`, `transform_error`) which enable concise error chaining as the codebase grows.
@@ -94,7 +94,7 @@ We adopt the following as the project-wide error handling pattern:
 
 - **Verbose**: Every error-returning function requires `-> Result<T>` and every call site must handle or propagate the error.
 - **Learning curve**: Developers new to `std::expected` must learn monadic patterns or write explicit `.has_value()` / `.error()` branches.
-- **C++26 requirement**: All compilers in the support matrix must provide `std::expected` — currently GCC 14+, Clang 19+, MSVC 2025+.
+- **C++26 requirement**: All compilers in the support matrix must provide `std::expected` — currently GCC 16+, Clang 22+, MSVC 2025+.
 - **Not zero-cost**: `std::expected` has a small size and copy overhead compared to raw error codes, though it is typically optimized well.
 
 ### Migration
