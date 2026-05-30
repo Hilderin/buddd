@@ -5,11 +5,12 @@
 ```
 buddd ──PRIVATE──► buddd_engine ──PUBLIC──► SDL3::SDL3
                        │                    ├──► OpenGL::GL
-                       │                    └──► glm::glm
+                       │                    ├──► glm::glm
+                       │                    └──► stb (PRIVATE, FetchContent)
                        │
 buddd_tests ──PRIVATE─┤
-              ──PRIVATE──► Catch2::Catch2WithMain (external)
-                          │
+               ──PRIVATE──► Catch2::Catch2WithMain (external)
+                           │
 buddd_editor            (standalone, no dependencies)
 ```
 
@@ -22,6 +23,7 @@ buddd_editor            (standalone, no dependencies)
 | `buddd_engine` | `SDL3::SDL3` | PUBLIC | SDL3 library for windowing, input, and GL context management |
 | `buddd_engine` | `OpenGL::GL` | PUBLIC | OpenGL rendering (4.5 Core profile) |
 | `buddd_engine` | `glm::glm` | PUBLIC | GLM header-only math library — provides underlying implementation for Vec2, Vec3, Vec4, Mat4, Quat wrappers |
+| `buddd_engine` | `stb` | PRIVATE | Single-header public-domain library for PNG I/O (stb_image + stb_image_write). Fetched via FetchContent. |
 
 ## External dependencies
 
@@ -31,6 +33,7 @@ buddd_editor            (standalone, no dependencies)
 | **SDL3** | release-3.2.30 | `https://github.com/libsdl-org/SDL.git` | CMake `FetchContent` (automatic download at configure time) |
 | **GLM** | 1.0.1 | `https://github.com/g-truc/glm.git` | CMake `FetchContent` (automatic download at configure time) — header-only, no compiled library |
 | **OpenGL** | 4.5 Core | System-provided (`libgl-dev` or equivalent) | `find_package(OpenGL REQUIRED)` |
+| **stb** | `31c1ad37456438565541f9958214b6e762fb4` | `https://github.com/nothings/stb.git` | CMake `FetchContent` (automatic download at configure time) — header-only, only `#include` path needed. |
 
 - Catch2, SDL3, and GLM are fetched once and cached in the build directory; subsequent configures use the cached copy.
 - Compiled dependencies that are large or slow to debug (notably SDL3) are built with `-DCMAKE_BUILD_TYPE=Release` via `CMAKE_ARGS` in their `FetchContent_Declare` to avoid debugger startup slowness from their debug symbols. Header-only dependencies (GLM) are unaffected. See `src/engine/CMakeLists.txt` for the SDL3 declaration, [ADR-007](/docs/adr/007-release-dependency-build.md) for the full rationale, and the [setup guide](/docs/wiki/engineering/setup.md) for details.
@@ -59,6 +62,7 @@ The project requires OpenGL 4.5 Core profile headers at build time. On Linux the
 - The headless backend has **zero** external dependencies and is always compiled alongside the SDL3+OpenGL backend.
 - `buddd_engine` links `SDL3::SDL3`, `OpenGL::GL`, and `glm::glm` as **PUBLIC** so that consumers inheriting the include paths can use SDL3, OpenGL, and GLM types **inside** `src/engine/` only.
 - GLM is header-only — no compiled library, no system dependency. GLM types are never to be included directly outside `src/engine/math/` (enforced by code review).
+- stb is a **PRIVATE** dependency of `buddd_engine`, included only in `src/engine/image/`. It is not exposed outside the engine and is not accessible to consumers of the engine library.
 
 ## Architecture boundary
 
@@ -77,3 +81,5 @@ The GLM boundary specifically:
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt requirements, Done criteria
 - Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Architecture boundary (no GLM outside `src/engine/math/`), GLM integration
 - Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — Files allowed to change, Architecture boundary enforcement
+- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)

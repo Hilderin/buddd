@@ -378,4 +378,9 @@ auto RenderDeviceHeadless::draw_indexed(
 #endif
 }
 
+auto RenderDeviceHeadless::read_pixels() -> Result<ImageBuffer> {
+    return make_error(Error::Category::Unsupported,
+        "read_pixels is not supported in headless mode");
+}
+
 } // namespace buddd::engine

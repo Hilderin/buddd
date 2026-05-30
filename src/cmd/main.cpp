@@ -1,3 +1,4 @@
+#include "commands/capture_command.h"
 #include "commands/demo_command.h"
 #include "commands/help_command.h"
 #include "commands/run_command.h"
@@ -31,6 +32,10 @@ auto main(int argc, char* argv[]) -> int {
 
     if (cmd == "help") {
         return bc::HelpCommand{}.run(argc, argv);
+    }
+
+    if (cmd == "capture") {
+        return bc::CaptureCommand{}.run(argc, argv);
     }
 
     // Unknown command (includes "test", "--test", "--version", etc.)

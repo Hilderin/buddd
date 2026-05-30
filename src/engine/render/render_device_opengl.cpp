@@ -8,6 +8,7 @@
 #include <SDL3/SDL_opengl.h>
 
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -63,6 +64,13 @@ auto primitive_topology_to_string(PrimitiveTopology topology) -> const char* {
     return "Unknown";
 }
 
+/// Formats a GLenum as "0x" followed by 4 lowercase hex digits.
+auto to_hex_string(GLenum value) -> std::string {
+    char buf[12];
+    std::snprintf(buf, sizeof(buf), "0x%04x", static_cast<unsigned int>(value));
+    return std::string(buf);
+}
+
 } // anonymous namespace
 
 // ============================================================================
@@ -80,6 +88,7 @@ auto RenderDeviceOpenGL::begin_frame() -> void {
     int w, h;
     SDL_GetWindowSize(window_, &w, &h);
     glViewport(0, 0, w, h);
+    glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -314,6 +323,40 @@ auto RenderDeviceOpenGL::draw_indexed(
     std::cerr << "Draw indexed: " << primitive_topology_to_string(topology)
               << " " << index_count << " indices\n";
 #endif
+}
+
+// ============================================================================
+// read_pixels
+// ============================================================================
+
+auto RenderDeviceOpenGL::read_pixels() -> Result<ImageBuffer> {
+    auto [width, height] = size();
+
+    ImageBuffer buffer;
+    buffer.width = width;
+    buffer.height = height;
+    buffer.channels = 4;  // RGBA
+    buffer.data.resize(static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
+
+    // Read from the back buffer (where we draw). We call read_pixels BEFORE
+    // end_frame() to capture the freshly rendered frame before the buffer swap.
+    glReadBuffer(GL_BACK);
+
+    // Set pixel storage alignment to 1 (tightly packed)
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
+    // Clear previous GL error
+    glGetError();
+
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data.data());
+
+    GLenum gl_error = glGetError();
+    if (gl_error != GL_NO_ERROR) {
+        return make_error(Error::Category::ReadbackFailed,
+            "glReadPixels failed with error code " + to_hex_string(gl_error));
+    }
+
+    return buffer;
 }
 
 } // namespace buddd::engine

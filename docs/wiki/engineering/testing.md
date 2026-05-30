@@ -44,6 +44,9 @@ The project includes CLI integration tests tagged `[cli]` that invoke the `buddd
 | `buddd test is unknown command` | stderr contains `"Unknown command: 'test'"`; exit code 1 |
 | `buddd demo triangle runs and completes` | stderr contains `"Demo complete: triangle (120 frames rendered)"` or an engine init error |
 | `buddd demo cube runs and completes` | stderr contains `"Demo complete: cube (120 frames rendered)"` or an engine init error |
+| `buddd capture with no args prints usage and exits 1` | stderr contains `"Usage: buddd capture <scenario>"`; exit code 1 |
+| `buddd capture unknown_scenario prints error and exits 1` | stderr contains `"Unknown capture scenario: 'unknown_scenario'"`; exit code 1 |
+| `buddd help output includes capture` | stdout contains `"capture"` in command list |
 
 ### Headless platform abstraction tests
 
@@ -101,6 +104,23 @@ Tags used: `[scene]`, `[entity_id]`, `[transform]`, `[component]`, `[entity]`, `
 | UB contract | T-41 to T-42 | Null entity `get_component` nullopt, null entity `child_count` zero |
 | Edge cases | T-43 to T-49 | Multiple flushes, World destructor with pending entities, destroyed visible in parent before flush, reverse depth order, component destructor called, World destruction with pending, stale EntityId after flush |
 
+### Image / capture tests
+
+The image test suite (`tests/image_tests.cpp`) provides unit tests for `ImageBuffer`, `Image`, PNG I/O, and error handling. All tests are **headless** (no display, no GPU required) — they use stb_image and stb_image_write which are CPU-only operations. The test file is registered in `tests/CMakeLists.txt` (auto-discovered via the `*_tests.cpp` glob).
+
+Tags used: `[image]`.
+
+| Category | Test case coverage |
+|---|---|
+| ImageBuffer | Default construction (zero-initialised aggregate) |
+| Image::create validation | Zero width, zero height, zero channels, mismatched data size — each returns `InvalidArgument` error |
+| Row-flipping | 4×2 greyscale buffer: bottom row = 0xFF, top row = 0x00; after create, image row 0 = 0x00, row 1 = 0xFF |
+| Save/load round-trip | Create, save to temp PNG, verify magic bytes (`\x89PNG`), load back, compare pixel data |
+| Load error cases | Non-existent file → `IoFailed`; corrupt file → `IoFailed` |
+| Copy/move semantics | Static asserts for non-copyable; move construction transfers ownership; moved-from source has empty data |
+| Accessors | width/height/channels/data() return stored values |
+| Save error cases | Non-existent directory → `IoFailed`; path is a directory → `IoFailed` |
+
 ### Model / cube tests
 
 The model test suite (`tests/model_tests.cpp`) provides 24 Catch2 v3 test cases covering the `Model` utility class and cube data verification. All tests are **headless** (no display, no GPU required) and are compiled in **both** `BUDDD_HAS_DISPLAY` branches. The test file is registered in `tests/CMakeLists.txt`.
@@ -149,3 +169,5 @@ Tags used: `[model]`, `[cube]`.
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Required tests (T-01 through T-49), test conventions, pending-destroy contract verification
 - Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Acceptance criteria (AC-001 through AC-027), test coverage requirements
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Required tests (T-01 through T-24), headless test conventions
+- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)

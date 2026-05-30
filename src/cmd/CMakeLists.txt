@@ -2,6 +2,7 @@ file(GLOB_RECURSE CMD_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/commands/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/demo/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/capture/*.cpp
 )
 
 add_executable(buddd ${CMD_SOURCES})

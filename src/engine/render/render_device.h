@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.h"
+#include "image/image_buffer.h"
 
 #include <cstddef>
 #include <memory>
@@ -64,6 +65,13 @@ public:
         uint32_t index_count,
         uint32_t start_index = 0
     ) -> void = 0;
+
+    /// Reads the current framebuffer contents into an ImageBuffer.
+    /// The returned ImageBuffer has bottom-left pixel origin (OpenGL convention).
+    /// The caller should use Image::create() to flip rows to top-left origin.
+    /// @return ImageBuffer with width, height, channels=4, raw RGBA data.
+    ///         Returns an error if the backend does not support readback.
+    virtual auto read_pixels() -> Result<ImageBuffer> = 0;
 
     RenderDevice(const RenderDevice&) = delete;
     auto operator=(const RenderDevice&) -> RenderDevice& = delete;

@@ -19,7 +19,7 @@ The engine library is the core of the project. It provides a version API, a math
 
 | File | Role |
 |---|---|
-| `error.h` | Public header: defines `Error` struct (with `Category` enum, `int code`, `std::string message`), `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
+| `error.h` | Public header: defines `Error` struct (with `Category` enum: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `Unknown`), `int code`, `std::string message`, `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
 
 ### Math submodule (`math/`)
 
@@ -75,6 +75,16 @@ Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieva
 | `world.h` | `World` class — top-level container managing entity lifecycle, tree hierarchy, deferred destruction. Template methods for component dispatch (`add_component`, `get_component`, `remove_component`) defined inline. |
 | `world.cpp` | World implementation including internal `EntityNode` type, slot-based storage, `flush_destroyed()` logic, and `mark_for_destroy()` iterative traversal. |
 
+### Image submodule (`image/`)
+
+All types in namespace `buddd::engine`. Provides pixel buffer representation and PNG I/O via stb_image/stb_image_write. Depends on `error.h` for `Result<T>` types.
+
+| File | Role |
+|---|---|
+| `image_buffer.h` | `ImageBuffer` aggregate struct — `int width`, `int height`, `int channels`, `std::vector<std::byte> data`. Pure aggregate, no methods. |
+| `image.h` | `Image` class — static `create(const ImageBuffer&) -> Result<Image>` (validates, flips rows), static `load(std::string_view) -> Result<Image>` (PNG via stb_image), `save(std::string_view) const -> Result<void>` (PNG via stb_image_write), and accessors. Non-copyable, movable. |
+| `image.cpp` | Image implementation: row-flipping logic (bottom-left → top-left), stb_image/stb_image_write implementation via `#define STB_IMAGE_IMPLEMENTATION` / `STB_IMAGE_WRITE_IMPLEMENTATION`. |
+
 ### Render submodule (`render/`)
 
 The render submodule now provides a full pipeline abstraction: shader compilation, material linking, vertex/index buffer management, and draw calls. All abstract types are backend-agnostic; concrete implementations exist for OpenGL 4.5 Core and Headless.
@@ -87,11 +97,11 @@ The render submodule now provides a full pipeline abstraction: shader compilatio
 | `material.h` | Public header: abstract `Material` class with 6 `set_uniform` overloads (`float`, `int32_t`, `bool`, `math::Vec3`, `math::Vec4`, `math::Mat4`) and `has_uniform()`. Non-copyable, non-movable. |
 | `vertex_buffer.h` | Public header: abstract `VertexBuffer` class with `format()` pure virtual. Non-copyable, non-movable. |
 | `index_buffer.h` | Public header: `IndexType` enum (`Uint16`, `Uint32`), abstract `IndexBuffer` class with `type()` pure virtual. Non-copyable, non-movable. |
-| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_vertex_buffer`, `create_index_buffer`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. |
+| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_vertex_buffer`, `create_index_buffer`, `read_pixels()`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. |
 | `render_device.cpp` | Factory implementation: dispatches to OpenGL or Headless backend based on `native_handle()` value |
-| `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class wrapping `SDL_Window*` and `SDL_GLContext` |
+| `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class wrapping `SDL_Window*` and `SDL_GLContext` and `glReadPixels` framebuffer readback |
 | `render_device_opengl.cpp` | OpenGL 4.5 Core implementation: GLSL compilation via `glCreateShader`/`glCompileShader`, program linking via `glCreateProgram`/`glLinkProgram`, VAO/VBO/IBO management via DSA APIs (`glCreateVertexArrays`, `glNamedBufferStorage`, etc.), and draw dispatch via `glDrawArrays`/`glDrawElements` |
-| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class with diagnostic counters |
+| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class with diagnostic counters and unconditional `read_pixels()` error |
 | `render_device_headless.cpp` | Headless implementation: stores shader source and vertex data in memory; simulates compilation errors via `#error` marker and linking errors via vertex/fragment I/O mismatch detection; draw calls are no-ops |
 | `shader_opengl.h` | Private header: `ShaderOpenGL` concrete class wrapping a `GLuint` shader handle |
 | `shader_opengl.cpp` | OpenGL shader backend: resource lifetime managed via `glCreateShader`/`glDeleteShader` |
@@ -137,7 +147,8 @@ Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pa
 | `version_command.h` / `version_command.cpp` | `buddd::cmd::VersionCommand` — prints `buddd <version>` from `be::version()` to stdout and exits 0. Extra args silently ignored. |
 | `demo_command.h` / `demo_command.cpp` | `buddd::cmd::DemoCommand` — parses a demo name from `argv[2]`, opens 800×600 window titled "Buddd Engine — Demo: \<name\>", dispatches to the matching per-demo function. Prints usage if no name is given or if the demo name is unknown. Warns on stderr if extra args follow the demo name. |
 | `run_command.h` / `run_command.cpp` | `buddd::cmd::RunCommand` — opens 1024×768 window titled "Buddd Engine", clears the framebuffer each frame (no draw calls), interactive until user closes the window. Extra args silently ignored. |
-| `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Extra args silently ignored. |
+| `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Updated to include `capture` in command list. Extra args silently ignored. |
+| `capture_command.h` / `capture_command.cpp` | `buddd::cmd::CaptureCommand` — parses scenario and optional output path, creates SDL3 platform, window, and render device, delegates to a scenario function, saves the resulting PNG. Registered via `else if (cmd == "capture")` in `main.cpp`. |
 
 ### Demo files (`src/cmd/demo/`)
 
@@ -149,12 +160,21 @@ Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::c
 | `triangle_demo.h` / `triangle_demo.cpp` | Declares `buddd::cmd::demo::run_triangle_demo()` — 120-frame render loop with a coloured triangle (extracted from the old `test_command.cpp`). |
 | `cube_demo.h` / `cube_demo.cpp` | Declares `buddd::cmd::demo::run_cube_demo()` — 120-frame render loop with a rotating per-face-coloured cube using Camera + MVP. Header exposes no backend types (only forward declarations). |
 
+### Capture files (`src/cmd/capture/`)
+
+Each capture scenario is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::capture` namespace.
+
+| File | Role |
+|---|---|
+| `cube_capture.h` / `cube_capture.cpp` | Declares `buddd::cmd::capture::capture_cube_scene()` — renders one frame of the cube (reusing `setup_cube()`) from camera position (0,0,3) with angle=0, calls `read_pixels()`, returns the raw `ImageBuffer`. |
+
 ### Subcommand behavior
 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
 - `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames) and `cube` (120 frames, rotating coloured cube). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
 - `buddd version` → prints `buddd 0.1.0` to stdout
-- `buddd help` → prints usage information listing all four commands (`run`, `demo`, `version`, `help`)
+- `buddd capture <scenario> [output_path]` → opens 800×600 window titled "Buddd Engine — Capture: \<scenario\>", renders one frame, captures as PNG, saves to `output_path` (or `/tmp/buddd_capture_<scenario>_<timestamp>.png`), prints `"Captured: <path>"`. Currently available: `cube`. If no scenario is given, prints usage to stderr and exits 1. If scenario is unknown, prints error to stderr and exits 1.
+- `buddd help` → prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
 - Unknown command → prints `"Unknown command: '<cmd>'"` followed by updated usage to stderr, exits with code 1
 - `buddd test` is **removed** — it produces an unknown command error (use `buddd demo triangle` instead)
 - Old `--test` and `--version` flags are **dropped** — they produce an unknown command error
@@ -170,13 +190,14 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | File | Role |
 | |---|---|---|
 | `version_tests.cpp` | Single Catch2 test: `"engine version is non-empty"` tagged `[sanity]` |
-| `cmd_tests.cpp` | CLI command integration tests (tagged `[cli]`): argument parsing, error handling, default command — uses shared helpers from `test_helpers.h` |
+| `cmd_tests.cpp` | CLI command integration tests (tagged `[cli]`): argument parsing, error handling, default command, capture CLI tests — uses shared helpers from `test_helpers.h` |
 | `demo_tests.cpp` | Demo execution tests (tagged `[cli][demo]`): triangle and cube demos run as subprocesses with timeout — uses shared helpers from `test_helpers.h` |
 | `platform_abstraction_tests.cpp` | Headless platform tests (T-01 through T-12), always compiled |
 | `sdl3_backend_tests.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
 | `math_tests.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
 | `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 | `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
+| `image_tests.cpp` | Image unit tests (tagged `[image]`): ImageBuffer aggregate, Image::create validation, row-flipping, save/load round-trip, load error cases, copy/move semantics, accessors, save error cases. All headless (CPU-only). |
 | `test_helpers.h` | Shared CLI test utilities: `buddd_binary_path()`, `temp_filename()`, `run_buddd()`, `CommandResult` |
 
 ## Source naming conventions
@@ -205,3 +226,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Files allowed to create/modify, entity node structure, template method inline conventions, noexcept specification table, test requirements (T-01 through T-49)
 - Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo (Model class, CubeResources, cube demo)
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Files allowed to create/modify, factory method signatures, test requirements (T-01 through T-24), draw-methods-as-void exception extension
+- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)

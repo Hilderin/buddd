@@ -1,6 +1,7 @@
 #pragma once
 
 #include "render_device.h"
+#include "image/image_buffer.h"
 #include "shader.h"
 #include "material.h"
 #include "vertex_buffer.h"
@@ -56,6 +57,8 @@ public:
         uint32_t index_count,
         uint32_t start_index = 0
     ) -> void override;
+
+    auto read_pixels() -> Result<ImageBuffer> override;
 
     RenderDeviceHeadless(const RenderDeviceHeadless&) = delete;
     auto operator=(const RenderDeviceHeadless&) -> RenderDeviceHeadless& = delete;

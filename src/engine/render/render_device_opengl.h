@@ -53,6 +53,8 @@ public:
         uint32_t start_index = 0
     ) -> void override;
 
+    auto read_pixels() -> Result<ImageBuffer> override;
+
     RenderDeviceOpenGL(const RenderDeviceOpenGL&) = delete;
     auto operator=(const RenderDeviceOpenGL&) -> RenderDeviceOpenGL& = delete;
     RenderDeviceOpenGL(RenderDeviceOpenGL&&) = delete;

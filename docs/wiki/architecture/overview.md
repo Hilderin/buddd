@@ -22,6 +22,7 @@ buddd2/
 │   │   ├── scene/           # Scene graph (World, Entity, Transform, Component)
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
+│   │   ├── image/           # Image I/O (ImageBuffer, Image, stb_image)
 │   │   └── render/          # Render device abstraction (RenderDevice)
 │   ├── cmd/                 # CLI binary (links engine)
 │   └── editor/              # Editor placeholder (INTERFACE lib)
@@ -39,13 +40,13 @@ buddd2/
 - **Presets**: `debug` (Debug build) and `release` (Release build)
 - **Standard**: C++26 (`CMAKE_CXX_STANDARD 26`, `REQUIRED ON`, `EXTENSIONS OFF`)
 - **Formatting**: `clang-format` via custom `format` CMake target
-- **External dependencies**: SDL3 (fetched via `FetchContent`), GLM (fetched via `FetchContent`), OpenGL (system `find_package`)
+- **External dependencies**: SDL3 (fetched via `FetchContent`), GLM (fetched via `FetchContent`), OpenGL (system `find_package`), stb (fetched via `FetchContent`)
 
 ## CMake targets
 
 | Target | Type | Directory | Description |
 |---|---|---|---|
-| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, and scene graph module. Links SDL3, OpenGL, and GLM. |
+| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, and image I/O module. Links SDL3, OpenGL, GLM, and stb. |
 | `buddd` | Executable | `src/cmd/` | CLI binary; links `buddd_engine` |
 | `buddd_editor` | INTERFACE library | `src/editor/` | Placeholder — no compiled sources |
 | `buddd_tests` | Executable | `tests/` | Catch2 test binary; links `buddd_engine` |
@@ -83,6 +84,10 @@ src/engine/
 │   ├── window.h             # Abstract Window class, WindowConfig struct
 │   ├── window_sdl3.h/cpp    # SDL3 backend (WindowSDL3)
 │   └── window_headless.h/cpp # Headless backend (WindowHeadless)
+├── image/
+│   ├── image_buffer.h       # ImageBuffer — raw GPU readback data (width, height, channels, bytes)
+│   ├── image.h              # Image — create from buffer, load/save PNG
+│   └── image.cpp            # Image implementation (stb_image, stb_image_write, row-flipping)
 └── render/
     ├── primitive_topology.h        # PrimitiveTopology enum
     ├── vertex_format.h             # VertexAttributeType, VertexAttribute, VertexFormat
@@ -112,7 +117,8 @@ src/engine/
 - `./build/debug/src/cmd/buddd demo triangle` — opens a window (800×600, title "Buddd Engine — Demo: triangle"), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically. `buddd demo` (no name) or `buddd demo <unknown>` prints an error to stderr.
 - `./build/debug/src/cmd/buddd demo cube` — opens a window (800×600, title "Buddd Engine — Demo: cube"), renders a rotating per-face-coloured cube (24 vertices, 36 indices) for 120 frames at ~60 FPS with MVP computed from a Camera at (3,2,3), then exits. `buddd demo` lists `cube` as available.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
-- `./build/debug/src/cmd/buddd help` — prints usage information listing all four commands (`run`, `demo`, `version`, `help`)
+- `./build/debug/src/cmd/buddd help` — prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
+- `./build/debug/src/cmd/buddd capture <scenario> [output_path]` — opens an 800×600 window, renders a single frame of the named scenario, captures the framebuffer as a PNG file, and exits. Currently available: `cube` (front view, angle=0, camera at (0,0,3)). If no scenario is given or the scenario is unknown, prints an error to stderr and exits with code 1.
 - `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
 - `buddd test` is **removed** — produces an unknown command error (use `buddd demo triangle` instead)
 - Old `--test` and `--version` flags are removed (produce an unknown command error)
@@ -162,3 +168,5 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md)
 - Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo (Model class, CubeResources, cube demo)
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md)
+- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)

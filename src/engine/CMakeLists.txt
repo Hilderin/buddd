@@ -16,6 +16,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+# ----- stb (single-header image library) -----
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG 31c1ad37456438565541f4919958214b6e762fb4
+)
+FetchContent_MakeAvailable(stb)
+
 find_package(OpenGL REQUIRED)
 
 # Collect all engine source files automatically using GLOB.
@@ -30,6 +38,8 @@ add_library(buddd_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(buddd_engine PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+target_include_directories(buddd_engine PRIVATE ${stb_SOURCE_DIR})
 
 target_link_libraries(buddd_engine PUBLIC
     SDL3::SDL3

@@ -15,6 +15,7 @@ main(int argc, char* argv[])
       │
       ├── argv[1] == "run"     ──► RunCommand.run(argc, argv)
       ├── argv[1] == "demo"    ──► DemoCommand.run(argc, argv)
+      ├── argv[1] == "capture" ──► CaptureCommand.run(argc, argv)
       ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
       ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
       │
@@ -30,7 +31,8 @@ Each command produces its own output:
 | `run` / (default) | `"Window opened: 1024x768"` then `"Window closed, shutting down."` | — |
 | `demo <name>` | — | `"Demo started: <name> (N frames)"` then `"Demo complete: <name> (N frames rendered)"` (or abort: `"Demo aborted by user (frame N)"`). If no name: demo usage text. If unknown name: `"Unknown demo: '<name>'"` + usage. |
 | `version` | `"buddd 0.1.0"` | — |
-| `help` | Usage text (4 commands: `run`, `demo`, `version`, `help`) | — |
+| `help` | Usage text (5 commands: `run`, `demo`, `capture`, `version`, `help`) | — |
+| `capture <scenario> [path]` | `"Captured: <path>"` | `"Capturing: <scenario>"` then error or success. If no scenario: `"Usage: buddd capture <scenario>"` + scenario list. If unknown scenario: `"Unknown capture scenario: '<name>'"` + usage. If extra args: `"Warning: unexpected arguments..."`. |
 | Unknown (including `test`) | — | `"Unknown command: '<cmd>'"` + usage text |
 
 The old `--test` and `--version` flags are removed — they are caught by the unknown-command handler.
@@ -121,7 +123,7 @@ RenderDevice::create(window)
 ### Error propagation
 
 All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
-- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `Unsupported`, `Unknown`
+- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `Unknown`
 - `code`: backend-specific numeric error code (defaults to 0)
 - `message`: human-readable description
 
@@ -144,3 +146,5 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Demo dispatch, RunCommand simplification, output text changes
 - Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Cube demo dispatch integration, output messages
+- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)

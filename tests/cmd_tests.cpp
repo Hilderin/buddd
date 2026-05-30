@@ -2,6 +2,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 
 // ---------------------------------------------------------------------------
@@ -75,6 +77,33 @@ TEST_CASE("buddd test is unknown command", "[cli]") {
     REQUIRE(res.exit_code == 1);
     REQUIRE(res.stderr_str.find("Unknown command: 'test'") != std::string::npos);
     REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+// Capture command tests (tagged [cli])
+// ---------------------------------------------------------------------------
+
+TEST_CASE("buddd capture with no args prints usage and exits 1", "[cli]") {
+    const auto res = run_buddd("capture");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("Usage: buddd capture <scenario>") != std::string::npos);
+}
+
+TEST_CASE("buddd capture unknown_scenario prints error and exits 1", "[cli]") {
+    const auto res = run_buddd("capture unknown_scenario");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("Unknown capture scenario: 'unknown_scenario'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Available scenarios:") != std::string::npos);
+    REQUIRE(res.stderr_str.find("cube") != std::string::npos);
+}
+
+TEST_CASE("buddd help output includes capture", "[cli]") {
+    const auto res = run_buddd("help");
+
+    REQUIRE(res.exit_code == 0);
+    REQUIRE(res.stdout_str.find("capture") != std::string::npos);
 }
 
 TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
