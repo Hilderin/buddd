@@ -100,11 +100,11 @@ The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` 
 
 The command-line binary. Links `buddd_engine` as PRIVATE.
 
-Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pair under `src/cmd/commands/`, and `main.cpp` is a thin dispatcher (single if/else-if chain). Per-demo files live under `src/cmd/demos/` with shared helper code for demos.
+Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pair under `src/cmd/commands/`, and `main.cpp` is a thin dispatcher (single if/else-if chain). Per-demo files live under `src/cmd/demo/` with shared helper code for demos.
 
 ### Build system
 
-`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering `src/cmd/*.cpp` (for `main.cpp`), `src/cmd/commands/*.cpp` (for command files), and `src/cmd/demos/*.cpp` (for per-demo files). New commands can be added by creating files in `src/cmd/commands/` and wiring them into the dispatch — no CMakeLists.txt change needed. New demos can be added by creating files in `src/cmd/demos/` and adding a dispatch branch in `DemoCommand`.
+`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering `src/cmd/*.cpp` (for `main.cpp`), `src/cmd/commands/*.cpp` (for command files), and `src/cmd/demo/*.cpp` (for per-demo files). New commands can be added by creating files in `src/cmd/commands/` and wiring them into the dispatch — no CMakeLists.txt change needed. New demos can be added by creating files in `src/cmd/demo/` and adding a dispatch branch in `DemoCommand`.
 
 ### File structure
 
@@ -121,7 +121,7 @@ Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pa
 | `run_command.h` / `run_command.cpp` | `buddd::cmd::RunCommand` — opens 1024×768 window titled "Buddd Engine", clears the framebuffer each frame (no draw calls), interactive until user closes the window. Extra args silently ignored. |
 | `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Extra args silently ignored. |
 
-### Demo files (`src/cmd/demos/`)
+### Demo files (`src/cmd/demo/`)
 
 Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::demo` namespace. The per-demo function receives a `Platform&`, `RenderDevice&`, and `argc`/`argv` (where `argv[0]` is the demo name).
 

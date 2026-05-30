@@ -30,8 +30,8 @@ SPEC-007 addresses these gaps by introducing a `demo` subcommand with a per-file
 ## Goals
 
 - **G-01**: Rename `buddd test` → `buddd demo <name>` with a dispatch table inside `DemoCommand`.
-- **G-02**: Create a `src/cmd/demos/` directory where each demo lives in its own `.h`/`.cpp` pair.
-- **G-03**: Extract the triangle 120-frame loop from `demo_helpers` into `src/cmd/demos/triangle_demo.h/.cpp` as a self-contained function.
+- **G-02**: Create a `src/cmd/demo/` directory where each demo lives in its own `.h`/`.cpp` pair.
+- **G-03**: Extract the triangle 120-frame loop from `demo_helpers` into `src/cmd/demo/triangle_demo.h/.cpp` as a self-contained function.
 - **G-04**: Simplify `RunCommand` to open an empty window (1024×768) that clears the framebuffer each frame, with no triangle setup.
 - **G-05**: Update all help text, error messages, and CLI output from "test" to "demo" language.
 - **G-06**: Make `buddd test` an unknown command (old subcommand removed with no alias).
@@ -47,7 +47,7 @@ This spec supersedes the following parts of SPEC-006 (CLI Command System):
 | **RunCommand triangle rendering** | RunCommand no longer renders a triangle or calls `setup_triangle()`. It opens an empty window with a framebuffer clear loop. SPEC-006 AC-006, AC-007 (triangle rendering verifications) are superseded. SPEC-006 SC-003 (render behavior parity across commands) is superseded — RunCommand and DemoCommand now have divergent render behavior. |
 | **Help text (test reference)** | The `help` command output and the unknown-command usage block replace the `test` line with a `demo` line. SPEC-006 AC-011 is superseded. |
 | **Unknown command text (test reference)** | The usage block embedded in the unknown-command error message is updated to replace `test` with `demo`. |
-| **File structure** | `test_command.h/.cpp` → `demo_command.h/.cpp`. `demo_helpers.h/.cpp` moves to `src/cmd/demos/`. New file `triangle_demo.h/.cpp` added. SPEC-006 AC-001, AC-003 (file structure requirements) are superseded. |
+| **File structure** | `test_command.h/.cpp` → `demo_command.h/.cpp`. `demo_helpers.h/.cpp` moves to `src/cmd/demo/`. New file `triangle_demo.h/.cpp` added. SPEC-006 AC-001, AC-003 (file structure requirements) are superseded. |
 | **Observability signals** | Test-mode signals are replaced by demo-mode signals. |
 
 SPEC-007 also inherits SPEC-006's supersession of SPEC-001 (Project Setup) regarding CLI behavior: SPEC-006 already superseded SPEC-001's `--version` flag behavior and no-args greeting message, and SPEC-007 carries that forward unchanged.
@@ -59,7 +59,7 @@ The following SPEC-006 elements remain in effect and are **not** superseded:
 - No-args default to `run` (AC-006 default behavior, minus the triangle).
 - `RunCommand` window dimensions and lifecycle messages (part of AC-006, AC-007).
 - The `setup_triangle()` helper function signature remains in `demo_helpers` (though the function is now only used by demos).
-- CMakeLists.txt glob pattern (AC-015), extended to include `demos/*.cpp`.
+- CMakeLists.txt glob pattern (AC-015), extended to include `demo/*.cpp`.
 
 ## Non-goals
 
@@ -79,7 +79,7 @@ The following SPEC-006 elements remain in effect and are **not** superseded:
 | Actor | Description |
 |---|---|
 | Developer | A human running the `buddd` CLI binary from a terminal. Uses subcommands to invoke different engine modes. |
-| Demo author | A developer who adds new visual demonstrations to the engine. Creates `.h`/`.cpp` files in `src/cmd/demos/` and adds a dispatch entry in `DemoCommand`. |
+| Demo author | A developer who adds new visual demonstrations to the engine. Creates `.h`/`.cpp` files in `src/cmd/demo/` and adds a dispatch entry in `DemoCommand`. |
 | CLI maintainer | A developer who maintains the binary entry point, command dispatch, and build system integration. |
 
 ## User-visible behavior
@@ -229,7 +229,7 @@ Where `<cmd>` is the unrecognised argument. The usage block is identical to the 
 
 ### Per-demo files
 
-Each demo is a pair of `.h`/`.cpp` files in `src/cmd/demos/`. Each file exposes a single free function in the `buddd::cmd::demo` namespace:
+Each demo is a pair of `.h`/`.cpp` files in `src/cmd/demo/`. Each file exposes a single free function in the `buddd::cmd::demo` namespace:
 
 ```cpp
 namespace buddd::cmd::demo {
@@ -257,17 +257,17 @@ The demo function is responsible for:
 
 ### demo_helpers (moved)
 
-- **Files**: `src/cmd/demos/demo_helpers.h` / `src/cmd/demos/demo_helpers.cpp` (moved from `src/cmd/`).
+- **Files**: `src/cmd/demo/demo_helpers.h` / `src/cmd/demo/demo_helpers.cpp` (moved from `src/cmd/`).
 - **Namespace**: Moved into `buddd::cmd::demo` along with other demo code.
 - **Content**: The `setup_triangle()` function unchanged. This function is used by triangle_demo and potentially by future demos.
-- **Note**: The `#include` path in files that reference `demo_helpers.h` must be updated to `"demos/demo_helpers.h"` (since the include root is `src/cmd/`).
+- **Note**: The `#include` path in files that reference `demo_helpers.h` must be updated to `"demo/demo_helpers.h"` (since the include root is `src/cmd/`).
 
 ### File structure
 
 | File | Content |
 |---|---|
 | `src/cmd/main.cpp` | Dispatch: `"test"` → unknown command; `"demo"` → DemoCommand instead of TestCommand. |
-| `src/cmd/CMakeLists.txt` | Updated glob pattern to include `demos/*.cpp`. |
+| `src/cmd/CMakeLists.txt` | Updated glob pattern to include `demo/*.cpp`. |
 | `src/cmd/commands/run_command.h` | Declaration of `buddd::cmd::RunCommand` — no changes to interface, behavior changes in .cpp only. |
 | `src/cmd/commands/run_command.cpp` | Empty render loop: no `#include "demo_helpers.h"`, no triangle setup, framebuffer clear only. |
 | `src/cmd/commands/demo_command.h` | **NEW** (replaces `test_command.h`): Declaration of `buddd::cmd::DemoCommand`. |
@@ -276,18 +276,18 @@ The demo function is responsible for:
 | `src/cmd/commands/version_command.cpp` | Unchanged. |
 | `src/cmd/commands/help_command.h` | `k_usage_text` constant updated. |
 | `src/cmd/commands/help_command.cpp` | Unchanged (reads from `k_usage_text`). |
-| `src/cmd/demos/demo_helpers.h` | **MOVED** from `src/cmd/demo_helpers.h`. Contents unchanged. |
-| `src/cmd/demos/demo_helpers.cpp` | **MOVED** from `src/cmd/demo_helpers.cpp`. Contents unchanged. |
-| `src/cmd/demos/triangle_demo.h` | **NEW**: Declaration of `run_triangle_demo()`. |
-| `src/cmd/demos/triangle_demo.cpp` | **NEW**: 120-frame triangle render loop (extracted from `test_command.cpp`). |
+| `src/cmd/demo/demo_helpers.h` | **MOVED** from `src/cmd/demo_helpers.h`. Contents unchanged. |
+| `src/cmd/demo/demo_helpers.cpp` | **MOVED** from `src/cmd/demo_helpers.cpp`. Contents unchanged. |
+| `src/cmd/demo/triangle_demo.h` | **NEW**: Declaration of `run_triangle_demo()`. |
+| `src/cmd/demo/triangle_demo.cpp` | **NEW**: 120-frame triangle render loop (extracted from `test_command.cpp`). |
 
 ### File changes summary
 
 - **Remove**: `src/cmd/commands/test_command.h`, `src/cmd/commands/test_command.cpp`.
 - **Remove**: `src/cmd/demo_helpers.h`, `src/cmd/demo_helpers.cpp` (moved, not deleted).
 - **Create**: `src/cmd/commands/demo_command.h`, `src/cmd/commands/demo_command.cpp`.
-- **Create**: `src/cmd/demos/triangle_demo.h`, `src/cmd/demos/triangle_demo.cpp`.
-- **Move**: `src/cmd/demo_helpers.h` → `src/cmd/demos/demo_helpers.h`, `src/cmd/demo_helpers.cpp` → `src/cmd/demos/demo_helpers.cpp`.
+- **Create**: `src/cmd/demo/triangle_demo.h`, `src/cmd/demo/triangle_demo.cpp`.
+- **Move**: `src/cmd/demo_helpers.h` → `src/cmd/demo/demo_helpers.h`, `src/cmd/demo_helpers.cpp` → `src/cmd/demo/demo_helpers.cpp`.
 - **Modify**: `src/cmd/main.cpp`, `src/cmd/CMakeLists.txt`, `src/cmd/commands/run_command.cpp`, `src/cmd/commands/help_command.h`.
 - **Unchanged**: `src/cmd/commands/version_command.h`, `src/cmd/commands/version_command.cpp`, `src/cmd/commands/help_command.cpp`.
 
@@ -386,15 +386,15 @@ As a developer, I want to close the demo window early and see an abort message, 
 | ID | Description | Verification |
 |---|---|---|
 | AC-001 | `src/cmd/commands/test_command.h` and `src/cmd/commands/test_command.cpp` no longer exist. They are replaced by `src/cmd/commands/demo_command.h` and `src/cmd/commands/demo_command.cpp`. | Check that old files are removed and new files exist. |
-| AC-002 | `src/cmd/demos/demo_helpers.h` and `src/cmd/demos/demo_helpers.cpp` exist (moved from `src/cmd/`). The `setup_triangle()` function is present and unchanged. | Files exist and compile. Function signature matches SPEC-006 `demo_helpers.h`. |
-| AC-003 | `src/cmd/demos/triangle_demo.h` and `src/cmd/demos/triangle_demo.cpp` exist, declaring `run_triangle_demo(be::Platform&, be::RenderDevice&) -> int`. | Files exist and compile without error. |
+| AC-002 | `src/cmd/demo/demo_helpers.h` and `src/cmd/demo/demo_helpers.cpp` exist (moved from `src/cmd/`). The `setup_triangle()` function is present and unchanged. | Files exist and compile. Function signature matches SPEC-006 `demo_helpers.h`. |
+| AC-003 | `src/cmd/demo/triangle_demo.h` and `src/cmd/demo/triangle_demo.cpp` exist, declaring `run_triangle_demo(be::Platform&, be::RenderDevice&) -> int`. | Files exist and compile without error. |
 | AC-004 | `run_triangle_demo` performs a 120-frame render loop with a coloured triangle, mirroring the current `buddd test` render behavior (same vertex data, same shaders, same triangle). | Visual inspection: the triangle appears identical to the current `buddd test` rendering. |
 | AC-005 | `DemoCommand::run()` dispatches `"triangle"` to `run_triangle_demo()`. Unknown demo names print `"Unknown demo: '<name>'"` to stderr and exit with code 1. | Run `buddd demo unknownname`; stderr contains the error. Exit code is 1. |
 | AC-006 | Running `buddd demo` with no name prints the demo usage text to stderr and exits with code 1. | Run `buddd demo`; stderr matches the exact usage output. Exit code is 1. |
 | AC-007 | Running `buddd demo triangle` opens an 800×600 window titled "Buddd Engine — Demo: triangle" (case-preserving), renders for 120 frames, prints `"Demo complete: triangle (120 frames rendered)"` to stderr, and exits with code 0. | Manual visual verification; stderr contains the completion message. |
 | AC-008 | Running `buddd demo triangle` and closing the window before 120 frames prints `"Demo aborted by user (frame N)"` to stderr and exits with code 0. | Manual verification: close window early, check stderr, check exit code. |
 | AC-009 | Running `buddd demo triangle extra_arg` prints a warning to stderr (`"Warning: unexpected arguments after 'demo triangle': extra_arg"`) but still runs the demo and exits 0. | Run the command; stderr contains the warning and the demo completion message. |
-| AC-010 | `RunCommand` no longer includes `demo_helpers.h` and no longer calls `setup_triangle()`. It opens a 1024×768 window titled "Buddd Engine", clears the framebuffer to black each frame, and draws nothing. | Inspect `run_command.cpp` — no `#include "demo_helpers.h"` (or `"demos/demo_helpers.h"`), no call to `setup_triangle()`. Visual: window background shows black, no triangle. |
+| AC-010 | `RunCommand` no longer includes `demo_helpers.h` and no longer calls `setup_triangle()`. It opens a 1024×768 window titled "Buddd Engine", clears the framebuffer to black each frame, and draws nothing. | Inspect `run_command.cpp` — no `#include "demo_helpers.h"` (or `"demo/demo_helpers.h"`), no call to `setup_triangle()`. Visual: window background shows black, no triangle. |
 | AC-011 | Running `buddd run` opens a 1024×768 window, prints `"Window opened: 1024x768"` to stdout, and prints `"Window closed, shutting down."` on exit. | Run `buddd run` with timeout, verify stdout contains both messages. |
 | AC-012 | Running `buddd` with no arguments produces identical behavior to `buddd run` (empty window, no triangle). | Run with no args, verify same stdout messages as AC-011. |
 | AC-013 | Running `buddd version` prints `"buddd 0.1.0"` to stdout and exits with code 0. | Run `buddd version`; stdout matches exactly. |
@@ -403,18 +403,18 @@ As a developer, I want to close the demo window early and see an abort message, 
 | AC-016 | Running `buddd test` prints `"Unknown command: 'test'"` followed by the updated usage block to stderr and exits with code 1. | Run `buddd test`; stderr matches. Exit code is 1. |
 | AC-017 | Running `buddd --test` or `buddd --version` prints the unknown command error to stderr and exits with code 1. | Run both; stderr contains `"Unknown command: '--test'"` / `"Unknown command: '--version'"`. Exit code is 1. |
 | AC-018 | No SDL3, OpenGL, or GLM headers are included from any file under `src/cmd/`. | Run `grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/` — zero matches. Architecture boundary (CONST-001) is preserved. |
-| AC-019 | The `src/cmd/CMakeLists.txt` glob includes `demos/*.cpp` and the build succeeds. | `cmake --build --preset debug` succeeds; `build/debug/src/cmd/buddd` is produced. |
+| AC-019 | The `src/cmd/CMakeLists.txt` glob includes `demo/*.cpp` and the build succeeds. | `cmake --build --preset debug` succeeds; `build/debug/src/cmd/buddd` is produced. |
 | AC-020 | Running `buddd version extra_arg` still prints the version and exits 0 (extra args ignored). | Run `buddd version extra_arg`; output matches AC-013. |
 | AC-021 | Running `buddd help extra_arg` still prints the updated usage message and exits 0 (extra args ignored). | Run `buddd help extra_arg`; output matches AC-014. |
 | AC-022 | `main.cpp` no longer references `TestCommand` or the `"test"` command string. It references `DemoCommand` and `"demo"` instead. | Inspect `main.cpp` — no mention of `test_command.h` or `"test"` as a dispatch target. |
 | AC-023 | The `k_usage_text` constant in `help_command.h` is updated to replace `"test"` with `"demo"`. The unknown-command handler in `main.cpp` uses this same constant. | Inspect `help_command.h` — the text matches the updated format. |
-| AC-024 | `triangle_demo.cpp` does not duplicate `demo_helpers.cpp` content. It uses `#include "demo_helpers.h"` (or `"demos/demo_helpers.h"`) to access `setup_triangle()`. | Inspect `triangle_demo.cpp` — it includes the shared helper, does not redefine `setup_triangle()`. |
+| AC-024 | `triangle_demo.cpp` does not duplicate `demo_helpers.cpp` content. It uses `#include "demo_helpers.h"` (or `"demo/demo_helpers.h"`) to access `setup_triangle()`. | Inspect `triangle_demo.cpp` — it includes the shared helper, does not redefine `setup_triangle()`. |
 
 ## Success criteria
 
 | ID | Metric | Verification |
 |---|---|---|
-| SC-001 | A new demo can be added by creating one `.h`/`.cpp` pair in `src/cmd/demos/` and adding one `else if` branch in `DemoCommand::run()`, without modifying any other file. CMakeLists.txt picks up the new file automatically via glob. | Create a skeleton `spin_demo.h/.cpp` in `src/cmd/demos/` with a matching dispatch entry. Build succeeds. |
+| SC-001 | A new demo can be added by creating one `.h`/`.cpp` pair in `src/cmd/demo/` and adding one `else if` branch in `DemoCommand::run()`, without modifying any other file. CMakeLists.txt picks up the new file automatically via glob. | Create a skeleton `spin_demo.h/.cpp` in `src/cmd/demo/` with a matching dispatch entry. Build succeeds. |
 | SC-002 | The command dispatch in `main.cpp` is a single if/else-if chain (or equivalent lookup) mapping command-name strings to command invocations, contained within the first 30 lines of `main()`. | Inspect `main.cpp` — the dispatch is the top-level structure, fully visible in the first 30 lines of `main()`. |
 | SC-003 | `buddd run` produces no rendering output (empty window) while `buddd demo triangle` produces the same triangle rendering as the old `buddd test`. | Manual visual comparison: `buddd run` shows an empty cleared window; `buddd demo triangle` shows the coloured triangle. |
 
@@ -535,7 +535,7 @@ Display-dependent paths (demo mode with window, run mode with window) are guarde
 | A-02 | The engine's public API (`Platform::create()`, `Platform::poll_events()`, `Window`, `RenderDevice`, etc.) is unchanged by this spec. |
 | A-03 | The command dispatch uses the first positional argument (`argv[1]`) as the command name. If `argc == 1`, the default command is `run`. |
 | A-04 | C++26 standard library features (`std::string_view`, `std::array`, `std::span`) are available for the dispatch implementation. |
-| A-05 | The existing `src/cmd/CMakeLists.txt` glob pattern is extended to include `demos/*.cpp` in addition to the existing `*.cpp` and `commands/*.cpp` patterns. No root-level CMake changes are needed. |
+| A-05 | The existing `src/cmd/CMakeLists.txt` glob pattern is extended to include `demo/*.cpp` in addition to the existing `*.cpp` and `commands/*.cpp` patterns. No root-level CMake changes are needed. |
 | A-06 | The `setup_triangle()` function in `demo_helpers` is unchanged and used by `triangle_demo.cpp` via `#include`. |
 | A-07 | The old `test` subcommand is dropped with no deprecation period. Developers who used it will see the unknown-command error and can switch to `buddd demo triangle`. |
 | A-08 | The command namespace is `buddd::cmd`, consistent with the directory structure. |
@@ -596,20 +596,20 @@ In `run_command.cpp`:
 
 ### CMakeLists.txt changes
 
-Add `demos/*.cpp` to the glob:
+Add `demo/*.cpp` to the glob:
 
 ```cmake
 file(GLOB_RECURSE CMD_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/commands/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/demos/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/demo/*.cpp
 )
 ```
 
 ### Include path considerations
 
-Files under `src/cmd/demos/` that include `demo_helpers.h` must use a path that resolves. Two approaches:
-- **Option A**: Add `target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/demos)` so that `#include "demo_helpers.h"` resolves from both `src/cmd/` and `src/cmd/demos/`.
-- **Option B**: Update includes to `#include "../demos/demo_helpers.h"` or `#include "demos/demo_helpers.h"` with the existing include directory.
+Files under `src/cmd/demo/` that include `demo_helpers.h` must use a path that resolves. Two approaches:
+- **Option A**: Add `target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/demo)` so that `#include "demo_helpers.h"` resolves from both `src/cmd/` and `src/cmd/demo/`.
+- **Option B**: Update includes to `#include "../demo/demo_helpers.h"` or `#include "demo/demo_helpers.h"` with the existing include directory.
 
-The existing `target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})` in CMakeLists.txt makes `src/cmd/` the include root. Therefore `#include "demos/demo_helpers.h"` works from any file under `src/cmd/`. Files in `commands/` would use `#include "../demos/demo_helpers.h"` or the include path can be adjusted. The implementation should choose the cleanest approach.
+The existing `target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})` in CMakeLists.txt makes `src/cmd/` the include root. Therefore `#include "demo/demo_helpers.h"` works from any file under `src/cmd/`. Files in `commands/` would use `#include "../demo/demo_helpers.h"` or the include path can be adjusted. The implementation should choose the cleanest approach.

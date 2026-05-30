@@ -32,11 +32,11 @@ Contradictions or gaps between spec, contract, code, and tests:
 
 - [x] **Contract-critic B-01 resolved: Double-dereference bug** — The contract originally used `*platform, *device` (single dereference) for the call to `run_triangle_demo()`. Fixed to `**platform, **device` (contract §demo_command.cpp lines 265–266, now line 265). Actual code at `demo_command.cpp` line 83 uses `**platform, **device`. ✓ Resolved. The root cause (spec's Required implementation behavior section also had the error) was fixed in the spec as well.
 
-- [x] **Contract-critic W-01 resolved: Unnecessary include** — `demo_command.cpp` originally included `demos/demo_helpers.h` unnecessarily. Removed from contract and actual code (`demo_command.cpp` includes only `demos/triangle_demo.h`). ✓ Resolved.
+- [x] **Contract-critic W-01 resolved: Unnecessary include** — `demo_command.cpp` originally included `demo/demo_helpers.h` unnecessarily. Removed from contract and actual code (`demo_command.cpp` includes only `demo/triangle_demo.h`). ✓ Resolved.
 
 - [x] **Contract-critic W-02 resolved: WindowConfig::title comment** — The misleading comment about `WindowConfig::title` being `std::string_view` was corrected to accurately state it is `std::string` (contract line 276–277, actual `demo_command.cpp` lines 50–51). ✓ Resolved.
 
-- [x] **Spec-to-contract-to-code coherence: File structure** — Spec §File structure (lines 265–292), contract §Files to create/remove/modify (lines 52–111), and actual filesystem all match exactly: `test_command.h/.cpp` removed, `demo_command.h/.cpp` created, `demo_helpers.h/.cpp` moved to `src/cmd/demos/`, `triangle_demo.h/.cpp` created, `main.cpp`, `run_command.h/.cpp`, `help_command.h`, `CMakeLists.txt` modified. ✓ Aligned.
+- [x] **Spec-to-contract-to-code coherence: File structure** — Spec §File structure (lines 265–292), contract §Files to create/remove/modify (lines 52–111), and actual filesystem all match exactly: `test_command.h/.cpp` removed, `demo_command.h/.cpp` created, `demo_helpers.h/.cpp` moved to `src/cmd/demo/`, `triangle_demo.h/.cpp` created, `main.cpp`, `run_command.h/.cpp`, `help_command.h`, `CMakeLists.txt` modified. ✓ Aligned.
 
 - [x] **Spec-to-contract-to-code coherence: Output strings** — All exact output strings (`k_usage_text`, `k_demo_usage`, unknown command, unknown demo, demo started/complete/abort, run stdout messages) match exactly between spec, contract, actual code, and verified CLI output (code review §Output format correctness). ✓ Aligned.
 
@@ -46,7 +46,7 @@ Contradictions or gaps between spec, contract, code, and tests:
 
 - [x] **Spec-to-contract-to-code coherence: RunCommand** — No triangle rendering, no `demo_helpers.h` include, no `setup_triangle()` call, loop is `begin_frame()`/`end_frame()` only. Window 1024×768, title "Buddd Engine". All matched. ✓ Aligned.
 
-- [x] **Spec-to-contract-to-code coherence: CMakeLists.txt** — Glob includes `demos/*.cpp` alongside existing `*.cpp` and `commands/*.cpp`. Build succeeds. ✓ Aligned.
+- [x] **Spec-to-contract-to-code coherence: CMakeLists.txt** — Glob includes `demo/*.cpp` alongside existing `*.cpp` and `commands/*.cpp`. Build succeeds. ✓ Aligned.
 
 - [x] **Spec-to-contract-to-code coherence: CONST-001 compliance** — `grep -rnE '(SDL3|GL/|glad|glm)' src/cmd/` returns zero source-level matches. The only matches are `be::Backend::SDL3` (engine enum values, not header includes). ✓ Aligned.
 
@@ -86,7 +86,7 @@ Required ADRs exist or are proposed:
 
 - [x] **ADR-001 (Result/Error Pattern)** — ALIGNED. Engine APIs that can fail return `Result<T>`. Command code handles errors via `.error()` with `be::to_string()`. Draw methods return `void` per the ADR-003 exception — this is respected (commands do not call `draw()` with error checking; `draw()` precondition-based contract is followed). The `setup_triangle()` helper uses `std::exit(EXIT_FAILURE)` on fatal errors, which is existing behaviour documented in the spec error cases.
 
-- [x] **ADR-002 (GLM Wrapper)** — ALIGNED. No GLM headers are included outside `src/engine/`. All rendering goes through engine abstractions (`RenderDevice`, `Material`, `VertexBuffer`). The architecture boundary (CONST-001) is preserved. The demo code under `src/cmd/demos/` uses only engine types, not GLM directly.
+- [x] **ADR-002 (GLM Wrapper)** — ALIGNED. No GLM headers are included outside `src/engine/`. All rendering goes through engine abstractions (`RenderDevice`, `Material`, `VertexBuffer`). The architecture boundary (CONST-001) is preserved. The demo code under `src/cmd/demo/` uses only engine types, not GLM directly.
 
 - [x] **ADR-003 (Render Pipeline Architecture)** — ALIGNED.
   - **Decision 1 (draw methods return void)**: Both `RunCommand` (no draw calls) and `triangle_demo.cpp` (calls `device.draw(...)` which returns `void` per ADR-003) are consistent. No error checking on draw calls — correct per ADR-003's precondition-based contract.
@@ -94,11 +94,11 @@ Required ADRs exist or are proposed:
   - **Render loop owned by command code**: `RunCommand` and `triangle_demo.cpp` each own their render loop, consistent with ADR-003's precedent.
 
 - [x] **ADR-004 (Demo System Architecture)** — ALIGNED. Created as part of this work. Fully documents the architecture decisions that SPEC-007 realises:
-  - Per-demo files in `src/cmd/demos/` → Implemented: `triangle_demo.h/.cpp`, `demo_helpers.h/.cpp`. ✓
+  - Per-demo files in `src/cmd/demo/` → Implemented: `triangle_demo.h/.cpp`, `demo_helpers.h/.cpp`. ✓
   - Per-demo free functions in `buddd::cmd::demo` namespace → Implemented: `run_triangle_demo()`, `setup_triangle()`. ✓
   - If/else-if dispatch in `DemoCommand::run()` → Implemented: `demo_command.cpp` lines 82–84. ✓
-  - Demo helpers co-located with demos → Implemented: `demo_helpers.h/.cpp` moved to `src/cmd/demos/`. ✓
-  - CMake glob auto-discovers demo files → Implemented: `demos/*.cpp` in `CMakeLists.txt`. ✓
+  - Demo helpers co-located with demos → Implemented: `demo_helpers.h/.cpp` moved to `src/cmd/demo/`. ✓
+  - CMake glob auto-discovers demo files → Implemented: `demo/*.cpp` in `CMakeLists.txt`. ✓
   - ADR-004's "Preservation of precedent" section correctly references ADR-003 and CONST-001. ✓
 
 - [x] **AMEND-2026-001 (SDL3 Test Exception) referenced correctly** — Spec §Permissions and security (lines 467–468) correctly notes the exception "applies only to `tests/*_sdl3*.cpp`, not to `src/cmd/`." Contract §Security impact (line 700) restates this. ✓ Consistent.
@@ -109,7 +109,7 @@ Wiki reflects current state and does not become law:
 
 - [x] **`docs/wiki/architecture/overview.md`** — Updated with SPEC-007/IMPL-007 references (lines 138–139). "Key behaviors" section (lines 100–112) accurately describes the new behavior: `buddd run` opens empty window (1024×768, no triangle), `buddd demo triangle` opens 800×600 window with triangle render, `buddd test` is removed. The architecture boundary description (lines 114–122) is correct and includes the AMEND-2026-001 exception. ✓ Aligned.
 
-- [x] **`docs/wiki/architecture/module-map.md`** — §buddd — CLI executable (lines 99–141) accurately describes the demo system structure: demos directory, per-demo files, DemoCommand dispatch, subcommand behavior with `demo` replacing `test`. The file structure table (lines 111–131) correctly lists `demo_command.h/.cpp`, `triangle_demo.h/.cpp`, `demo_helpers.h/.cpp` under `src/cmd/demos/`. The subcommand behavior table (lines 134–141) correctly states that `buddd test` is removed. References SPEC-007 and IMPL-007 (lines 177–178). ✓ Aligned.
+- [x] **`docs/wiki/architecture/module-map.md`** — §buddd — CLI executable (lines 99–141) accurately describes the demo system structure: demos directory, per-demo files, DemoCommand dispatch, subcommand behavior with `demo` replacing `test`. The file structure table (lines 111–131) correctly lists `demo_command.h/.cpp`, `triangle_demo.h/.cpp`, `demo_helpers.h/.cpp` under `src/cmd/demo/`. The subcommand behavior table (lines 134–141) correctly states that `buddd test` is removed. References SPEC-007 and IMPL-007 (lines 177–178). ✓ Aligned.
 
 - [x] **`docs/wiki/architecture/data-flow.md`** — CLI data flow diagram (lines 7–24) matches the actual `main.cpp` dispatch exactly, including the `"demo"` command branch. Output table (lines 28–35) matches all exact output strings including `demo <name>` stderr output and unknown command handling. Notes that old `--test`/`--version` flags are removed. References SPEC-007 and IMPL-007 (lines 143–144). ✓ Aligned.
 

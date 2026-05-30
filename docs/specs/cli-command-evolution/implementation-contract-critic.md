@@ -115,7 +115,7 @@ Yes. The contract explicitly lists every file to create, remove, modify, and lea
 
 All include paths correctly resolve through the `src/cmd/` include root (for `demos/demo_helpers.h`) and the engine's public include directory (for `platform/platform.h` etc.). ✓
 
-One minor issue: `demo_helpers.cpp` (moved to `src/cmd/demos/`) uses `#include "demo_helpers.h"` which resolves to the sibling file via compiler's same-directory search — correct. ✓
+One minor issue: `demo_helpers.cpp` (moved to `src/cmd/demo/`) uses `#include "demo_helpers.h"` which resolves to the sibling file via compiler's same-directory search — correct. ✓
 
 ### 4. Are all exact output strings matching the spec?
 

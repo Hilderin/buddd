@@ -1,5 +1,5 @@
 #include "demo_command.h"
-#include "demos/triangle_demo.h"
+#include "demo/triangle_demo.h"
 
 #include "platform/platform.h"
 #include "window/window.h"

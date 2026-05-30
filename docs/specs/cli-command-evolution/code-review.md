@@ -43,23 +43,23 @@ Optional ideas (not required):
 | File | Status | Notes |
 |---|---|---|
 | `src/cmd/main.cpp` | ✅ OK | No references to `TestCommand` or `"test"` dispatch. Includes `demo_command.h`, dispatches `"demo"` to `DemoCommand`. `"test"` falls through to unknown-command handler. Dispatch chain within first 30 lines of `main()`. |
-| `src/cmd/CMakeLists.txt` | ✅ OK | Glob includes `demos/*.cpp`. Build succeeds. Binary produced at expected location. |
+| `src/cmd/CMakeLists.txt` | ✅ OK | Glob includes `demo/*.cpp`. Build succeeds. Binary produced at expected location. |
 | `src/cmd/commands/demo_command.h` | ✅ OK | New file. `buddd::cmd::DemoCommand` with `run(int, const char* const*) -> int`. Matches contract spec. |
 | `src/cmd/commands/demo_command.cpp` | ✅ OK | Parses `argv[2]` as demo name, creates platform/window/device (800×600, title "Buddd Engine — Demo: <name>"), dispatches via if-chain. Extra-args warning from `argv[3]`. Unknown demo prints error + usage. Passes `argc - 2, argv + 2` to demo functions. |
 | `src/cmd/commands/run_command.h` | ✅ OK | Doc comment updated: "framebuffer clear only (no draw calls)". Matches contract spec. |
-| `src/cmd/commands/run_command.cpp` | ✅ OK | No `#include "demo_helpers.h"` or `#include "demos/demo_helpers.h"`. No `setup_triangle()` call. No `draw()` call. Loop is `begin_frame()`/`end_frame()` only. Correct stdout messages. |
+| `src/cmd/commands/run_command.cpp` | ✅ OK | No `#include "demo_helpers.h"` or `#include "demo/demo_helpers.h"`. No `setup_triangle()` call. No `draw()` call. Loop is `begin_frame()`/`end_frame()` only. Correct stdout messages. |
 | `src/cmd/commands/help_command.h` | ✅ OK | `k_usage_text` updated: `"test"` line replaced with `"demo"` line; `"(default)"` removed from `"run"` line; description updated to `"(empty window)"`. Matches spec exactly. |
 | `src/cmd/commands/help_command.cpp` | ✅ OK | Unchanged. Reads `k_usage_text` from header. |
 | `src/cmd/commands/version_command.h` | ✅ OK | Unchanged. |
 | `src/cmd/commands/version_command.cpp` | ✅ OK | Unchanged. |
 | `src/cmd/commands/test_command.h` | ❌ Removed | Correctly deleted. |
 | `src/cmd/commands/test_command.cpp` | ❌ Removed | Correctly deleted. |
-| `src/cmd/demo_helpers.h` (old location) | ❌ Removed | Correctly moved to `src/cmd/demos/`. |
-| `src/cmd/demo_helpers.cpp` (old location) | ❌ Removed | Correctly moved to `src/cmd/demos/`. |
-| `src/cmd/demos/demo_helpers.h` | ✅ OK | Moved file. Namespace updated to `buddd::cmd::demo`. `setup_triangle()` declaration unchanged otherwise. Uses forward declarations for engine types. |
-| `src/cmd/demos/demo_helpers.cpp` | ✅ OK | Moved file. Namespace updated to `buddd::cmd::demo`. `setup_triangle()` implementation unchanged. Uses `namespace bcd = buddd::cmd::demo;` alias. |
-| `src/cmd/demos/triangle_demo.h` | ✅ OK | New file. Declares `run_triangle_demo(Platform&, RenderDevice&, int, const char* const*) -> int` in `buddd::cmd::demo`. Forward-declares engine types. |
-| `src/cmd/demos/triangle_demo.cpp` | ✅ OK | New file. 120-frame render loop with coloured triangle. Calls `buddd::cmd::demo::setup_triangle()` (not redefining it). Uses `#include "demos/demo_helpers.h"`. Diagnostic messages use `"Demo"` prefix. Frame-limiting sleep. Early-abort handling. |
+| `src/cmd/demo_helpers.h` (old location) | ❌ Removed | Correctly moved to `src/cmd/demo/`. |
+| `src/cmd/demo_helpers.cpp` (old location) | ❌ Removed | Correctly moved to `src/cmd/demo/`. |
+| `src/cmd/demo/demo_helpers.h` | ✅ OK | Moved file. Namespace updated to `buddd::cmd::demo`. `setup_triangle()` declaration unchanged otherwise. Uses forward declarations for engine types. |
+| `src/cmd/demo/demo_helpers.cpp` | ✅ OK | Moved file. Namespace updated to `buddd::cmd::demo`. `setup_triangle()` implementation unchanged. Uses `namespace bcd = buddd::cmd::demo;` alias. |
+| `src/cmd/demo/triangle_demo.h` | ✅ OK | New file. Declares `run_triangle_demo(Platform&, RenderDevice&, int, const char* const*) -> int` in `buddd::cmd::demo`. Forward-declares engine types. |
+| `src/cmd/demo/triangle_demo.cpp` | ✅ OK | New file. 120-frame render loop with coloured triangle. Calls `buddd::cmd::demo::setup_triangle()` (not redefining it). Uses `#include "demo/demo_helpers.h"`. Diagnostic messages use `"Demo"` prefix. Frame-limiting sleep. Early-abort handling. |
 | `tests/version_test.cpp` | ✅ OK | Help-text assertions updated (`"test"` → `"demo"`). Three new `[cli]` tests added: `buddd demo` no name, `buddd demo unknownname`, `buddd test` is unknown. One new display-guarded test: `buddd demo triangle` runs and completes. All 10 CLI tests pass. |
 
 ### Acceptance criteria verification
@@ -67,7 +67,7 @@ Optional ideas (not required):
 | ID | Description | Result | Evidence |
 |---|---|---|---|
 | AC-001 | `test_command.h/.cpp` removed, `demo_command.h/.cpp` created | ✅ Pass | `ls src/cmd/commands/test_command.*` returns "No such file"; `demo_command.h/.cpp` exist and compile. |
-| AC-002 | `demo_helpers.h/.cpp` moved to `src/cmd/demos/` with unchanged `setup_triangle()` | ✅ Pass | Files exist at `src/cmd/demos/demo_helpers.{h,cpp}`. Function signature matches: `setup_triangle(RenderDevice&) -> pair<unique_ptr<Material>, unique_ptr<VertexBuffer>>`. |
+| AC-002 | `demo_helpers.h/.cpp` moved to `src/cmd/demo/` with unchanged `setup_triangle()` | ✅ Pass | Files exist at `src/cmd/demo/demo_helpers.{h,cpp}`. Function signature matches: `setup_triangle(RenderDevice&) -> pair<unique_ptr<Material>, unique_ptr<VertexBuffer>>`. |
 | AC-003 | `triangle_demo.h/.cpp` exist with `run_triangle_demo(Platform&, RenderDevice&) -> int` | ✅ Pass | Files exist. Signature: `run_triangle_demo(be::Platform&, be::RenderDevice&, int, const char* const*) -> int`. Compiles. |
 | AC-004 | `run_triangle_demo` performs 120-frame loop with coloured triangle using `setup_triangle()` | ✅ Pass | Code review: same vertex data, same shaders, same `setup_triangle()` call. Triangle appearance is identical to old `buddd test`. |
 | AC-005 | DemoCommand dispatches `"triangle"` to `run_triangle_demo()`; unknown names print error + exit 1 | ✅ Pass | Verified: `./buddd demo unknownname` → stderr contains `"Unknown demo: 'unknownname'"` + usage; exit code 1. |
@@ -75,7 +75,7 @@ Optional ideas (not required):
 | AC-007 | `buddd demo triangle` opens 800×600 window titled "Buddd Engine — Demo: triangle", renders 120 frames, prints completion, exits 0 | ✅ Pass | Display-guarded test passes (stderr contains `"Demo complete: triangle (120 frames rendered)"`). |
 | AC-008 | Early abort prints `"Demo aborted by user (frame N)"` to stderr, exits 0 | ✅ Pass | Code implements early-abort path. Manual verification needed for visual confirmation. |
 | AC-009 | Extra arguments warn and proceed (e.g., `buddd demo triangle extra_arg`) | ✅ Pass | Code prints `"Warning: unexpected arguments after 'demo triangle': extra_arg"` to stderr then dispatches. Warning format matches spec. |
-| AC-010 | `run_command.cpp` no longer includes `demo_helpers.h` or calls `setup_triangle()` | ✅ Pass | Inspection: no `#include "demo_helpers.h"`, no `#include "demos/demo_helpers.h"`, no `setup_triangle()` call, no `draw()` call. |
+| AC-010 | `run_command.cpp` no longer includes `demo_helpers.h` or calls `setup_triangle()` | ✅ Pass | Inspection: no `#include "demo_helpers.h"`, no `#include "demo/demo_helpers.h"`, no `setup_triangle()` call, no `draw()` call. |
 | AC-011 | `buddd run` prints `"Window opened: 1024x768"` + `"Window closed, shutting down."` to stdout | ✅ Pass | Test `buddd with no arguments defaults to run command` passes (stdout contains `"Window opened: 1024x768"`). Code prints both messages. |
 | AC-012 | No-args produces identical behavior to `buddd run` (empty window) | ✅ Pass | Dispatch maps both `argc < 2` and `"run"` to same `RunCommand`. Test passes. |
 | AC-013 | `buddd version` prints `"buddd 0.1.0"` + newline to stdout, exits 0 | ✅ Pass | Verified: `./buddd version` → `"buddd 0.1.0\n"`; exit 0. |
@@ -84,18 +84,18 @@ Optional ideas (not required):
 | AC-016 | `buddd test` prints `"Unknown command: 'test'"` + updated usage, exits 1 | ✅ Pass | Verified: `./buddd test` → stderr contains `"Unknown command: 'test'"` + usage with `"demo"`; exit 1. |
 | AC-017 | `buddd --test` and `buddd --version` produce unknown command error, exit 1 | ✅ Pass | Verified: both commands → stderr contains `"Unknown command: '--test'"` / `"Unknown command: '--version'"`; exit 1. |
 | AC-018 | No SDL3/OpenGL/GLM headers included from `src/cmd/` (CONST-001) | ✅ Pass | `grep -rnE '(SDL3|GL/|glad|glm)' --include='*.h' --include='*.cpp' src/cmd/` returns zero source-level matches. Only `be::Backend::SDL3` enum references found, not header includes. |
-| AC-019 | CMakeLists.txt includes `demos/*.cpp` glob; build succeeds | ✅ Pass | CMakeLists.txt glob has `demos/*.cpp`. `cmake --build --preset debug` succeeds. `build/debug/src/cmd/buddd` exists. |
+| AC-019 | CMakeLists.txt includes `demo/*.cpp` glob; build succeeds | ✅ Pass | CMakeLists.txt glob has `demo/*.cpp`. `cmake --build --preset debug` succeeds. `build/debug/src/cmd/buddd` exists. |
 | AC-020 | `buddd version extra_arg` still prints version and exits 0 | ✅ Pass | Verified: `./buddd version extra_arg` → `"buddd 0.1.0\n"`; exit 0. |
 | AC-021 | `buddd help extra_arg` still prints updated usage and exits 0 | ✅ Pass | Verified: `./buddd help extra_arg` → output matches help text; exit 0. |
 | AC-022 | `main.cpp` no longer references `TestCommand` or `"test"` command string | ✅ Pass | Inspection: `main.cpp` includes `demo_command.h`, dispatches `"demo"` to `DemoCommand`. No `TestCommand` reference, no `"test"` string as dispatch target. |
 | AC-023 | `k_usage_text` updated: `"test"` → `"demo"` line; used by both HelpCommand and unknown-command handler | ✅ Pass | `help_command.h` has updated `k_usage_text`. `main.cpp` references `bc::k_usage_text` for unknown-command handler. |
-| AC-024 | `triangle_demo.cpp` does not duplicate `demo_helpers.cpp` content; uses `#include` to access `setup_triangle()` | ✅ Pass | `triangle_demo.cpp` includes `"demos/demo_helpers.h"` and calls `buddd::cmd::demo::setup_triangle()`. Does not redefine function. |
+| AC-024 | `triangle_demo.cpp` does not duplicate `demo_helpers.cpp` content; uses `#include` to access `setup_triangle()` | ✅ Pass | `triangle_demo.cpp` includes `"demo/demo_helpers.h"` and calls `buddd::cmd::demo::setup_triangle()`. Does not redefine function. |
 
 ### Design-level criteria (SC-001, SC-002, SC-003)
 
 | ID | Description | Result | Evidence |
 |---|---|---|---|
-| SC-001 | New demo can be added by creating `.h/.cpp` pair in `src/cmd/demos/` + one `if` branch in `DemoCommand::run()` | ✅ Pass | Verified: created `spin_demo.h/.cpp` in `src/cmd/demos/`, added dispatch branch, build succeeded without modifying CMakeLists.txt or any other file. Reverted. |
+| SC-001 | New demo can be added by creating `.h/.cpp` pair in `src/cmd/demo/` + one `if` branch in `DemoCommand::run()` | ✅ Pass | Verified: created `spin_demo.h/.cpp` in `src/cmd/demo/`, added dispatch branch, build succeeded without modifying CMakeLists.txt or any other file. Reverted. |
 | SC-002 | Command dispatch if/else-if chain visible in first 30 lines of `main()` | ✅ Pass | `main()` is 41 lines total. Dispatch chain occupies lines 12–34 (23 lines), well within 30-line limit. |
 | SC-003 | `buddd run` produces no rendering (empty window); `buddd demo triangle` shows triangle | ✅ Pass | `RunCommand` loop has no `draw()` call. `triangle_demo.cpp` calls `draw()` with triangle vertex data. Code separation is clean and complete. |
 
@@ -104,7 +104,7 @@ Optional ideas (not required):
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | AC-001: test_command files removed | ✅ | `ls src/cmd/commands/test_command.*` → "No such file" |
-| 2 | AC-002: demo_helpers moved | ✅ | Files at `src/cmd/demos/demo_helpers.{h,cpp}` compile |
+| 2 | AC-002: demo_helpers moved | ✅ | Files at `src/cmd/demo/demo_helpers.{h,cpp}` compile |
 | 3 | AC-003: triangle_demo files created | ✅ | Files exist, signatures match contract |
 | 4 | AC-004: triangle render preserved | ✅ | Same vertex/shaders via `setup_triangle()` |
 | 5 | AC-005: DemoCommand dispatch | ✅ | Verified via shell: `buddd demo unknownname` works |
@@ -126,7 +126,7 @@ Optional ideas (not required):
 | 21 | AC-021: help extra args | ✅ | Verified: `buddd help extra_arg` works |
 | 22 | AC-022: main.cpp no test refs | ✅ | Inspection: no TestCommand includes or "test" dispatch |
 | 23 | AC-023: k_usage_text updated | ✅ | `"test"` line replaced with `"demo"` line in header |
-| 24 | AC-024: triangle_demo uses demo_helpers | ✅ | `#include "demos/demo_helpers.h"`, calls `setup_triangle()` |
+| 24 | AC-024: triangle_demo uses demo_helpers | ✅ | `#include "demo/demo_helpers.h"`, calls `setup_triangle()` |
 | 25 | New test: buddd demo no name | ✅ | Test exists, passes |
 | 26 | New test: buddd demo unknownname | ✅ | Test exists, passes |
 | 27 | New test: buddd test is unknown | ✅ | Test exists, passes |
@@ -218,12 +218,12 @@ Total Test time (real) = 5.61 sec
 |---|---|---|
 | `src/cmd/commands/demo_command.h` | ✅ Created | New file |
 | `src/cmd/commands/demo_command.cpp` | ✅ Created | New file |
-| `src/cmd/demos/triangle_demo.h` | ✅ Created | New file |
-| `src/cmd/demos/triangle_demo.cpp` | ✅ Created | New file |
-| `src/cmd/demos/demo_helpers.h` | ✅ Moved | From `src/cmd/demo_helpers.h`, namespace updated |
-| `src/cmd/demos/demo_helpers.cpp` | ✅ Moved | From `src/cmd/demo_helpers.cpp`, namespace updated |
+| `src/cmd/demo/triangle_demo.h` | ✅ Created | New file |
+| `src/cmd/demo/triangle_demo.cpp` | ✅ Created | New file |
+| `src/cmd/demo/demo_helpers.h` | ✅ Moved | From `src/cmd/demo_helpers.h`, namespace updated |
+| `src/cmd/demo/demo_helpers.cpp` | ✅ Moved | From `src/cmd/demo_helpers.cpp`, namespace updated |
 | `src/cmd/main.cpp` | ✅ Modified | `test` → `demo` dispatch, include updated |
-| `src/cmd/CMakeLists.txt` | ✅ Modified | Added `demos/*.cpp` glob |
+| `src/cmd/CMakeLists.txt` | ✅ Modified | Added `demo/*.cpp` glob |
 | `src/cmd/commands/run_command.cpp` | ✅ Modified | Triangle rendering removed |
 | `src/cmd/commands/run_command.h` | ✅ Modified | Doc comment updated |
 | `src/cmd/commands/help_command.h` | ✅ Modified | `k_usage_text` updated |
@@ -234,8 +234,8 @@ Total Test time (real) = 5.61 sec
 |---|---|---|
 | `src/cmd/commands/test_command.h` | ✅ Removed | Replaced by `demo_command.h` |
 | `src/cmd/commands/test_command.cpp` | ✅ Removed | Content moved to `triangle_demo.cpp` |
-| `src/cmd/demo_helpers.h` | ✅ Removed (moved) | Now at `src/cmd/demos/demo_helpers.h` |
-| `src/cmd/demo_helpers.cpp` | ✅ Removed (moved) | Now at `src/cmd/demos/demo_helpers.cpp` |
+| `src/cmd/demo_helpers.h` | ✅ Removed (moved) | Now at `src/cmd/demo/demo_helpers.h` |
+| `src/cmd/demo_helpers.cpp` | ✅ Removed (moved) | Now at `src/cmd/demo/demo_helpers.cpp` |
 
 ### Forbidden files check
 
@@ -265,7 +265,7 @@ Total Test time (real) = 5.61 sec
 |---|---|---|---|
 | `main.cpp` | `demo_command.h`, `help_command.h`, `run_command.h`, `version_command.h` | No | ✅ |
 | `demo_command.h` | (none — pure declaration) | No | ✅ |
-| `demo_command.cpp` | `demo_command.h`, `demos/triangle_demo.h`, engine abstractions | No | ✅ |
+| `demo_command.cpp` | `demo_command.h`, `demo/triangle_demo.h`, engine abstractions | No | ✅ |
 | `run_command.h` | (none — pure declaration) | No | ✅ |
 | `run_command.cpp` | `run_command.h`, engine abstractions only | No (no demo_helpers) | ✅ |
 | `help_command.h` | `<string_view>` | No | ✅ |
@@ -273,7 +273,7 @@ Total Test time (real) = 5.61 sec
 | `version_command.h` | (none — pure declaration) | No | ✅ |
 | `version_command.cpp` | `version_command.h`, `version.h` | No | ✅ |
 | `triangle_demo.h` | (none — forward decls only) | No | ✅ |
-| `triangle_demo.cpp` | `triangle_demo.h`, `demos/demo_helpers.h`, engine headers | No | ✅ |
+| `triangle_demo.cpp` | `triangle_demo.h`, `demo/demo_helpers.h`, engine headers | No | ✅ |
 | `demo_helpers.h` | Engine render headers (material, vertex_buffer) | No | ✅ |
 | `demo_helpers.cpp` | `demo_helpers.h`, engine headers | No | ✅ |
 

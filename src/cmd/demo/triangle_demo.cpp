@@ -1,5 +1,5 @@
 #include "triangle_demo.h"
-#include "demos/demo_helpers.h"
+#include "demo/demo_helpers.h"
 
 #include "platform/platform.h"
 #include "render/render_device.h"

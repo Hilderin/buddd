@@ -24,9 +24,9 @@ The project also had architectural constraints that influenced the design:
 
 We adopt the following architecture for the demo system:
 
-### 1. A dedicated `src/cmd/demos/` directory
+### 1. A dedicated `src/cmd/demo/` directory
 
-Every visual demo lives in its own `.h`/`.cpp` pair under `src/cmd/demos/`. This creates a clear boundary between command infrastructure (`src/cmd/commands/`) and demo implementations.
+Every visual demo lives in its own `.h`/`.cpp` pair under `src/cmd/demo/`. This creates a clear boundary between command infrastructure (`src/cmd/commands/`) and demo implementations.
 
 ### 2. Per-demo free functions in `buddd::cmd::demo` namespace
 
@@ -56,11 +56,11 @@ No registry, no map data structure, no virtual dispatch. The chain is linear and
 
 ### 4. Demo helpers co-located with demos
 
-The shared `setup_triangle()` helper (used by multiple demos) is moved from `src/cmd/` into `src/cmd/demos/` and its namespace updated from `buddd::cmd` to `buddd::cmd::demo`. This ensures that all demo-related code — including shared utilities — lives under the same directory and namespace.
+The shared `setup_triangle()` helper (used by multiple demos) is moved from `src/cmd/` into `src/cmd/demo/` and its namespace updated from `buddd::cmd` to `buddd::cmd::demo`. This ensures that all demo-related code — including shared utilities — lives under the same directory and namespace.
 
 ### 5. CMake glob auto-discovers demo files
 
-The `src/cmd/CMakeLists.txt` glob includes `demos/*.cpp`, so new demo files are automatically picked up by the build system without modifying CMakeLists.txt.
+The `src/cmd/CMakeLists.txt` glob includes `demo/*.cpp`, so new demo files are automatically picked up by the build system without modifying CMakeLists.txt.
 
 ## Alternatives considered
 
@@ -98,11 +98,11 @@ The `src/cmd/CMakeLists.txt` glob includes `demos/*.cpp`, so new demo files are 
 
 ### Positive
 
-- **Clear extensibility contract**: Adding a new demo requires only (a) creating `.h`/`.cpp` in `src/cmd/demos/`, (b) adding one `else if` branch in `DemoCommand::run()`. No CMake changes, no new command classes, no namespace pollution.
-- **Module boundary enforced**: Command infrastructure (`src/cmd/commands/`) and demo implementations (`src/cmd/demos/`) are clearly separated, preventing cross-contamination.
+- **Clear extensibility contract**: Adding a new demo requires only (a) creating `.h`/`.cpp` in `src/cmd/demo/`, (b) adding one `else if` branch in `DemoCommand::run()`. No CMake changes, no new command classes, no namespace pollution.
+- **Module boundary enforced**: Command infrastructure (`src/cmd/commands/`) and demo implementations (`src/cmd/demo/`) are clearly separated, preventing cross-contamination.
 - **Namespace scoping**: `buddd::cmd::demo` clearly denotes demo code, distinct from command classes in `buddd::cmd`.
 - **Architecture boundary preserved**: All demo code goes through engine abstractions (`Platform`, `Window`, `RenderDevice`). No SDL3/OpenGL/GLM headers in `src/cmd/` — verified by CONST-001 compliance checks.
-- **Self-discovering build**: The CMake glob picks up new `demos/*.cpp` files automatically.
+- **Self-discovering build**: The CMake glob picks up new `demo/*.cpp` files automatically.
 - **Consistent function signature**: All demos share the same `(Platform&, RenderDevice&, int, const char* const*)` signature, making dispatch uniform and enabling optional per-demo argument parsing.
 - **No dynamic allocation or dispatch overhead**: The if/else chain is resolved at compile time with no virtual calls, map lookups, or heap allocation.
 
