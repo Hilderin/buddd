@@ -65,6 +65,7 @@ public:
 
 private:
     friend class World;
+    friend class Component;   // Component::entity() constructs Entity handles.
 
     World* world_ = nullptr;
     EntityId id_ = EntityId::none();
@@ -124,6 +125,12 @@ inline auto Transform::world_matrix(const Entity& entity) const noexcept -> math
     }
 
     return result;
+}
+
+// -- Component::entity() inline definition (requires Entity to be complete) --
+
+inline auto Component::entity() const noexcept -> Entity {
+    return Entity(*world_, entity_id_);
 }
 
 } // namespace buddd::engine

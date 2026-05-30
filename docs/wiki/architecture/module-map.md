@@ -61,7 +61,7 @@ Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, gu
 
 ### Scene submodule (`scene/`)
 
-All types in namespace `buddd::engine`. The scene graph module provides a lightweight entity system with hierarchy, transforms, and polymorphic component dispatch. It depends on math wrapper types (`Vec3`, `Quat`, `Mat4`) from `src/engine/math/` and standard C++ headers only — no GLM, SDL3, or OpenGL dependencies.
+All types in namespace `buddd::engine`. The scene graph module provides a lightweight entity system with hierarchy, transforms, polymorphic component dispatch, and ECS components (`CameraComponent`). It depends on math wrapper types (`Vec3`, `Quat`, `Mat4`, `Camera`) from `src/engine/math/` and standard C++ headers only — no GLM, SDL3, or OpenGL dependencies.
 
 Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieval, with zero boilerplate in component types. See ADR-006 for the decision rationale.
 
@@ -69,11 +69,13 @@ Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieva
 |---|---|
 | `entity_id.h` | `EntityId` struct — 8-byte handle (index + generation) for safe entity references. Header-only. |
 | `transform.h` | `Transform` struct — position (`Vec3`), rotation (`Quat`), scale (`Vec3`) value type with `local_matrix()` and `world_matrix()`. Header-only. |
-| `component.h` | `Component` base class — virtual destructor only, non-copyable, non-movable. Header-only. |
+| `component.h` | `Component` polymorphic base class — non-copyable, non-movable. Provides entity-awareness via protected `world_`/`entity_id_` members and `entity()` accessor. Virtual `on_attach()` lifecycle hook called by `World::add_component<T>()` after attachment. Header-only. |
 | `entity.h` | `Entity` class — 16-byte lightweight handle (`World*` + `EntityId`). Inline template methods for component operations. |
 | `entity.cpp` | Entity non-inline method implementations — all delegate to `World`. |
-| `world.h` | `World` class — top-level container managing entity lifecycle, tree hierarchy, deferred destruction. Template methods for component dispatch (`add_component`, `get_component`, `remove_component`) defined inline. |
+| `world.h` | `World` class — top-level container managing entity lifecycle, tree hierarchy, deferred destruction. Template methods for component dispatch (`add_component`, `get_component`, `remove_component`) and type-based iteration (`each<T>()`) defined inline. Camera registration API (`register_camera`, `unregister_camera`, `active_camera`) stores a `CameraComponent&` reference in an `std::optional<CameraComponent&>` member. |
 | `world.cpp` | World implementation including internal `EntityNode` type, slot-based storage, `flush_destroyed()` logic, and `mark_for_destroy()` iterative traversal. |
+| `camera_component.h` | `CameraComponent` ECS component class — wraps `math::Camera`, inherits `Component`. Auto-registers with `World` via `on_attach()` and unregisters on destruction (address-based comparison). |
+| `camera_component.cpp` | CameraComponent implementation: `on_attach()` calls `world().register_camera(*this)`, destructor calls `world_->unregister_camera(*this)` (with null guard). |
 
 ### Image submodule (`image/`)
 
@@ -87,7 +89,9 @@ All types in namespace `buddd::engine`. Provides pixel buffer representation and
 
 ### Render submodule (`render/`)
 
-The render submodule now provides a full pipeline abstraction: shader compilation, material linking, vertex/index buffer management, and draw calls. All abstract types are backend-agnostic; concrete implementations exist for OpenGL 4.5 Core and Headless.
+The render submodule now provides a full pipeline abstraction: shader compilation, material linking, vertex/index buffer management, draw calls, and an ECS integration layer bridging the scene graph to the GPU. All abstract types are backend-agnostic; concrete implementations exist for OpenGL 4.5 Core and Headless.
+
+The render submodule depends on the `scene/` submodule: `MeshRenderer` inherits `Component` (from scene/), and `RenderSystem` takes a `World&` (from scene/) to iterate entities each frame.
 
 | File | Role |
 |---|---|
@@ -101,16 +105,16 @@ The render submodule now provides a full pipeline abstraction: shader compilatio
 | `render_device.cpp` | Factory implementation: dispatches to OpenGL or Headless backend based on `native_handle()` value |
 | `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class wrapping `SDL_Window*` and `SDL_GLContext` and `glReadPixels` framebuffer readback |
 | `render_device_opengl.cpp` | OpenGL 4.5 Core implementation: GLSL compilation via `glCreateShader`/`glCompileShader`, program linking via `glCreateProgram`/`glLinkProgram`, VAO/VBO/IBO management via DSA APIs (`glCreateVertexArrays`, `glNamedBufferStorage`, etc.), and draw dispatch via `glDrawArrays`/`glDrawElements` |
-| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class with diagnostic counters and unconditional `read_pixels()` error |
-| `render_device_headless.cpp` | Headless implementation: stores shader source and vertex data in memory; simulates compilation errors via `#error` marker and linking errors via vertex/fragment I/O mismatch detection; draw calls are no-ops |
+| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class with diagnostic counters (`draw_call_count_`, `frame_begin_count_`, `frame_end_count_`) and public accessors (`frame_begin_count()`, `frame_end_count()`, `draw_call_count()`). Unconditional `read_pixels()` error. |
+| `render_device_headless.cpp` | Headless implementation: stores shader source and vertex data in memory; simulates compilation errors via `#error` marker and linking errors via vertex/fragment I/O mismatch detection; draw calls are no-ops; increments `frame_begin_count_`/`frame_end_count_` in `begin_frame()`/`end_frame()` |
 | `shader_opengl.h` | Private header: `ShaderOpenGL` concrete class wrapping a `GLuint` shader handle |
 | `shader_opengl.cpp` | OpenGL shader backend: resource lifetime managed via `glCreateShader`/`glDeleteShader` |
 | `shader_headless.h` | Private header: `ShaderHeadless` concrete class storing type and GLSL source string |
 | `shader_headless.cpp` | Headless shader backend: stores source for linking-error simulation and uniform discovery |
 | `material_opengl.h` | Private header: `MaterialOpenGL` concrete class with `glGetUniformLocation`-based uniform management and location caching |
 | `material_opengl.cpp` | OpenGL material backend: uniform dispatch via `glUniform1f`/`glUniform1i`/`glUniform3fv`/`glUniform4fv`/`glUniformMatrix4fv`; program destruction via `glDeleteProgram` |
-| `material_headless.h` | Private header: `MaterialHeadless` concrete class with `std::unordered_set` of known uniform names and `std::variant`-based uniform value storage |
-| `material_headless.cpp` | Headless material backend: in-memory uniform state tracking; `has_uniform` checks known names + previously-set names; `set_uniform` returns `UniformNotFound` for unknown names |
+| `material_headless.h` | Private header: `MaterialHeadless` concrete class with `std::unordered_set` of known uniform names, `std::variant`-based uniform value storage, and `get_uniform_mat4(name)` public accessor for diagnostic uniform query |
+| `material_headless.cpp` | Headless material backend: in-memory uniform state tracking; `has_uniform` checks known names + previously-set names; `set_uniform` returns `UniformNotFound` for unknown names; `get_uniform_mat4` returns stored `Mat4` value or `std::nullopt` |
 | `vertex_buffer_opengl.h` | Private header: `VertexBufferOpenGL` wrapping VAO and VBO handles |
 | `vertex_buffer_opengl.cpp` | OpenGL vertex buffer backend: VAO/VBO creation via `glCreateVertexArrays`/`glCreateBuffers`, attribute configuration via `glVertexArrayAttribFormat`, `glVertexArrayVertexBuffer`, `glVertexArrayAttribBinding` |
 | `vertex_buffer_headless.h` | Private header: `VertexBufferHeadless` storing format and vertex data in memory |
@@ -121,6 +125,10 @@ The render submodule now provides a full pipeline abstraction: shader compilatio
 | `index_buffer_headless.cpp` | Headless index buffer backend: data stored in `std::vector<std::byte>` |
 | `model.h` | Public header: `Model` concrete class — bundles `VertexBuffer` + optional `IndexBuffer` + `std::shared_ptr<Material>` with static factory methods (`create`, `create_indexed`) and `draw()` dispatch. Non-copyable, movable, default-constructible (null model). |
 | `model.cpp` | Implementation of Model factory methods (argument validation, buffer creation, RAII cleanup) and draw dispatch (indexed vs non-indexed). |
+| `mesh_renderer.h` | Public header: `MeshRenderer` ECS component — inherits `Component`, holds a `std::shared_ptr<Model>`. Provides `model()` accessor. Used by `RenderSystem` to discover drawable entities via `World::each<MeshRenderer>()`. |
+| `mesh_renderer.cpp` | MeshRenderer implementation: constructor stores the shared Model pointer. |
+| `render_system.h` | Public header: `RenderSystem` engine-level class — bridges `RenderDevice` and `World`. Constructor takes `RenderDevice&` and `World&`. Single `render()` method: calls `begin_frame()`/`end_frame()`, queries `active_camera()` for view-projection, iterates `World::each<MeshRenderer>()` to issue draw calls with computed MVP matrices. |
+| `render_system.cpp` | RenderSystem implementation: `render()` orchestrates one frame — begin/end frame lifecycle, camera lookup, MVP computation per MeshRenderer entity, uniform setting, and draw dispatch. Logs warnings to `std::cerr` for missing camera or uniform failures (per-entity skip). |
 
 The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` (i.e., `src/engine/`), allowing consumers to `#include "error.h"`, `#include "platform/platform.h"`, etc.
 
@@ -159,6 +167,7 @@ Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::c
 | `demo_helpers.h` / `demo_helpers.cpp` | **Moved** from `src/cmd/`. Header declaring `buddd::cmd::demo::setup_triangle()` — shared helper for rendering a coloured triangle (used by `triangle_demo`). Also declares `CubeResources` struct and `setup_cube()` — shared helper for creating a unit cube (24 vertices, 36 indices, per-face colours) with material, used by `cube_demo`. |
 | `triangle_demo.h` / `triangle_demo.cpp` | Declares `buddd::cmd::demo::run_triangle_demo()` — 120-frame render loop with a coloured triangle (extracted from the old `test_command.cpp`). |
 | `cube_demo.h` / `cube_demo.cpp` | Declares `buddd::cmd::demo::run_cube_demo()` — 120-frame render loop with a rotating per-face-coloured cube using Camera + MVP. Header exposes no backend types (only forward declarations). |
+| `cube_scene_demo.h` / `cube_scene_demo.cpp` | Declares `buddd::cmd::demo::run_cube_scene_demo()` — 120-frame render loop using `World` + `RenderSystem` (ECS approach) instead of manual camera/MVP/draw calls. Creates entities with `CameraComponent` and `MeshRenderer`. Not yet wired into `demo_command.cpp` dispatch. |
 
 ### Capture files (`src/cmd/capture/`)
 
@@ -198,7 +207,12 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 | `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 | `image_tests.cpp` | Image unit tests (tagged `[image]`): ImageBuffer aggregate, Image::create validation, row-flipping, save/load round-trip, load error cases, copy/move semantics, accessors, save error cases. All headless (CPU-only). |
+| `scene_rendering_tests.cpp` | Scene rendering tests (AC-001 through AC-030): Component entity awareness, World::each<T>() iteration, camera registration lifecycle, CameraComponent auto-register/unregister, RenderSystem begin/end_frame, draw call counting, MVP computation, no-camera warning, uniform failure skip, cube-scene demo integration — all headless, compiled in both BUDDD_HAS_DISPLAY branches. |
 | `test_helpers.h` | Shared CLI test utilities: `buddd_binary_path()`, `temp_filename()`, `run_buddd()`, `CommandResult` |
+
+## API conventions
+
+- **No raw pointers in public API signatures**: Parameters and return types in public headers must avoid `T*` — prefer `T&` (guaranteed non-null), `std::optional<T&>` (nullable), `std::reference_wrapper<T>` (stored reference), or `std::span<T>` (contiguous ranges). Exceptions: `const char*` for C string literal interop, legacy C interop in the platform layer, strictly private implementation details, and `void*` callback contexts at C API boundaries. See ADR-010 for full rationale and replacement mappings.
 
 ## Source naming conventions
 
@@ -228,3 +242,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Files allowed to create/modify, factory method signatures, test requirements (T-01 through T-24), draw-methods-as-void exception extension
 - Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
+- Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
+- Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)

@@ -1,5 +1,6 @@
 #include "demo_command.h"
 #include "demo/cube_demo.h"
+#include "demo/cube_scene_demo.h"
 #include "demo/triangle_demo.h"
 
 #include "platform/platform.h"
@@ -35,6 +36,7 @@ inline constexpr std::string_view k_demo_usage =
     "Available demos:\n"
     "  triangle     Run the triangle demo (120 frames)\n"
     "  cube         Run the cube demo (120 frames, rotating coloured cube)\n"
+    "  cube-scene   Run the cube demo via scene graph (World + RenderSystem)\n"
     "\n"
     "Demo names are case-sensitive.\n";
 
@@ -50,7 +52,7 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
     const std::string_view demo_name{argv[2]};
 
     // Validate demo name before creating resources (fails fast on CI without display)
-    if (demo_name != "triangle" && demo_name != "cube") {
+    if (demo_name != "triangle" && demo_name != "cube" && demo_name != "cube-scene") {
         std::fprintf(stderr, "Unknown demo: '%s'\n\n", argv[2]);
         std::fwrite(k_demo_usage.data(), 1, k_demo_usage.size(), stderr);
         return EXIT_FAILURE;
@@ -100,6 +102,8 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
     // Pass argc - 2, argv + 2 so the demo receives argv[0] == demo name
     if (demo_name == "triangle") {
         return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
+    } else if (demo_name == "cube-scene") {
+        return buddd::cmd::demo::run_cube_scene_demo(**platform, **device, argc - 2, argv + 2);
     } else {
         // demo_name == "cube" (validated above)
         return buddd::cmd::demo::run_cube_demo(**platform, **device, argc - 2, argv + 2);

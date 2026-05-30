@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,8 @@
 #include "scene/component.h"
 
 namespace buddd::engine {
+
+class CameraComponent;  // forward declaration
 
 class World {
 public:
@@ -45,6 +48,28 @@ public:
 
     template<typename T>
     auto remove_component(EntityId id) -> bool;
+
+    // -- Type-based iteration --
+    template<typename T, typename Func>
+    requires std::is_base_of_v<Component, T>
+    auto each(Func&& func) -> size_t;
+
+    // -- Camera registration --
+    /// Registers a CameraComponent as the active camera.
+    /// Last-registered camera wins (single active camera for v1).
+    /// Safe to call multiple times for the same camera (idempotent).
+    /// If another camera was already registered, it is replaced.
+    auto register_camera(CameraComponent& camera) -> void;
+
+    /// Unregisters a CameraComponent from being the active camera.
+    /// If the given camera is not the active camera, this is a no-op.
+    /// Safe to call even if no camera is registered.
+    auto unregister_camera(const CameraComponent& camera) -> void;
+
+    /// Returns the currently active camera component, or std::nullopt if
+    /// no camera has been registered (or the last registered camera
+    /// was unregistered).
+    auto active_camera() const noexcept -> std::optional<CameraComponent&>;
 
 private:
     friend class Entity;
@@ -90,6 +115,8 @@ private:
     std::vector<EntityNode*> pending_destroy_;
     std::vector<uint32_t> free_slots_;
     uint32_t next_slot_ = 0;
+
+    std::optional<CameraComponent&> active_camera_;
 };
 
 // -- World template method implementations (inline, defined in header) --
@@ -100,7 +127,10 @@ inline auto World::add_component(EntityId id, Args&&... args) -> T& {
     // UB if node is null, slot dead, or component of type T already exists.
     auto component = std::make_unique<T>(std::forward<Args>(args)...);
     T* ptr = component.get();
+    ptr->world_ = this;
+    ptr->entity_id_ = id;
     node->components_.push_back(std::move(component));
+    ptr->on_attach();
     return *ptr;
 }
 
@@ -145,6 +175,50 @@ inline auto World::remove_component(EntityId id) -> bool {
         }
     }
     return false;
+}
+
+// -- World::each<T>() implementation --
+
+template<typename T, typename Func>
+requires std::is_base_of_v<Component, T>
+inline auto World::each(Func&& func) -> size_t {
+    size_t count = 0;
+    for (auto& slot : slots_) {
+        if (!slot.alive) continue;
+        auto* node = slot.node;
+        if (!node || node->pending_destroy_) continue;
+        for (auto& c : node->components_) {
+            auto* typed = dynamic_cast<T*>(c.get());
+            if (typed) {
+                ++count;
+                if (!func(Entity(*this, node->id_), *typed)) {
+                    return count;  // early exit
+                }
+                break;  // at most one component of type T per entity
+            }
+        }
+    }
+    return count;
+}
+
+// -- Camera API inline implementations --
+
+inline auto World::register_camera(CameraComponent& camera) -> void {
+    active_camera_ = camera;  // std::optional<CameraComponent&> stores the reference
+}
+
+inline auto World::unregister_camera(const CameraComponent& camera) -> void {
+    // Address comparison: only clear if this component is the active camera
+    if (active_camera_.has_value() && &*active_camera_ == &camera) {
+        active_camera_.reset();
+    }
+}
+
+inline auto World::active_camera() const noexcept -> std::optional<CameraComponent&> {
+    if (!active_camera_.has_value()) {
+        return std::nullopt;
+    }
+    return active_camera_;
 }
 
 // -- Entity template method implementations (delegate to World) --

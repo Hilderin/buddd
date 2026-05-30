@@ -46,7 +46,7 @@ buddd2/
 
 | Target | Type | Directory | Description |
 |---|---|---|---|
-| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, and image I/O module. Links SDL3, OpenGL, GLM, and stb. |
+| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, render pipeline module, and image I/O module. Links SDL3, OpenGL, GLM, and stb. |
 | `buddd` | Executable | `src/cmd/` | CLI binary; links `buddd_engine` |
 | `buddd_editor` | INTERFACE library | `src/editor/` | Placeholder — no compiled sources |
 | `buddd_tests` | Executable | `tests/` | Catch2 test binary; links `buddd_engine` |
@@ -67,10 +67,12 @@ src/engine/
 │   ├── quat.h               # Quat — quaternion wrapper around glm::quat
 │   ├── camera.h             # Camera — perspective camera (declarations)
 │   └── camera.cpp           # Camera — method implementations
-├── scene/                    # Scene graph (World, Entity, Transform, Component)
+├── scene/                    # Scene graph (World, Entity, Transform, Component, CameraComponent)
 │   ├── entity_id.h           # EntityId — 8-byte handle (index + generation)
 │   ├── transform.h           # Transform — position/rotation/scale with matrix computation
-│   ├── component.h           # Component — polymorphic base class (virtual destructor only)
+│   ├── component.h           # Component — polymorphic base class with entity awareness (world_, entity_id_, entity(), on_attach())
+│   ├── camera_component.h    # CameraComponent — ECS component wrapping math::Camera, auto-registers with World
+│   ├── camera_component.cpp  # CameraComponent lifecycle (register/unregister via on_attach/destructor)
 │   ├── entity.h              # Entity — 16-byte lightweight handle
 │   ├── entity.cpp            # Entity method implementations (delegates to World)
 │   ├── world.h               # World — top-level container, entity lifecycle, deferred destruction
@@ -108,7 +110,11 @@ src/engine/
     ├── index_buffer_opengl.h/cpp   # OpenGL index buffer backend (IndexBufferOpenGL)
     ├── index_buffer_headless.h/cpp # Headless index buffer backend (IndexBufferHeadless)
     ├── model.h                     # Model — concrete utility class bundling VertexBuffer + optional IndexBuffer + shared_ptr<Material>
-    └── model.cpp                   # Model implementation (factory methods, draw dispatch)
+    ├── model.cpp                   # Model implementation (factory methods, draw dispatch)
+    ├── mesh_renderer.h             # MeshRenderer — ECS component (inherits Component) holding shared_ptr<Model>
+    ├── mesh_renderer.cpp           # MeshRenderer implementation
+    ├── render_system.h             # RenderSystem — bridges RenderDevice + World, orchestrates frame rendering
+    └── render_system.cpp           # RenderSystem implementation (begin/end_frame, camera lookup, each<MeshRenderer> iteration, MVP, draw dispatch)
 ```
 
 ## Key behaviors
@@ -146,6 +152,9 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Entity creation, hierarchy, and component management are available after including `<scene/entity.h>`.
 - Components use `dynamic_cast<T*>()` for type-safe dispatch (requires RTTI, enabled by default).
 - `get_component<T>()` returns `std::optional<T&>` (C++26) — a type-safe optional reference.
+- `World::each<T>()` iterates all entities having a component of type `T`, passing `(Entity, T&)` to a callback. The callback may return `false` to early-exit the iteration.
+- Every `Component` is entity-aware: `World::add_component<T>()` sets `world_` and `entity_id_` on the component, then calls the virtual `on_attach()` hook. Derived components may override `on_attach()` for setup logic (e.g., `CameraComponent` auto-registers with the World).
+- Camera registration: `World::register_camera(CameraComponent&)` stores a reference as the active camera (last-registered-wins). `World::unregister_camera(const CameraComponent&)` clears by address comparison. `World::active_camera()` returns `std::optional<CameraComponent&>`. `CameraComponent` auto-registers on attachment and unregisters on destruction.
 - Entity destruction is deferred: `entity.destroy()` marks for destruction; `world.flush_destroyed()` reclaims resources in reverse depth order.
 - The scene graph uses per-entity `std::vector<std::unique_ptr<Component>>` storage (no ECS flat arrays in v1). The storage strategy is hidden behind the `World` implementation for forward compatibility.
 - Scene graph types are pure memory management and spatial computation — no display, GPU, or external dependencies beyond math wrappers.
@@ -172,3 +181,5 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md)
 - Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
+- Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
+- Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)

@@ -2,6 +2,7 @@
 
 #include "material.h"
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -22,6 +23,10 @@ public:
     auto set_uniform(std::string_view name, const math::Mat4& value) -> Result<void> override;
 
     auto has_uniform(std::string_view name) const -> bool override;
+
+    /// Returns the last-set Mat4 value for the given uniform name, or
+    /// std::nullopt if the uniform has not been set or is not of Mat4 type.
+    auto get_uniform_mat4(std::string_view name) const -> std::optional<math::Mat4>;
 
     MaterialHeadless(const MaterialHeadless&) = delete;
     auto operator=(const MaterialHeadless&) -> MaterialHeadless& = delete;

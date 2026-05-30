@@ -198,11 +198,11 @@ RenderDeviceHeadless::RenderDeviceHeadless(int width, int height)
     : width_(width), height_(height) {}
 
 auto RenderDeviceHeadless::begin_frame() -> void {
-    // no-op
+    ++frame_begin_count_;
 }
 
 auto RenderDeviceHeadless::end_frame() -> void {
-    // no-op
+    ++frame_end_count_;
 }
 
 auto RenderDeviceHeadless::size() const noexcept -> std::pair<int, int> {

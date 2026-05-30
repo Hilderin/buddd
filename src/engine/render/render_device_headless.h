@@ -60,6 +60,11 @@ public:
 
     auto read_pixels() -> Result<ImageBuffer> override;
 
+    // -- Diagnostics / counters --
+    auto frame_begin_count() const noexcept -> int { return frame_begin_count_; }
+    auto frame_end_count() const noexcept -> int { return frame_end_count_; }
+    auto draw_call_count() const noexcept -> int { return draw_call_count_; }
+
     RenderDeviceHeadless(const RenderDeviceHeadless&) = delete;
     auto operator=(const RenderDeviceHeadless&) -> RenderDeviceHeadless& = delete;
     RenderDeviceHeadless(RenderDeviceHeadless&&) = delete;
@@ -75,6 +80,8 @@ private:
     int vertex_buffer_count_{0};
     int index_buffer_count_{0};
     int draw_call_count_{0};
+    int frame_begin_count_{0};
+    int frame_end_count_{0};
 };
 
 } // namespace buddd::engine

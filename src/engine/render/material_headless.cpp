@@ -1,6 +1,7 @@
 #include "material_headless.h"
 
 #include <iostream>
+#include <optional>
 
 namespace buddd::engine {
 
@@ -100,6 +101,17 @@ auto MaterialHeadless::set_uniform(std::string_view name, const math::Mat4& valu
     std::cerr << "Uniform set: " << name << " (type=Mat4)\n";
 #endif
     return {};
+}
+
+auto MaterialHeadless::get_uniform_mat4(std::string_view name) const -> std::optional<math::Mat4> {
+    auto it = uniform_values_.find(std::string(name));
+    if (it == uniform_values_.end()) {
+        return std::nullopt;
+    }
+    if (!std::holds_alternative<math::Mat4>(it->second)) {
+        return std::nullopt;
+    }
+    return std::get<math::Mat4>(it->second);
 }
 
 } // namespace buddd::engine
