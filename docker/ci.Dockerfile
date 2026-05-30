@@ -18,6 +18,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Build essentials
     build-essential \
+    git \
     ninja-build \
     python3-pip \
     # GCC 16 from the toolchain PPA
