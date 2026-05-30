@@ -100,36 +100,44 @@ The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` 
 
 The command-line binary. Links `buddd_engine` as PRIVATE.
 
-Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pair under `src/cmd/commands/`, and `main.cpp` is a thin dispatcher (single if/else-if chain). Shared helper code (not a command itself) lives directly in `src/cmd/`.
+Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pair under `src/cmd/commands/`, and `main.cpp` is a thin dispatcher (single if/else-if chain). Per-demo files live under `src/cmd/demos/` with shared helper code for demos.
 
 ### Build system
 
-`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering both `src/cmd/*.cpp` (for `main.cpp` and shared helpers) and `src/cmd/commands/*.cpp` (for command files). New commands can be added by creating files in `src/cmd/commands/` and wiring them into the dispatch — no CMakeLists.txt change needed.
+`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering `src/cmd/*.cpp` (for `main.cpp`), `src/cmd/commands/*.cpp` (for command files), and `src/cmd/demos/*.cpp` (for per-demo files). New commands can be added by creating files in `src/cmd/commands/` and wiring them into the dispatch — no CMakeLists.txt change needed. New demos can be added by creating files in `src/cmd/demos/` and adding a dispatch branch in `DemoCommand`.
 
 ### File structure
 
 | File | Role |
 |---|---|
 | `main.cpp` | Thin dispatcher: parse first positional argument, dispatch to the matching command via if/else-if chain, return its exit code. No static helper functions, no engine header includes. |
-| `demo_helpers.h` | Header declaring `buddd::cmd::setup_triangle()` — shared helper for rendering a coloured triangle |
-| `demo_helpers.cpp` | Implementation of `setup_triangle()` extracted from the old monolithic `main.cpp` |
 
 ### Command files (`src/cmd/commands/`)
 
 | File | Role |
 |---|---|
 | `version_command.h` / `version_command.cpp` | `buddd::cmd::VersionCommand` — prints `buddd <version>` from `be::version()` to stdout and exits 0. Extra args silently ignored. |
-| `test_command.h` / `test_command.cpp` | `buddd::cmd::TestCommand` — opens 800×600 window titled "Buddd Engine — Render Test", renders coloured triangle for 120 frames at ~60 FPS, then exits. Warns on stderr if extra args follow `test`. Aborts early if user closes window. |
-| `run_command.h` / `run_command.cpp` | `buddd::cmd::RunCommand` — opens 1024×768 window titled "Buddd Engine", renders coloured triangle interactively until user closes the window. Extra args silently ignored. |
+| `demo_command.h` / `demo_command.cpp` | `buddd::cmd::DemoCommand` — parses a demo name from `argv[2]`, opens 800×600 window titled "Buddd Engine — Demo: \<name\>", dispatches to the matching per-demo function. Prints usage if no name is given or if the demo name is unknown. Warns on stderr if extra args follow the demo name. |
+| `run_command.h` / `run_command.cpp` | `buddd::cmd::RunCommand` — opens 1024×768 window titled "Buddd Engine", clears the framebuffer each frame (no draw calls), interactive until user closes the window. Extra args silently ignored. |
 | `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Extra args silently ignored. |
+
+### Demo files (`src/cmd/demos/`)
+
+Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::demo` namespace. The per-demo function receives a `Platform&`, `RenderDevice&`, and `argc`/`argv` (where `argv[0]` is the demo name).
+
+| File | Role |
+|---|---|
+| `demo_helpers.h` / `demo_helpers.cpp` | **Moved** from `src/cmd/`. Header declaring `buddd::cmd::demo::setup_triangle()` — shared helper for rendering a coloured triangle (used by `triangle_demo`). |
+| `triangle_demo.h` / `triangle_demo.cpp` | Declares `buddd::cmd::demo::run_triangle_demo()` — 120-frame render loop with a coloured triangle (extracted from the old `test_command.cpp`). |
 
 ### Subcommand behavior
 
-- `buddd` (no arguments) or `buddd run` → opens 1024×768 window, interactive render loop until user closes window
-- `buddd test` → opens 800×600 window, automated 120-frame render test, then exits
+- `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
+- `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
 - `buddd version` → prints `buddd 0.1.0` to stdout
-- `buddd help` → prints usage information listing all four commands
-- Unknown command → prints `"Unknown command: '<cmd>'"` followed by usage to stderr, exits with code 1
+- `buddd help` → prints usage information listing all four commands (`run`, `demo`, `version`, `help`)
+- Unknown command → prints `"Unknown command: '<cmd>'"` followed by updated usage to stderr, exits with code 1
+- `buddd test` is **removed** — it produces an unknown command error (use `buddd demo triangle` instead)
 - Old `--test` and `--version` flags are **dropped** — they produce an unknown command error
 
 ## `buddd_editor` — INTERFACE library placeholder (`src/editor/`)
@@ -166,3 +174,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — File directory structure, open questions, draw-methods-as-void exception
 - Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: Command pattern, subcommand structure, file layout
 - Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, CONST-001 compliance
+- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
+- Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Replacement of TestCommand with DemoCommand, per-demo files, RunCommand simplification

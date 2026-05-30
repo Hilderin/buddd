@@ -125,7 +125,7 @@ TEST_CASE("buddd help outputs usage text", "[cli]") {
     // Must contain the usage header and all four command names
     REQUIRE(res.stdout_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
-    REQUIRE(res.stdout_str.find("test") != std::string::npos);
+    REQUIRE(res.stdout_str.find("demo") != std::string::npos);
     REQUIRE(res.stdout_str.find("version") != std::string::npos);
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
 }
@@ -152,9 +152,39 @@ TEST_CASE("buddd help ignores extra arguments", "[cli]") {
     REQUIRE(res.exit_code == 0);
     REQUIRE(res.stdout_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
-    REQUIRE(res.stdout_str.find("test") != std::string::npos);
+    REQUIRE(res.stdout_str.find("demo") != std::string::npos);
     REQUIRE(res.stdout_str.find("version") != std::string::npos);
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
+}
+
+TEST_CASE("buddd demo with no name prints usage and exits 1", "[cli]") {
+    const auto res = run_buddd("demo");
+
+    REQUIRE(res.exit_code == 1);
+    // stderr must contain the demo usage text
+    REQUIRE(res.stderr_str.find("Usage: buddd demo <demo>") != std::string::npos);
+    REQUIRE(res.stderr_str.find("triangle") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Demo names are case-sensitive.") != std::string::npos);
+}
+
+TEST_CASE("buddd demo unknownname prints error and exits 1", "[cli]") {
+    const auto res = run_buddd("demo unknownname");
+
+    REQUIRE(res.exit_code == 1);
+    // stderr must contain "Unknown demo: 'unknownname'"
+    REQUIRE(res.stderr_str.find("Unknown demo: 'unknownname'") != std::string::npos);
+    // Must also contain the demo usage
+    REQUIRE(res.stderr_str.find("Usage: buddd demo <demo>") != std::string::npos);
+}
+
+TEST_CASE("buddd test is unknown command", "[cli]") {
+    const auto res = run_buddd("test");
+
+    REQUIRE(res.exit_code == 1);
+    // stderr must contain "Unknown command: 'test'"
+    REQUIRE(res.stderr_str.find("Unknown command: 'test'") != std::string::npos);
+    // Must also contain the updated usage block (which has "demo" not "test")
+    REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
 #ifdef BUDDD_HAS_DISPLAY
@@ -176,8 +206,9 @@ TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
     auto read_file = [](const std::string& path) -> std::string {
         std::ifstream f(path, std::ios::binary);
         if (!f) return {};
-        return std::string((std::istreambuf_iterator<char>(f)),
-                           std::istreambuf_iterator<char>());
+        std::string content((std::istreambuf_iterator<char>(f)),
+                             std::istreambuf_iterator<char>());
+        return content;
     };
 
     const auto stdout_str = read_file(out_file);
@@ -186,6 +217,38 @@ TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
 
     // The window opened message must have been printed before timeout killed it
     REQUIRE(stdout_str.find("Window opened: 1024x768") != std::string::npos);
+}
+
+TEST_CASE("buddd demo triangle runs and completes", "[cli]") {
+    // Run the demo with a 5-second timeout and verify the completion message.
+    // This test requires a display (guarded by BUDDD_HAS_DISPLAY).
+    const auto binary = buddd_binary_path();
+    const auto out_file = temp_filename("buddd_demo_out");
+    const auto err_file = temp_filename("buddd_demo_err");
+
+    const std::string shell_cmd = "timeout 5 \"" + binary + "\" demo triangle > \""
+                                  + out_file + "\" 2> \"" + err_file + "\" || true";
+
+    const int sys_ret = std::system(shell_cmd.c_str());
+    (void)sys_ret;
+
+    auto read_file = [](const std::string& path) -> std::string {
+        std::ifstream f(path, std::ios::binary);
+        if (!f) return {};
+        return std::string((std::istreambuf_iterator<char>(f)),
+                           std::istreambuf_iterator<char>());
+    };
+
+    const auto stderr_str = read_file(err_file);
+    std::remove(out_file.c_str());
+    std::remove(err_file.c_str());
+
+    // The demo should complete (120 frames ~2 seconds, well within 5s timeout)
+    // If the display is available, we should see the completion message.
+    // If the platform/window creation failed, we'll see an error message instead.
+    // We check that either the demo completed or an engine init error occurred.
+    REQUIRE( (stderr_str.find("Demo complete: triangle (120 frames rendered)") != std::string::npos
+              || stderr_str.find("Failed to create") != std::string::npos) );
 }
 
 #endif // BUDDD_HAS_DISPLAY

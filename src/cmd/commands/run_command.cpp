@@ -1,10 +1,8 @@
 #include "run_command.h"
-#include "demo_helpers.h"
 
 #include "platform/platform.h"
 #include "window/window.h"
 #include "render/render_device.h"
-#include "render/primitive_topology.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -39,14 +37,11 @@ auto bc::RunCommand::run([[maybe_unused]] int argc, [[maybe_unused]] const char*
         return EXIT_FAILURE;
     }
 
-    auto [material, vb] = bc::setup_triangle(**device);
-
     // Render loop: runs until the window is closed by the user
+    // Each frame clears the framebuffer (begin_frame does the clear in the
+    // OpenGL backend via glClear) with no draw calls.
     while ((*platform)->poll_events()) {
         (*device)->begin_frame();
-        (*device)->draw(
-            be::PrimitiveTopology::Triangles,
-            *vb, *material, 3);
         (*device)->end_frame();
     }
 

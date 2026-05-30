@@ -27,6 +27,23 @@ Both Debug and Release presets include a `testPreset` that runs all registered t
 |---|---|---|---|
 | `engine version is non-empty` | `[sanity]` | `tests/version_test.cpp` | `buddd::engine::version()` returns a non-empty `std::string_view` |
 
+### CLI integration tests
+
+The project includes CLI integration tests tagged `[cli]` that invoke the `buddd` binary and verify its output. These tests run without a display:
+
+| Test case | Verification |
+|---|---|
+| `buddd help outputs usage text` | stdout contains `"demo"` as a listed command |
+| `buddd help ignores extra arguments` | stdout contains updated usage text |
+| `buddd version outputs correct version string` | stdout contains `"buddd 0.1.0"` |
+| `buddd version ignores extra arguments` | stdout contains `"buddd 0.1.0"` (extra args ignored) |
+| `buddd with no arguments defaults to run command` | stdout contains `"Window opened: 1024x768"` |
+| `buddd unknowncommand exits with code 1` | stderr contains `"Unknown command: 'unknowncommand'"` + usage; exit code 1 |
+| `buddd demo with no name prints usage and exits 1` | stderr contains `"Usage: buddd demo <demo>"`; exit code 1 |
+| `buddd demo unknownname prints error and exits 1` | stderr contains `"Unknown demo: 'unknownname'"`; exit code 1 |
+| `buddd test is unknown command` | stderr contains `"Unknown command: 'test'"`; exit code 1 |
+| `buddd demo triangle runs and completes` (guarded by `BUDDD_HAS_DISPLAY`) | stderr contains `"Demo complete: triangle (120 frames rendered)"` or an engine init error |
+
 ### Headless platform abstraction tests
 
 The platform abstraction layer introduces headless backend tests that run **without a display or GPU** — they are safe for CI:
@@ -88,3 +105,5 @@ The old `T-13` (formerly `Platform::create(SDL3) success` with `[!mayfail]`) has
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required tests (T-01 through T-12)
 - Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md) — SDL3 backend test specification
 - Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — SDL3 backend test implementation
+- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Test implications, new CLI test cases
+- Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Required tests (demo no name, demo unknownname, test unknown, demo triangle)

@@ -16,9 +16,9 @@
 #include <utility>
 
 namespace be = buddd::engine;
-namespace bc = buddd::cmd;
+namespace bcd = buddd::cmd::demo;
 
-auto bc::setup_triangle(
+auto bcd::setup_triangle(
     be::RenderDevice& device
 ) -> std::pair<
         std::unique_ptr<be::Material>,

@@ -10,7 +10,7 @@ namespace buddd::engine {
 class RenderDevice;
 } // namespace buddd::engine
 
-namespace buddd::cmd {
+namespace buddd::cmd::demo {
 
 /// Creates a coloured triangle by compiling shaders and creating a material +
 /// vertex buffer.
@@ -24,4 +24,4 @@ auto setup_triangle(buddd::engine::RenderDevice& device)
         std::unique_ptr<buddd::engine::Material>,
         std::unique_ptr<buddd::engine::VertexBuffer>>;
 
-} // namespace buddd::cmd
+} // namespace buddd::cmd::demo

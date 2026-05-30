@@ -14,7 +14,7 @@ main(int argc, char* argv[])
       │       └── YES ──► RunCommand.run(argc, argv) ← default
       │
       ├── argv[1] == "run"     ──► RunCommand.run(argc, argv)
-      ├── argv[1] == "test"    ──► TestCommand.run(argc, argv)
+      ├── argv[1] == "demo"    ──► DemoCommand.run(argc, argv)
       ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
       ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
       │
@@ -28,10 +28,10 @@ Each command produces its own output:
 | Command | stdout | stderr |
 |---|---|---|
 | `run` / (default) | `"Window opened: 1024x768"` then `"Window closed, shutting down."` | — |
-| `test` | — | `"Render test started: 120 frames"` then `"Render test complete: ..."` (or abort message) |
+| `demo <name>` | — | `"Demo started: <name> (N frames)"` then `"Demo complete: <name> (N frames rendered)"` (or abort: `"Demo aborted by user (frame N)"`). If no name: demo usage text. If unknown name: `"Unknown demo: '<name>'"` + usage. |
 | `version` | `"buddd 0.1.0"` | — |
-| `help` | Usage text (4 commands listed) | — |
-| Unknown | — | `"Unknown command: '<cmd>'"` + usage text |
+| `help` | Usage text (4 commands: `run`, `demo`, `version`, `help`) | — |
+| Unknown (including `test`) | — | `"Unknown command: '<cmd>'"` + usage text |
 
 The old `--test` and `--version` flags are removed — they are caught by the unknown-command handler.
 
@@ -140,3 +140,5 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior
 - Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: dispatch rules, command behaviors, output contracts
 - Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — Dispatch logic, output format correctness, edge cases
+- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
+- Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Demo dispatch, RunCommand simplification, output text changes

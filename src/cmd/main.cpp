@@ -1,6 +1,6 @@
+#include "commands/demo_command.h"
 #include "commands/help_command.h"
 #include "commands/run_command.h"
-#include "commands/test_command.h"
 #include "commands/version_command.h"
 
 #include <cstdio>
@@ -21,8 +21,8 @@ auto main(int argc, char* argv[]) -> int {
         return bc::RunCommand{}.run(argc, argv);
     }
 
-    if (cmd == "test") {
-        return bc::TestCommand{}.run(argc, argv);
+    if (cmd == "demo") {
+        return bc::DemoCommand{}.run(argc, argv);
     }
 
     if (cmd == "version") {
@@ -33,7 +33,7 @@ auto main(int argc, char* argv[]) -> int {
         return bc::HelpCommand{}.run(argc, argv);
     }
 
-    // Unknown command
+    // Unknown command (includes "test", "--test", "--version", etc.)
     std::fprintf(stderr, "Unknown command: '%s'\n\n",
                  argv[1]);
     std::fwrite(bc::k_usage_text.data(), 1, bc::k_usage_text.size(), stderr);

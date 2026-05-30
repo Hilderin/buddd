@@ -81,14 +81,11 @@ code-reviewer → docs/specs/<feature>/code-review.md
   ↓  return to code-implementer for any modifications
   ↓  ALWAYS rerun the code-reviewer agent after motifications
   ↓
-Can be run in parallele:
-- adr-agent
-- constitution-agent
+adr-agent
+constitution-agent (parallel)
   ↓
-After adr-agent and constitution-agent which could write docs needed for the wiki, you can execute:
-- wiki-agent
+wiki-agent
   ↓
-** wait before all other agents are done**
 governance-reviewer
   ↓  (gate: no unchecked blocking issues?)
   ↓  ALWAYS rerun the governance-reviewer agent after motifications
@@ -117,9 +114,10 @@ governance-reviewer
    - **Gate**: Read the review file. If `## Status` is `Rejected` or any `- [ ]` items remain unchecked under `## Blocking issues`, loop back to step 7.
    - If the reviewer raises questions or asks for clarification you cannot answer, ask the human using the `question` tool — do not assume.
    - When clear, the implementation is accepted.
- 9. **Governance** — Ask `adr-agent` / `constitution-agent` / `wiki-agent` whether any governance artifact is needed.
-10. **Final validation** — Ask `governance-reviewer` for cross-document validation.
-11. **Done** — Feature implementation is complete. All artifacts stay in `docs/specs/<feature>/`. No file moving needed.
+ 9. **Governance Update** — Ask `adr-agent` and `constitution-agent` in parallel whether any governance artifact is needed.
+10. **Wiki** — Ask `wiki-agent` whether any wiki artifact is needed.
+11. **Final validation** — Ask `governance-reviewer` for cross-document validation.
+12. **Done** — Feature implementation is complete. All artifacts stay in `docs/specs/<feature>/`. No file moving needed.
 
 ## Hard rules
 
