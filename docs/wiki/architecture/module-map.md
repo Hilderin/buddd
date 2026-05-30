@@ -166,14 +166,14 @@ Each capture scenario is a `.h`/`.cpp` pair exposing a single free function in t
 
 | File | Role |
 |---|---|
-| `cube_capture.h` / `cube_capture.cpp` | Declares `buddd::cmd::capture::capture_cube_scene()` — renders one frame of the cube (reusing `setup_cube()`) from camera position (0,0,3) with angle=0, calls `read_pixels()`, returns the raw `ImageBuffer`. |
+| `cube_capture.h` / `cube_capture.cpp` | Declares `buddd::cmd::capture::capture_cube_scene()` — renders N frames of the cube (reusing `setup_cube()`) from camera position (0,0,3) (front-facing reference view). When N > 1, the cube rotates 0.5 rad/s around Y (matching the cube demo timing). Calls `read_pixels()` on the last frame and returns the raw `ImageBuffer`. Default N=1. Applies an internal minimum of 2 frames to work around a driver quirk where `glReadPixels(GL_BACK)` returns the clear colour instead of rendered content on the very first frame after window creation. |
 
 ### Subcommand behavior
 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
 - `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames) and `cube` (120 frames, rotating coloured cube). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
 - `buddd version` → prints `buddd 0.1.0` to stdout
-- `buddd capture <scenario> [output_path]` → opens 800×600 window titled "Buddd Engine — Capture: \<scenario\>", renders one frame, captures as PNG, saves to `output_path` (or `/tmp/buddd_capture_<scenario>_<timestamp>.png`), prints `"Captured: <path>"`. Currently available: `cube`. If no scenario is given, prints usage to stderr and exits 1. If scenario is unknown, prints error to stderr and exits 1.
+- `buddd capture <scenario> [--frame N] [output_path]` → opens 800×600 window titled "Buddd Engine — Capture: \<scenario\>", renders N frames (default: 1), captures the Nth frame as PNG, saves to `output_path` (or `/tmp/buddd_capture_<scenario>_<timestamp>.png`), prints `"Captured: <path>"`. With `--frame N` where N > 1, the cube rotates 0.5 rad/s around Y. Currently available: `cube`. If no scenario is given, prints usage to stderr and exits 1. If scenario is unknown, prints error to stderr and exits 1.
 - `buddd help` → prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
 - Unknown command → prints `"Unknown command: '<cmd>'"` followed by updated usage to stderr, exits with code 1
 - `buddd test` is **removed** — it produces an unknown command error (use `buddd demo triangle` instead)

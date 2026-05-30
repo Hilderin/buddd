@@ -27,10 +27,12 @@ auto buddd::cmd::capture::capture_cube_scene(
     // Setup cube resources (reuses setup_cube from demo_helpers)
     auto cube = buddd::cmd::demo::setup_cube(device);
 
-    // Camera setup: (3, 2, 3) looking at origin (same as the working cube demo)
+    // Camera setup: (0, 0, 3) looking at origin — front-facing reference view.
+    // This differs from the cube demo (3,2,3) to produce a deterministic,
+    // axis-aligned capture for visual verification.
     be::math::Camera camera;
     camera.look_at(
-        be::math::Vec3{3.0f, 2.0f, 3.0f},   // eye
+        be::math::Vec3{0.0f, 0.0f, 3.0f},   // eye
         be::math::Vec3{0.0f, 0.0f, 0.0f},   // centre
         be::math::Vec3::unit_y()              // up
     );

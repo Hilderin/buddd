@@ -44,9 +44,10 @@ auto default_output_path(std::string_view scenario) -> std::string {
 }
 
 /// Parses --frame N from argv[start..end] and returns the frame count.
+/// Stores the frame value position in *out_frame_pos so the caller can skip it.
 /// Returns 1 if --frame is not specified.
 /// On error (invalid N), prints to stderr and returns -1.
-auto parse_frame_count(int argc, const char* const* argv, int start) -> int {
+auto parse_frame_count(int argc, const char* const* argv, int start, int* out_frame_pos = nullptr) -> int {
     for (int i = start; i < argc; ++i) {
         if (argv[i] == std::string_view("--frame")) {
             if (i + 1 >= argc) {
@@ -59,6 +60,7 @@ auto parse_frame_count(int argc, const char* const* argv, int start) -> int {
                 std::fprintf(stderr, "Error: --frame requires a positive integer, got '%s'\n", argv[i + 1]);
                 return -1;
             }
+            if (out_frame_pos) *out_frame_pos = i;
             return static_cast<int>(n);
         }
     }
@@ -66,14 +68,15 @@ auto parse_frame_count(int argc, const char* const* argv, int start) -> int {
 }
 
 /// Returns the output path from argv, or empty string if not specified.
-/// Skips --frame N pairs.
-auto parse_output_path(int argc, const char* const* argv, int start) -> std::string {
+/// Skips --frame N pairs, and sets *out_path_pos to the position of the path.
+auto parse_output_path(int argc, const char* const* argv, int start, int* out_path_pos = nullptr) -> std::string {
     for (int i = start; i < argc; ++i) {
         if (argv[i] == std::string_view("--frame")) {
             ++i; // skip the value
             continue;
         }
         // First non-option argument is the output path
+        if (out_path_pos) *out_path_pos = i;
         return argv[i];
     }
     return {}; // not specified
@@ -107,6 +110,26 @@ auto bc::CaptureCommand::run(int argc, const char* const* argv) -> int {
     std::string output_path = parse_output_path(argc, argv, 3);
     if (output_path.empty()) {
         output_path = default_output_path(scenario);
+    }
+
+    // Warn about unexpected extra arguments (following DemoCommand pattern).
+    // Expected forms:
+    //   capture <scenario>                         (3 args)
+    //   capture <scenario> <output_path>            (4 args)
+    //   capture <scenario> --frame N                (5 args)
+    //   capture <scenario> --frame N <output_path>  (6 args)
+    if (argc > 4) {
+        bool has_frame = (std::string_view(argv[3]) == "--frame");
+        int max_expected = has_frame ? 5 : 4;
+        if (has_frame && argc >= 6) max_expected = 6;
+        if (argc > max_expected) {
+            std::fprintf(stderr, "Warning: unexpected arguments after 'capture %s':",
+                         argv[2]);
+            for (int i = max_expected; i < argc; ++i) {
+                std::fprintf(stderr, " %s", argv[i]);
+            }
+            std::fprintf(stderr, "\n");
+        }
     }
 
     // Observability

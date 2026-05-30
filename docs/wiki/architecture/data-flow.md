@@ -32,7 +32,7 @@ Each command produces its own output:
 | `demo <name>` | — | `"Demo started: <name> (N frames)"` then `"Demo complete: <name> (N frames rendered)"` (or abort: `"Demo aborted by user (frame N)"`). If no name: demo usage text. If unknown name: `"Unknown demo: '<name>'"` + usage. |
 | `version` | `"buddd 0.1.0"` | — |
 | `help` | Usage text (5 commands: `run`, `demo`, `capture`, `version`, `help`) | — |
-| `capture <scenario> [path]` | `"Captured: <path>"` | `"Capturing: <scenario>"` then error or success. If no scenario: `"Usage: buddd capture <scenario>"` + scenario list. If unknown scenario: `"Unknown capture scenario: '<name>'"` + usage. If extra args: `"Warning: unexpected arguments..."`. |
+| `capture <scenario> [--frame N] [path]` | `"Captured: <path>"` | `"Capturing: <scenario> (N frame(s))"` then error or success. If no scenario: `"Usage: buddd capture <scenario>"` + scenario list. If unknown scenario: `"Unknown capture scenario: '<name>'"` + usage. If extra args: `"Warning: unexpected arguments..."`. |
 | Unknown (including `test`) | — | `"Unknown command: '<cmd>'"` + usage text |
 
 The old `--test` and `--version` flags are removed — they are caught by the unknown-command handler.
@@ -103,10 +103,13 @@ RenderDevice::create(window)
         │   - SDL_GL_MakeCurrent
         │       │
         │       ▼
-        │   device->begin_frame() → glClear(GL_COLOR_BUFFER_BIT)
-        │   device->end_frame()   → SDL_GL_SwapWindow()
-        │
-        └── native_handle() == nullptr (Headless backend)
+│   device->begin_frame() → glClearColor(0.02f, 0.02f, 0.05f, 1.0f); glClear(GL_COLOR_BUFFER_BIT)
+│   device->end_frame()   → SDL_GL_SwapWindow()
+│   device->read_pixels() → glReadBuffer(GL_BACK); glReadPixels(...)
+│                          (must be called before end_frame() to read the
+│                           freshly rendered back buffer before the swap)
+│
+└── native_handle() == nullptr (Headless backend)
                 │
                 ▼
             [Headless render device]

@@ -118,7 +118,7 @@ src/engine/
 - `./build/debug/src/cmd/buddd demo cube` — opens a window (800×600, title "Buddd Engine — Demo: cube"), renders a rotating per-face-coloured cube (24 vertices, 36 indices) for 120 frames at ~60 FPS with MVP computed from a Camera at (3,2,3), then exits. `buddd demo` lists `cube` as available.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd help` — prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
-- `./build/debug/src/cmd/buddd capture <scenario> [output_path]` — opens an 800×600 window, renders a single frame of the named scenario, captures the framebuffer as a PNG file, and exits. Currently available: `cube` (front view, angle=0, camera at (0,0,3)). If no scenario is given or the scenario is unknown, prints an error to stderr and exits with code 1.
+- `./build/debug/src/cmd/buddd capture <scenario> [--frame N] [output_path]` — opens an 800×600 window, renders N frames (default: 1), captures the framebuffer of the Nth frame as a PNG file, and exits. Currently available: `cube` (camera at (0,0,3) (front-facing reference view)). With `--frame N` where N > 1, the cube rotates 0.5 rad/s around Y and frame N is captured (animation matches the cube demo timing). If no scenario is given or the scenario is unknown, prints an error to stderr and exits with code 1.
 - `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
 - `buddd test` is **removed** — produces an unknown command error (use `buddd demo triangle` instead)
 - Old `--test` and `--version` flags are removed (produce an unknown command error)
@@ -128,6 +128,8 @@ src/engine/
 - `Platform::create(Backend::SDL3)` — creates an SDL3-based platform (uses offscreen video driver in tests; requires a display in production)
 - Factory methods return `Result<T>` (`std::expected<T, Error>`) for error propagation
 - **Exception to ADR-001**: `RenderDevice::draw()` and `draw_indexed()` return `void` rather than `Result<void>`, because draw calls are on a performance-sensitive hot path where per-frame error checking is impractical. Precondition violations are undefined behaviour.
+- `RenderDeviceOpenGL::begin_frame()` sets clear colour to `(0.02, 0.02, 0.05)` (dark blue) via `glClearColor` before `glClear(GL_COLOR_BUFFER_BIT)`, rather than the default black.
+- `RenderDeviceOpenGL::read_pixels()` calls `glReadBuffer(GL_BACK)` before `glReadPixels` to ensure the freshly rendered back buffer is read — this must be called before `end_frame()` (before the buffer swap).
 
 ## Architecture boundary
 
