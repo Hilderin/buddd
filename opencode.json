@@ -94,6 +94,16 @@
         "WIKI_WATCH": "true",
         "WIKI_REINDEX_ON_START": "true"
       }
+    },
+    "vision": {
+      "type": "local",
+      "command": ["uv", "run", "--directory", "../llm-openai-vision-mcp/tools/vision-mcp", "python", "-m", "vision_mcp.server"],
+      "enabled": true,
+      "timeout": 120000,
+      "environment": {
+        "OPENAI_API_KEY": "{file:.secrets/openapi.key}",
+        "VISION_MODEL": "gpt-4o"
+      }
     }
   }
 }

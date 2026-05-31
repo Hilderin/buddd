@@ -48,3 +48,6 @@ Makefile
 
 # Wiki search index
 .wiki-index/
+
+# Secrets
+.secrets/
