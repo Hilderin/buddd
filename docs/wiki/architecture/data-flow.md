@@ -210,6 +210,121 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - `code`: backend-specific numeric error code (defaults to 0)
 - `message`: human-readable description
 
+### Phong rendering lifecycle (SPEC-018)
+
+The `RenderSystem::render()` method is extended with a light collection phase before MeshRenderer iteration:
+
+```
+RenderSystem::render()
+    │
+    ├── 1. begin_frame()
+    │
+    ├── 2. active_camera() → camera_pos, view_projection
+    │
+    ├── 3. Collect lights (before MeshRenderer iteration)
+    │       │
+    │       ├── DirectionalLightComponent.each(...)
+    │       │   └── LightData: position_or_dir.w = 0, direction from entity rotation (-Z forward)
+    │       │       colour = colour * intensity (pre-multiplied)
+    │       │
+    │       ├── PointLightComponent.each(...)
+    │       │   └── LightData: position_or_dir.w = 1, position from entity translation
+    │       │       range from component, colour pre-multiplied
+    │       │
+    │       └── SpotLightComponent.each(...)
+    │           └── LightData: position_or_dir.w = 2, position from translation,
+    │               spot_direction from rotation, inner_cone/outer_cone as cos(angle)
+    │
+    │   Max 8 lights total (k_max_lights). Lights beyond limit are silently ignored
+    │   (debug build logs warning). Collected fresh each frame via World::each<T>().
+    │
+    ├── 4. each<MeshRenderer>(...)
+    │       │
+    │       ├── Always: set_uniform("u_mvp", view_projection * world_matrix)
+    │       │   ↳ On failure: log warning, skip entity (SPEC-011 AC-024 pattern)
+    │       │
+    │       ├── if material.has_uniform("u_model"):  ← Phong sentinel
+    │       │   │
+    │       │   ├── set_uniform("u_model", world_mat)
+    │       │   ├── set_uniform("u_normal_mat", world_mat.inverse().transpose())
+    │       │   ├── set_uniform("u_camera_pos", camera_pos)
+    │       │   ├── set_uniform("u_light_count", light_count)
+    │       │   ├── For each light i ∈ [0, light_count):
+    │       │   │   ├── set_uniform("u_light_positions_or_dir[i]", ld.position_or_dir)
+    │       │   │   ├── set_uniform("u_light_colours[i]", ld.colour)
+    │       │   │   ├── set_uniform("u_light_ranges[i]", ld.range)
+    │       │   │   ├── set_uniform("u_light_spot_directions[i]", ld.spot_direction)
+    │       │   │   ├── set_uniform("u_light_inner_cones[i]", ld.inner_cone_cos)
+    │       │   │   └── set_uniform("u_light_outer_cones[i]", ld.outer_cone_cos)
+    │       │   │
+    │       │   └── Material defaults:
+    │       │       ├── set_uniform("u_material_ambient", Vec3(0.1))
+    │       │       ├── set_uniform("u_material_specular", Vec3(1.0))
+    │       │       ├── set_uniform("u_material_shininess", 32.0f)
+    │       │       └── set_uniform("u_material_diffuse_tint", Vec4(1.0))
+    │       │
+    │       └── else: only u_mvp set (backward compatible with unlit materials)
+    │
+    ├── 5. model.draw(*device_)   ← draw call for each entity
+    │
+    └── 6. end_frame()
+
+The `has_uniform("u_model")` sentinel pattern:
+- `PhongMaterial` declares `u_model` in its known uniforms → has_uniform returns true → lighting uniforms set.
+- Unlit materials (old cube shaders) do NOT declare `u_model` → has_uniform returns false → only u_mvp set.
+- This provides zero-overhead backward compatibility: unlit rendering paths are not affected.
+
+### Normal matrix computation
+
+For each lit entity, the normal matrix is computed CPU-side:
+```
+normal_mat = world_mat.inverse().transpose()
+```
+The shader extracts the upper-left 3×3 via `mat3(u_normal_mat)` and applies it to the vertex normal. This correctly handles non-uniform scaling by preserving orthogonality.
+
+### PhongMaterial uniform delegation
+
+`PhongMaterial` uses PIMPL: it owns an inner `Material` created via `device.create_material()`. All `set_uniform()`, `has_uniform()`, `set_texture()`, and `bind()` calls delegate to this inner material.
+
+### Light type encoding
+
+Light type is encoded in `position_or_dir.w`:
+- `0.0` = directional (direction stored in .xyz)
+- `1.0` = point (position stored in .xyz)
+- `2.0` = spot (position in .xyz, direction in separate `spot_direction` field)
+
+### Phong shader fragment flow
+
+```
+Fragment shader (per-pixel):
+    N = normalize(v_normal)
+    V = normalize(u_camera_pos - v_world_pos)
+    diffuse_colour = texture(u_diffuse_texture, v_texcoord).rgb * u_material_diffuse_tint.rgb
+    final_colour = u_material_ambient * diffuse_colour    ← ambient term (outside light loop)
+
+    for each light i:
+        L, attenuation = computed from light type:
+            - directional: L = normalize(pos_or_dir.xyz), attenuation = 1.0
+            - point: L = light_to_frag / dist, attenuation = 1 - (clamp(dist/range,0,1))²
+            - spot: same as point + cone falloff via spot_cone_attenuation(cos_angle, cos_inner, cos_outer)
+
+        diffuse = diffuse_colour * light_col * max(dot(N, L), 0.0)        ← Lambert
+        specular = u_material_specular * light_col * pow(max(dot(N, H), 0.0), u_material_shininess)  ← Blinn-Phong
+        final_colour += (diffuse + specular) * attenuation
+
+    frag_color = vec4(final_colour, 1.0)
+```
+
+### LightData array uniform naming
+
+Light uniforms use bracket-syntax array naming convention:
+```cpp
+material.set_uniform("u_light_colours[0]", ld.colour);
+material.set_uniform("u_light_colours[1]", ld2.colour);
+```
+
+`MaterialHeadless` uses `normalize_uniform_name()` to strip the `[N]` suffix before checking against declared base names in `known_uniforms`. The OpenGL backend resolves locations via `glGetUniformLocation` at call time.
+
 ### Lifecycle rules
 
 - `Platform` must outlive any `Window` and `RenderDevice` created from it.

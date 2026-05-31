@@ -19,7 +19,7 @@ buddd2/
 │   ├── engine/              # Engine library (static lib)
 │   │   ├── error.h          # Project-wide Error/Result types
 │   │   ├── math/            # Math foundations (Vec2, Vec3, Vec4, Mat4, Quat, Camera)
-│   │   ├── scene/           # Scene graph (World, Entity, Transform, Component)
+│   │   ├── scene/           # Scene graph (World, Entity, Transform, Component, light components)
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
 │   │   ├── image/           # Image I/O (ImageBuffer, Image, stb_image)
@@ -78,7 +78,10 @@ src/engine/
 │   ├── entity.h              # Entity — 16-byte lightweight handle
 │   ├── entity.cpp            # Entity method implementations (delegates to World)
 │   ├── world.h               # World — top-level container, entity lifecycle, deferred destruction
-│   └── world.cpp             # World implementation (internal EntityNode storage)
+│   ├── world.cpp             # World implementation (internal EntityNode storage)
+│   ├── directional_light_component.h/.cpp  # DirectionalLightComponent — infinite parallel light from entity rotation
+│   ├── point_light_component.h/.cpp        # PointLightComponent — omni-directional light with position and range
+│   └── spot_light_component.h/.cpp         # SpotLightComponent — conical light with position, direction, and cone angles
 ├── platform/
 │   ├── platform.h           # Abstract Platform class, Backend enum
 │   ├── platform.cpp         # Platform::create() factory
@@ -101,6 +104,9 @@ src/engine/
 └── render/
     ├── primitive_topology.h        # PrimitiveTopology enum
     ├── vertex_format.h             # VertexAttributeType, VertexAttribute, VertexFormat
+    ├── vertex.h                    # Standard Vertex struct (72B, 6 attributes: position loc0, color loc1, normal loc2, texcoord loc3, tangent loc4, texcoord2 loc5) + k_standard_vertex_format
+    ├── glsl_util.h/.cpp            # Shared GLSL utility: extract_uniform_names(), normalize_uniform_name() — used by both backends
+    ├── light_data.h                # LightData struct + k_max_lights (8) — internal detail header for GPU uniform passing
     ├── shader.h                    # Abstract Shader class, ShaderType enum
     ├── material.h                  # Abstract Material class (6 set_uniform overloads, set_texture/has_texture, bind for deferred state application)
     ├── texture.h                   # Abstract Texture class (width, height, channels)
@@ -108,12 +114,12 @@ src/engine/
     ├── index_buffer.h              # IndexType enum, abstract IndexBuffer class
     ├── render_device.h             # Abstract RenderDevice class (factories + draw + create_texture)
     ├── render_device.cpp           # RenderDevice::create() factory
-    ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (+ factory/draw overrides + create_texture via DSA)
-    ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides + in-memory create_texture)
+    ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (+ factory/draw overrides + create_texture via DSA; uses glsl_util for uniform discovery)
+    ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides + in-memory create_texture; uses glsl_util for uniform discovery)
     ├── shader_opengl.h/cpp         # OpenGL shader backend (ShaderOpenGL)
     ├── shader_headless.h/cpp       # Headless shader backend (ShaderHeadless)
     ├── material_opengl.h/cpp       # OpenGL material backend (MaterialOpenGL) — deferred uniform caching + texture unit management in bind()
-    ├── material_headless.h/cpp     # Headless material backend (MaterialHeadless)
+    ├── material_headless.h/cpp     # Headless material backend (MaterialHeadless) — now with Vec3/Vec4/float/int diagnostic getters + array subscript normalization
     ├── texture_opengl.h/cpp        # OpenGL texture backend (TextureOpenGL) — DSA-based GPU upload via glCreateTextures/glTextureStorage2D/glTextureSubImage2D
     ├── texture_headless.h/cpp      # Headless texture backend (TextureHeadless) — in-memory pixel storage
     ├── vertex_buffer_opengl.h/cpp  # OpenGL vertex buffer backend (VertexBufferOpenGL)
@@ -125,7 +131,11 @@ src/engine/
     ├── mesh_renderer.h             # MeshRenderer — ECS component (inherits Component) holding shared_ptr<Model>
     ├── mesh_renderer.cpp           # MeshRenderer implementation
     ├── render_system.h             # RenderSystem — bridges RenderDevice + World, orchestrates frame rendering
-    └── render_system.cpp           # RenderSystem implementation (begin/end_frame, camera lookup, each<MeshRenderer> iteration, MVP, draw dispatch)
+    ├── render_system.cpp           # RenderSystem implementation (begin/end_frame, camera lookup, each<MeshRenderer> iteration, MVP + lighting uniform setting, light collection)
+    └── phong/                      # Phong lighting module
+        ├── phong_shaders.h         # Embedded GLSL 450 core vertex + fragment shader strings (constexpr std::string_view)
+        ├── phong_material.h        # PhongMaterial — Material subclass with embedded shaders, convenience setters (set_camera_position, set_lights, set_transforms)
+        └── phong_material.cpp      # PhongMaterial implementation (PIMPL, delegates to inner Material)
 ```
 
 ## Key behaviors
@@ -135,6 +145,7 @@ src/engine/
 - `./build/debug/src/cmd/buddd demo cube` — opens a window (800×600, title "Buddd Engine — Demo: cube"), renders a rotating per-face-coloured cube (24 vertices, 36 indices) for 120 frames at ~60 FPS with MVP computed from a Camera at (3,2,3), then exits. `buddd demo` lists `cube` as available.
 - `./build/debug/src/cmd/buddd demo textured-cube` — opens a window (800×600, title "Buddd Engine — Demo: textured-cube"), renders a rotating UV-mapped cube with a brick texture loaded from `assets/brick.png` for 120 frames at ~60 FPS using the scene graph (World + Entity + MeshRenderer + RenderSystem), then exits. `buddd demo` lists `textured-cube` as available.
 - `./build/debug/src/cmd/buddd demo free-camera` — opens a window (800×600, title "Buddd Engine — Demo: free-camera"), renders a cube from a controllable camera (WASD for forward/back/strafe, mouse for look, Space/Control for up/down). Right-click to capture mouse (relative mode, cursor hidden); camera movement/rotation only while captured (Godot editor pattern). Runs interactively until Escape is pressed. Uses `device.window().platform().delta_time()` for frame-rate-independent movement. `buddd demo` lists `free-camera` as available.
+- `./build/debug/src/cmd/buddd demo phong` — opens a window (800×600, title "Buddd Engine — Demo: phong"), renders a textured cube with Phong lighting from an orbiting PointLightComponent and a static DirectionalLightComponent fill. Interactive free-camera (WASD + mouse). The cube uses PhongMaterial with embedded GLSL shaders, a diffuse texture, and material properties (ambient, specular, shininess). Runs interactively until Escape is pressed. `buddd demo` lists `phong` as available.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd help` — prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
 - `./build/debug/src/cmd/buddd capture <scenario> [--frame N] [output_path]` — opens an 800×600 window, renders N frames (default: 1), captures the framebuffer of the Nth frame as a PNG file, and exits. Currently available: `cube` (camera at (0,0,3) (front-facing reference view)). With `--frame N` where N > 1, the cube rotates 0.5 rad/s around Y and frame N is captured (animation matches the cube demo timing). If no scenario is given or the scenario is unknown, prints an error to stderr and exits with code 1.
@@ -182,6 +193,7 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - `World::each<T>()` iterates all entities having a component of type `T`, passing `(Entity, T&)` to a callback. The callback may return `false` to early-exit the iteration.
 - Every `Component` is entity-aware: `World::add_component<T>()` sets `world_` and `entity_id_` on the component, then calls the virtual `on_attach()` hook. Derived components may override `on_attach()` for setup logic (e.g., `CameraComponent` auto-registers with the World).
 - Camera registration: `World::register_camera(CameraComponent&)` stores a reference as the active camera (last-registered-wins). `World::unregister_camera(const CameraComponent&)` clears by address comparison. `World::active_camera()` returns `std::optional<CameraComponent&>`. `CameraComponent` auto-registers on attachment and unregisters on destruction.
+- Light components (`DirectionalLightComponent`, `PointLightComponent`, `SpotLightComponent`) follow a simpler pattern: they inherit `Component`, override `on_attach()` as a no-op, and do NOT register/unregister with `World`. Their lifecycle is purely managed by the entity. `RenderSystem` collects them each frame via `World::each<T>()`.
 - Entity destruction is deferred: `entity.destroy()` marks for destruction; `world.flush_destroyed()` reclaims resources in reverse depth order.
 - The scene graph uses per-entity `std::vector<std::unique_ptr<Component>>` storage (no ECS flat arrays in v1). The storage strategy is hidden behind the `World` implementation for forward compatibility.
 - Scene graph types are pure memory management and spatial computation — no display, GPU, or external dependencies beyond math wrappers.

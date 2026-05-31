@@ -7,6 +7,7 @@
 #include "texture_opengl.h"
 
 #include "image/image.h"
+#include "render/glsl_util.h"
 
 #include <SDL3/SDL_opengl.h>
 
@@ -169,7 +170,7 @@ auto RenderDeviceOpenGL::create_shader(ShaderType type, std::string_view source)
 auto RenderDeviceOpenGL::create_material(
     std::unique_ptr<Shader> vertex_shader,
     std::unique_ptr<Shader> fragment_shader,
-    std::span<const std::string> /*known_uniforms*/
+    std::span<const std::string> known_uniforms
 ) -> Result<std::unique_ptr<Material>>
 {
     if (!vertex_shader || !fragment_shader) {
@@ -202,6 +203,13 @@ auto RenderDeviceOpenGL::create_material(
     // Shaders are marked for deletion; they stay alive until program is deleted.
     glDeleteShader(vs.handle());
     glDeleteShader(fs.handle());
+
+    // known_uniforms are accepted but not stored in MaterialOpenGL at this time;
+    // OpenGL uses glGetUniformLocation at set_uniform time instead.
+    // The include of glsl_util.h ensures the backend can be extended later.
+    for (const auto& name : known_uniforms) {
+        (void)name;
+    }
 
     std::cerr << "Material created\n";
     return std::unique_ptr<Material>(new MaterialOpenGL(program));
@@ -359,10 +367,9 @@ auto RenderDeviceOpenGL::draw(
     uint32_t start_vertex
 ) -> void
 {
-    auto& mat = static_cast<const MaterialOpenGL&>(material);
     auto& vb = static_cast<const VertexBufferOpenGL&>(vertices);
 
-    mat.bind();
+    material.bind();  // virtual dispatch — supports MaterialOpenGL, PhongMaterial, etc.
     glBindVertexArray(vb.vao());
     glDrawArrays(primitive_topology_to_gl(topology), static_cast<GLint>(start_vertex), static_cast<GLsizei>(vertex_count));
 
@@ -381,7 +388,6 @@ auto RenderDeviceOpenGL::draw_indexed(
     uint32_t start_index
 ) -> void
 {
-    auto& mat = static_cast<const MaterialOpenGL&>(material);
     auto& vb = static_cast<const VertexBufferOpenGL&>(vertices);
     auto& ib = static_cast<const IndexBufferOpenGL&>(indices);
 
@@ -391,7 +397,7 @@ auto RenderDeviceOpenGL::draw_indexed(
     GLsizeiptr index_byte_size = (ib.index_type() == IndexType::Uint16)
         ? static_cast<GLsizeiptr>(sizeof(uint16_t)) : static_cast<GLsizeiptr>(sizeof(uint32_t));
 
-    mat.bind();
+    material.bind();  // virtual dispatch — supports MaterialOpenGL, PhongMaterial, etc.
     glBindVertexArray(vb.vao());
     // The index buffer binding is part of the VAO state, so we bind it before drawing
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.handle());

@@ -6,6 +6,7 @@
 #include "render/material.h"
 #include "render/vertex_buffer.h"
 #include "render/vertex_format.h"
+#include "render/vertex.h"
 
 #include <cstddef>
 #include <cstdio>
@@ -63,19 +64,19 @@ auto bcd::setup_triangle(
         std::exit(EXIT_FAILURE);
     }
 
-    // Create vertex buffer: triangle with position (Float3) and color (Float3)
-    struct Vertex { float x, y, z, r, g, b; };
+    // Create vertex buffer: triangle with position (Float3, loc 0) and color (Float4, loc 1)
+    using be::Vertex;
     const Vertex vertices[] = {
-        { 0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f },  // top, red
-        {-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f },  // bottom-left, green
-        { 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f },  // bottom-right, blue
+        {{ 0.0f,  0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {}, {}, {}, {}},  // top, red
+        {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {}, {}, {}, {}},  // bottom-left, green
+        {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {}, {}, {}, {}},  // bottom-right, blue
     };
 
     be::VertexFormat format;
     format.stride = sizeof(Vertex);
     format.attributes = {
-        {0, be::VertexAttributeType::Float3, static_cast<uint32_t>(offsetof(Vertex, x)), false},
-        {1, be::VertexAttributeType::Float3, static_cast<uint32_t>(offsetof(Vertex, r)), false},
+        {0, be::VertexAttributeType::Float3, static_cast<uint32_t>(offsetof(Vertex, position)), false},
+        {1, be::VertexAttributeType::Float4, static_cast<uint32_t>(offsetof(Vertex, color)), false},
     };
 
     auto vertex_data = std::as_bytes(std::span(vertices));
@@ -138,39 +139,39 @@ auto bcd::setup_cube(
     // Convert unique_ptr<Material> to shared_ptr<Material>
     std::shared_ptr<be::Material> shared_mat(std::move(*mat));
 
-    // --- Vertex data: 24 vertices, stride 24 (Float3 position + Float3 color) ---
-    struct CubeVertex { float px, py, pz, cr, cg, cb; };
-    const CubeVertex vertices[] = {
+    // --- Vertex data: 24 vertices using standard Vertex struct (stride 72) ---
+    using be::Vertex;
+    const Vertex vertices[] = {
         // +X face (right) - Red
-        { 1.f, -1.f, -1.f,  1.f, 0.f, 0.f },
-        { 1.f, -1.f,  1.f,  1.f, 0.f, 0.f },
-        { 1.f,  1.f,  1.f,  1.f, 0.f, 0.f },
-        { 1.f,  1.f, -1.f,  1.f, 0.f, 0.f },
+        {{ 1.f, -1.f, -1.f}, {1.f, 0.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f, -1.f,  1.f}, {1.f, 0.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f,  1.f,  1.f}, {1.f, 0.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f,  1.f, -1.f}, {1.f, 0.f, 0.f, 1.f}, {}, {}, {}, {}},
         // -X face (left) - Green
-        {-1.f, -1.f, -1.f,  0.f, 1.f, 0.f },
-        {-1.f, -1.f,  1.f,  0.f, 1.f, 0.f },
-        {-1.f,  1.f,  1.f,  0.f, 1.f, 0.f },
-        {-1.f,  1.f, -1.f,  0.f, 1.f, 0.f },
+        {{-1.f, -1.f, -1.f}, {0.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f, -1.f,  1.f}, {0.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f,  1.f,  1.f}, {0.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f,  1.f, -1.f}, {0.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
         // +Y face (top) - Blue
-        {-1.f,  1.f,  1.f,  0.f, 0.f, 1.f },
-        { 1.f,  1.f,  1.f,  0.f, 0.f, 1.f },
-        { 1.f,  1.f, -1.f,  0.f, 0.f, 1.f },
-        {-1.f,  1.f, -1.f,  0.f, 0.f, 1.f },
+        {{-1.f,  1.f,  1.f}, {0.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f,  1.f,  1.f}, {0.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f,  1.f, -1.f}, {0.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f,  1.f, -1.f}, {0.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
         // -Y face (bottom) - Yellow
-        {-1.f, -1.f, -1.f,  1.f, 1.f, 0.f },
-        { 1.f, -1.f, -1.f,  1.f, 1.f, 0.f },
-        { 1.f, -1.f,  1.f,  1.f, 1.f, 0.f },
-        {-1.f, -1.f,  1.f,  1.f, 1.f, 0.f },
+        {{-1.f, -1.f, -1.f}, {1.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f, -1.f, -1.f}, {1.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f, -1.f,  1.f}, {1.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f, -1.f,  1.f}, {1.f, 1.f, 0.f, 1.f}, {}, {}, {}, {}},
         // +Z face (front) - Cyan
-        {-1.f, -1.f,  1.f,  0.f, 1.f, 1.f },
-        { 1.f, -1.f,  1.f,  0.f, 1.f, 1.f },
-        { 1.f,  1.f,  1.f,  0.f, 1.f, 1.f },
-        {-1.f,  1.f,  1.f,  0.f, 1.f, 1.f },
+        {{-1.f, -1.f,  1.f}, {0.f, 1.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f, -1.f,  1.f}, {0.f, 1.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f,  1.f,  1.f}, {0.f, 1.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f,  1.f,  1.f}, {0.f, 1.f, 1.f, 1.f}, {}, {}, {}, {}},
         // -Z face (back) - Magenta
-        { 1.f, -1.f, -1.f,  1.f, 0.f, 1.f },
-        {-1.f, -1.f, -1.f,  1.f, 0.f, 1.f },
-        {-1.f,  1.f, -1.f,  1.f, 0.f, 1.f },
-        { 1.f,  1.f, -1.f,  1.f, 0.f, 1.f },
+        {{ 1.f, -1.f, -1.f}, {1.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f, -1.f, -1.f}, {1.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{-1.f,  1.f, -1.f}, {1.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
+        {{ 1.f,  1.f, -1.f}, {1.f, 0.f, 1.f, 1.f}, {}, {}, {}, {}},
     };
 
     // --- Index data: 36 indices, Uint16, CCW winding ---
@@ -189,13 +190,14 @@ auto bcd::setup_cube(
         20, 21, 22,  20, 22, 23,
     };
 
-    // --- Vertex format: stride=24, position at loc 0, color at loc 1 ---
+    // --- Vertex format: stride=72 (sizeof(Vertex)), position at loc 0, color at loc 1 ---
     be::VertexFormat format;
-    format.stride = sizeof(CubeVertex);
+    format.stride = sizeof(Vertex);
     format.attributes = {
-        {0, be::VertexAttributeType::Float3, 0, false},
-        {1, be::VertexAttributeType::Float3,
-            static_cast<uint32_t>(offsetof(CubeVertex, cr)), false},
+        {0, be::VertexAttributeType::Float3,
+            static_cast<uint32_t>(offsetof(Vertex, position)), false},
+        {1, be::VertexAttributeType::Float4,
+            static_cast<uint32_t>(offsetof(Vertex, color)), false},
     };
 
     auto vertex_data = std::as_bytes(std::span(vertices));

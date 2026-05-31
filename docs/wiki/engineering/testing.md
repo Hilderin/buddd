@@ -163,6 +163,47 @@ Tags used: `[model]`, `[cube]`.
 | Demo run | T-23 | Simulated `run_cube_demo` loop (headless, 5 frames) completes without crash |
 | Shared ownership | T-24 | Material stays alive via `shared_ptr` when original shared_ptr is reset |
 
+### Phong lighting tests
+
+The Phong lighting test suite (`tests/lighting_tests.cpp`) provides 32 Catch2 v3 test cases covering all acceptance criteria from SPEC-018. All tests are **headless** (no display, no GPU required) and use `EngineService::create(Backend::Headless, ...)`. The test file is auto-discovered via the `*_tests.cpp` glob.
+
+Tags used: `[lighting]`, `[lighting][vertex]`, `[lighting][component]`, `[lighting][material]`, `[lighting][glsl]`, `[lighting][render]`, `[lighting][headless]`.
+
+| AC ID | Test case | Verification |
+|---|---|---|
+| AC-001 | `"Vertex struct layout"` | `static_assert(sizeof(Vertex) == 72)`, `offsetof` for each field, `k_standard_vertex_format` has 6 attributes |
+| AC-002 | `"DirectionalLightComponent construction and accessors"` | Create with params, verify/mutate via const/non-const accessors |
+| AC-003 | `"PointLightComponent construction and accessors"` | Same, plus range (default 10.0) |
+| AC-004 | `"SpotLightComponent construction and accessors"` | Same, plus inner_angle (0.785), outer_angle (1.047) |
+| AC-005 | `"Light component on_attach no-op"` | Each component type added to entity — no crash, no world registration |
+| AC-006 | `"PhongMaterial is a valid Material subclass"` | Create `PhongMaterial`, verify `has_uniform("u_model")` |
+| AC-007 | `"PhongMaterial embedded shaders"` | Constructor does not accept external shaders |
+| AC-008 | `"PhongMaterial convenience setters"` | Header declares `set_camera_position`, `set_lights`, `set_transforms` |
+| AC-009 | `"PhongMaterial known_uniform_names"` | All 17 standard uniforms recognized by `has_uniform()` |
+| AC-010 | `"glsl_util extract_uniform_names"` | Various GLSL snippets parsed correctly |
+| AC-011 | `"glsl_util normalize_uniform_name"` | Array suffix stripping correct |
+| AC-012 | `"LightData struct"` | `k_max_lights = 8`, all 6 fields present |
+| AC-013 | `"RenderSystem collects directional lights"` | 3 lights → `u_light_count = 3`, direction from rotation |
+| AC-014 | `"RenderSystem collects point lights"` | Point at (5,3,1) → w=1.0, position matches |
+| AC-015 | `"RenderSystem collects spot lights"` | Position, direction, cone cosines, type=2.0 |
+| AC-016 | `"RenderSystem caps at 8 lights"` | 10 lights → u_light_count == 8 |
+| AC-017 | `"Light colour * intensity premultiplied"` | (0.5, 0.5, 0.5) × 2.0 → (1.0, 1.0, 1.0) |
+| AC-018 | `"Normal matrix computation"` | `u_normal_mat` ≈ `world_mat.inverse().transpose()` |
+| AC-019 | `"Backward compat: unlit material"` | `has_uniform("u_model")` false, only u_mvp set |
+| AC-020 | `"RenderSystem sets u_camera_pos"` | Matches camera position |
+| AC-021 | `"RenderSystem sets material property defaults"` | Ambient, specular, shininess, tint defaults verified |
+| AC-022 | `"Light component entity destruction"` | Destroy one → count decreases |
+| AC-023 | `"Zero lights renders with ambient only"` | Lit mesh with 0 lights: u_light_count=0, no crash |
+| AC-024 | `"phong_shaders.h exists and compiles"` | Both shader constants non-empty |
+| AC-025 | `"RenderSystem sets u_model"` | Matches entity world_matrix |
+| AC-026 | `"MaterialHeadless array subscript normalization"` | Bracket-syntax get/set/has works correctly |
+| AC-027 | `"MaterialHeadless diagnostic accessors"` | Vec3/Vec4/float/int getters: set→get match, missing→nullopt, type mismatch→nullopt |
+| AC-028 | `"Phong demo exists and compiles"` | `phong_demo.h` declares `run_phong_demo` |
+| AC-029 | `"glsl_util used by both backends"` | Both `render_device_headless.cpp` and `render_device_opengl.cpp` include `glsl_util.h` |
+| AC-030 | `"Demo helpers use Vertex struct"` | `setup_triangle()` and `setup_cube()` use `Vertex` with stride 72 |
+| AC-031 | `"Spot light cone uniforms"` | `inner_cones[i]` ≈ cos(angle), `spot_directions[i]` matches direction |
+| AC-032 | `"glsl_util handles layout qualifiers"` | `layout(location=0) uniform vec4 u_x;` → {"u_x"} |
+
 ## Test conventions
 
 - All assertions use `REQUIRE`/`REQUIRE_FALSE` (not `CHECK`).
@@ -197,3 +238,5 @@ Tags used: `[model]`, `[cube]`.
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Required tests (T-01 through T-24), headless test conventions
 - Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
+- Spec: [SPEC-018](/docs/specs/lighting/spec.md) — Phong Lighting System (Standard Vertex, Light Components, Phong module, RenderSystem extension, Phong demo)
+- Implementation contract: [IMPL-018-002](/docs/specs/lighting/implementation-contract.md) — Phong Lighting System implementation contract

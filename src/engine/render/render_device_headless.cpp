@@ -7,6 +7,7 @@
 #include "texture_headless.h"
 
 #include "image/image.h"
+#include "render/glsl_util.h"
 
 #include <algorithm>
 #include <cctype>
@@ -115,83 +116,6 @@ auto extract_variable_names(const std::string& source, bool is_output) -> std::v
     return names;
 }
 
-/// Extracts uniform names from GLSL source.
-/// Looks for "uniform type name;" or "layout(...) uniform type name;"
-auto extract_uniform_names(const std::string& source) -> std::vector<std::string> {
-    std::vector<std::string> names;
-
-    size_t pos = 0;
-    while (pos < source.size()) {
-        // Find the "uniform" keyword
-        auto kw_pos = source.find("uniform", pos);
-        if (kw_pos == std::string::npos) break;
-
-        // Skip if the character before the keyword is alphanumeric (part of another word)
-        if (kw_pos > 0 && (std::isalnum(static_cast<unsigned char>(source[kw_pos - 1])) || source[kw_pos - 1] == '_')) {
-            pos = kw_pos + 7; // "uniform" length
-            continue;
-        }
-
-        // The character after "uniform" should be whitespace
-        auto after_kw = kw_pos + 7; // "uniform"
-        if (after_kw >= source.size() || !std::isspace(static_cast<unsigned char>(source[after_kw]))) {
-            pos = after_kw;
-            continue;
-        }
-
-        // Skip whitespace
-        auto scan_pos = after_kw;
-        while (scan_pos < source.size() && std::isspace(static_cast<unsigned char>(source[scan_pos]))) {
-            ++scan_pos;
-        }
-
-        // Skip type (e.g., "vec4", "float", "sampler2D", "int", "mat4")
-        while (scan_pos < source.size() && (std::isalnum(static_cast<unsigned char>(source[scan_pos])) || source[scan_pos] == '_')) {
-            ++scan_pos;
-        }
-
-        // Skip whitespace
-        while (scan_pos < source.size() && std::isspace(static_cast<unsigned char>(source[scan_pos]))) {
-            ++scan_pos;
-        }
-
-        // Skip array suffix if present
-        if (scan_pos < source.size() && source[scan_pos] == '[') {
-            while (scan_pos < source.size() && source[scan_pos] != ']') {
-                ++scan_pos;
-            }
-            if (scan_pos < source.size()) {
-                ++scan_pos; // skip ']'
-            }
-            // Skip whitespace
-            while (scan_pos < source.size() && std::isspace(static_cast<unsigned char>(source[scan_pos]))) {
-                ++scan_pos;
-            }
-        }
-
-        // Now we should be at the variable name
-        std::string name;
-        while (scan_pos < source.size() && (std::isalnum(static_cast<unsigned char>(source[scan_pos])) || source[scan_pos] == '_')) {
-            name += source[scan_pos];
-            ++scan_pos;
-        }
-
-        // Check for semicolon or comma (end of declaration)
-        // Skip whitespace
-        while (scan_pos < source.size() && std::isspace(static_cast<unsigned char>(source[scan_pos]))) {
-            ++scan_pos;
-        }
-
-        if (scan_pos < source.size() && source[scan_pos] == ';' && !name.empty()) {
-            names.push_back(name);
-        }
-
-        pos = scan_pos;
-    }
-
-    return names;
-}
-
 } // anonymous namespace
 
 // ============================================================================
@@ -284,8 +208,8 @@ auto RenderDeviceHeadless::create_material(
 
     // Collect uniform names: from shader source parsing + explicit known_uniforms
     std::unordered_set<std::string> uniform_names;
-    auto vs_uniforms = extract_uniform_names(vs.source());
-    auto fs_uniforms = extract_uniform_names(fs.source());
+    auto vs_uniforms = detail::extract_uniform_names(vs.source());
+    auto fs_uniforms = detail::extract_uniform_names(fs.source());
     uniform_names.insert(vs_uniforms.begin(), vs_uniforms.end());
     uniform_names.insert(fs_uniforms.begin(), fs_uniforms.end());
     for (const auto& name : known_uniforms) {
