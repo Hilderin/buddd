@@ -704,10 +704,10 @@ TEST_CASE("RenderSystem does not overwrite material properties", "[lighting]") {
 
     // Set custom material properties before rendering
     auto phong_mat = std::make_shared<PhongMaterial>(device);
-    phong_mat->set_uniform("u_material_ambient", math::Vec3{0.2f, 0.3f, 0.4f});
-    phong_mat->set_uniform("u_material_specular", math::Vec4{0.5f, 0.6f, 0.7f, 0.8f});
-    phong_mat->set_uniform("u_material_shininess", 64.0f);
-    phong_mat->set_uniform("u_material_diffuse_tint", math::Vec4{0.9f, 0.8f, 0.7f, 1.0f});
+    (void)phong_mat->set_uniform("u_material_ambient", math::Vec3{0.2f, 0.3f, 0.4f});
+    (void)phong_mat->set_uniform("u_material_specular", math::Vec4{0.5f, 0.6f, 0.7f, 0.8f});
+    (void)phong_mat->set_uniform("u_material_shininess", 64.0f);
+    (void)phong_mat->set_uniform("u_material_diffuse_tint", math::Vec4{0.9f, 0.8f, 0.7f, 1.0f});
 
     make_mesh_entity(world, device, phong_mat);
 
