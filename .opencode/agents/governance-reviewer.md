@@ -48,12 +48,30 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 9. Search the wiki using wiki search tools, then read relevant sections at `docs/wiki/**`.
 10. Perform the governance checks.
 11. Write the review to `docs/specs/<feature>/governance-review.md` using the template.
-12. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
-13. List every issue as a `- [ ]` checklist item under the appropriate section.
+12. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
 
 - Be strict about constitution violations — they are always blocking.
 - Cross-document contradictions are blocking even if each document is valid individually.
-- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the verdict.
+- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the review summary text to reflect the new verdict (verdict is expressed in coordination.md, not as a separate status field in the review file).
 - Never delete a review file — append and update it across review cycles so the full resolution history is preserved.
+
+## After writing
+
+After writing the governance review and before reporting completion:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## governance-reviewer` section (exact heading match).
+2. Update the following fields in `## governance-reviewer`:
+   - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
+   - `**Summary**`: 2–5 lines describing review outcome.
+   - `**Artifacts**`: `- docs/specs/<feature>/governance-review.md`
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: copy the blocking issues checklist from governance-review.md `## Blocking issues`. If none, write "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.
+
+Note: Do NOT set the review file's `## Status`. The verdict is expressed exclusively in coordination.md.

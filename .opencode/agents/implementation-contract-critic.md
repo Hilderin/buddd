@@ -47,9 +47,8 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 3. Read the referenced accepted spec at `docs/specs/<feature>/spec.md`.
 4. Search the wiki for relevant context using wiki search tools.
 5. Perform the review checks.
-5. Write the review to `docs/specs/<feature>/implementation-contract-critic.md` using the template.
-6. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
-7. Update the contract file's `## Status` to `In Review`.
+6. Write the review to `docs/specs/<feature>/implementation-contract-critic.md` using the template.
+7. The contract's status is tracked in coordination.md. Do NOT modify the contract file's status field.
 8. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
@@ -57,5 +56,24 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Be strict.
 - Reject contracts that permit uncontrolled edits.
 - Reject contracts that leave architectural decisions to the Code Agent.
-- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the verdict.
+- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the review summary text to reflect the new verdict (verdict is expressed in coordination.md, not as a separate status field in the review file).
 - Never delete a review file — append and update it across review cycles so the full resolution history is preserved.
+
+## After writing
+
+After writing the review artifact and before reporting completion:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## implementation-contract-critic` section (exact heading match).
+2. Update the following fields in `## implementation-contract-critic`:
+   - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
+   - `**Summary**`: 2–5 lines describing review outcome.
+   - `**Artifacts**`: `- docs/specs/<feature>/implementation-contract-critic.md`
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: copy the blocking issues checklist from the review artifact's `## Blocking issues` section. If none, write "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.
+
+Note: Do NOT update the contract file's `## Status`. The review verdict is expressed exclusively in coordination.md.

@@ -22,9 +22,9 @@ Your job is to produce a working, building, fully-tested implementation. Do not 
 
 ## Before editing
 
-- Read the accepted implementation contract at `docs/specs/<feature>/implementation-contract.md` — confirm `## Status` is `Accepted` and `## Approval` is filled (human-approved).
+- Read the accepted implementation contract at `docs/specs/<feature>/implementation-contract.md` — confirm the `## Approval` section is filled (human-approved). Also read `docs/specs/<feature>/coordination.md` `## Human Validation` section to confirm **Status** is `approved`.
 - Read the referenced accepted spec at `docs/specs/<feature>/spec.md`.
-- Read the implementation-contract-critic review at `docs/specs/<feature>/contract-critic.md` — confirm the verdict is `Accepted` or `Accepted with warnings` and no unchecked blocking issues remain.
+- Read the `## implementation-contract-critic` section from `docs/specs/<feature>/coordination.md` — confirm **Status** is `completed` (not `rejected`) and no unchecked `- [ ]` items remain under **Blocking issues**. Do NOT read the full artifact file (implementation-contract-critic.md) for status or blocking-issue information.
 - Read relevant constitution rules.
 - Read relevant ADRs.
 - Search the wiki for relevant architecture context and conventions using wiki search tools.
@@ -152,3 +152,20 @@ Stop and report:
 - Required decision
 - Build or test failure you cannot resolve
 - Recommended next agent
+
+## After writing
+
+After all implementation steps are complete and done criteria are verified, before reporting completion:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## code-implementer` section (exact heading match).
+2. Update the following fields in `## code-implementer`:
+   - `**Status**`: `completed`
+   - `**Summary**`: 2–5 lines describing what was implemented.
+   - `**Artifacts**`: list of files created or modified.
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: list any blockers, or "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.

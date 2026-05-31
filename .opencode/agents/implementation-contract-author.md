@@ -23,7 +23,7 @@ You may create **one** file per feature:
 
 Where `<feature>` is the feature directory name (e.g. `project-scaffolding`).
 Create the directory if it doesn't exist.
-Set the contract's `## Status` to `Draft` (allowed values: `Draft`, `In Review`, `Accepted`). It will be updated to `Accepted` after review. No separate `proposed/` directory exists — the status is tracked in the file.
+The implementation contract follows the template at `docs/templates/implementation-contract-template.md` which no longer contains a `## Status` section (status is tracked in coordination.md).
 
 ## Before writing
 
@@ -93,3 +93,20 @@ After drafting, review your own contract against these checks:
 9. Are edge cases from the spec carried forward into the contract?
 
 If any check fails, fix the contract before reporting completion.
+
+## After writing
+
+After completing the implementation contract and passing self-validation:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## implementation-contract-author` section (exact heading match).
+2. Update the following fields in `## implementation-contract-author`:
+   - `**Status**`: `completed`
+   - `**Summary**`: 2–5 lines describing what was done.
+   - `**Artifacts**`: `- docs/specs/<feature>/implementation-contract.md`
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: list any blockers, or "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.

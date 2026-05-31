@@ -1,13 +1,5 @@
 # Governance Review — <feature-name>
 
-## Status
-
-`Accepted`
-
-Allowed values: `Accepted`, `Accepted with warnings`, `Rejected`
-
-> The next workflow step MUST NOT proceed while the status is `Rejected` or any blocking issue remains unchecked.
-
 ## Cross-document coherence
 
 Contradictions or gaps between spec, contract, code, and tests:

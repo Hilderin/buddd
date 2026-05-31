@@ -42,10 +42,10 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 2. Read the spec file at `docs/specs/<feature>/spec.md`.
 3. Search the wiki for relevant context using wiki search tools.
 4. Perform the review checks.
-4. Write the review to `docs/specs/<feature>/spec-critic.md` using the template.
-5. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
-6. Update the spec file's `## Status` to `In Review`.
-7. List every issue as a `- [ ]` checklist item under the appropriate section.
+5. Write the review to `docs/specs/<feature>/spec-critic.md` using the template.
+6. Write the review verdict into the file's content (the verdict is expressed in the summary and blocking issues, not in a separate status field).
+7. The spec's status is tracked in coordination.md. Do NOT modify the spec file's status field.
+8. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
 
@@ -53,5 +53,24 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Prefer rejection over vague approval.
 - Do not rewrite the spec unless asked.
 - If a criterion cannot be tested, it is a blocking issue.
-- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the verdict.
+- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the review summary text to reflect the new verdict (verdict is expressed in coordination.md, not as a separate status field in the review file).
 - Never delete a review file — append and update it across review cycles so the full resolution history is preserved.
+
+## After writing
+
+After writing the review artifact and before reporting completion:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## spec-critic` section (exact heading match).
+2. Update the following fields in `## spec-critic`:
+   - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
+   - `**Summary**`: 2–5 lines describing review outcome.
+   - `**Artifacts**`: `- docs/specs/<feature>/spec-critic.md`
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: copy the blocking issues checklist from spec-critic.md `## Blocking issues` section (the `- [ ]` items). If none, write "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.
+
+Note: Do NOT update the spec file's `## Status` (the spec no longer carries a status field). The review verdict is expressed exclusively through the coordination.md `## spec-critic` section.

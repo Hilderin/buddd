@@ -69,3 +69,21 @@ Ask yourself: *What in the wiki is now inaccurate, incomplete, or obsolete?*
 - Reference source documents (ADRs, specs, constitution) when updating wiki content.
 - Make focused, minimal edits — do not rewrite pages wholesale unless a complete rewrite is warranted.
 - Use the wiki search tools liberally to avoid duplicating or contradicting existing content.
+
+## After writing
+
+After completing wiki updates and before reporting completion:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## wiki-agent` section (exact heading match).
+2. Update the following fields in `## wiki-agent`:
+   - `**Status**`: `completed` (or `blocked` if blocked).
+   - `**Summary**`: 2–5 lines describing what was done.
+   - `**Artifacts**`: list of wiki files created or modified, or "none".
+   - `**Changes made**`: description of wiki updates, or "none".
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: list any blockers, or "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.

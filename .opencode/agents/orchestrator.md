@@ -191,43 +191,47 @@ Human
   ↓
 orchestrator
   ↓
-clarification with human, challenges request, decisions and assumptions, be sur you understand the feature and all aspects are defined before you continue.
+clarification with human, challenges request, decisions and assumptions
   ↓
-spec-author → docs/specs/<feature>/spec.md
+**CREATE** coordination.md from template (all sections filled with "pending")
   ↓
-spec-critic → docs/specs/<feature>/spec-critic.md
-  ↓  (gate: no unchecked blocking issues?)
-  ↓  If the spec was approuved, update status to Draft
-  ↓  return to spec-author for any spec modifications
+spec-author → writes spec.md → updates coordination.md
   ↓
-implementation-contract-author → docs/specs/<feature>/implementation-contract.md
+spec-critic → writes spec-critic.md → updates coordination.md
+  ↓  (gate: check coordination.md ## spec-critic)
+  ↓  Status == rejected? → loop to spec-author
+  ↓  Blocking issues unchecked? → loop to spec-author
   ↓
-implementation-contract-critic → docs/specs/<feature>/implementation-contract-critic.md
-  ↓  (gate: no unchecked blocking issues?)
-  ↓  If the implementation-contract was approuved, update status to Draft
-  ↓  return to spec-author for any spec modifications
-  ↓  return to implementation-contract for any implementation contract modifications
+implementation-contract-author → writes implementation-contract.md → updates coordination.md
   ↓
-**human validation gate** — present spec + contract to user, get explicit approval, record approval in both files
+implementation-contract-critic → writes implementation-contract-critic.md → updates coordination.md
+  ↓  (gate: check coordination.md ## implementation-contract-critic)
+  ↓  Status == rejected? → loop to impl-contract-author (or spec-author for spec-level issues)
+  ↓  Blocking issues unchecked? → loop to appropriate agent
+  ↓  [Spec-level loop → spec-critic MUST re-review]
   ↓
-code-implementer
+**human validation gate** — present summaries from coordination.md, get explicit approval, record in ## Human Validation
   ↓
-code-reviewer → docs/specs/<feature>/code-review.md
-  ↓  (gate: no unchecked blocking issues?)
-  ↓  return to code-implementer for any modifications
-  ↓  ALWAYS rerun the code-reviewer agent after motifications
+code-implementer → implements code → updates coordination.md
   ↓
-adr-agent
-constitution-agent (parallel)
+code-reviewer → writes code-review.md → updates coordination.md
+  ↓  (gate: check coordination.md ## code-reviewer)
+  ↓  Status == rejected? → loop to code-implementer
+  ↓  Blocking issues unchecked? → loop to code-implementer
   ↓
-wiki-agent
+adr-agent → updates coordination.md
+constitution-agent (parallel) → updates coordination.md
   ↓
-governance-reviewer
-  ↓  (gate: no unchecked blocking issues?)
-  ↓  ALWAYS rerun the governance-reviewer agent after motifications
+wiki-agent → updates coordination.md
+  ↓
+governance-reviewer → writes governance-review.md → updates coordination.md
+  ↓  (gate: check coordination.md ## governance-reviewer)
+  ↓  Status == rejected? → loop to appropriate agent
+  ↓  Blocking issues unchecked? → loop to appropriate agent
+  ↓
+orchestrator sets ## Orchestrator Status to "completed" → reports to human
   ↓
 (done)
-
 ```
 
 ## Workflow details
@@ -237,7 +241,6 @@ governance-reviewer
 Understand and validate the human intent.
 
 Clarify:
-
 - the user goal
 - expected behavior
 - non-goals
@@ -249,135 +252,179 @@ If project context is needed, call the scout with a bounded request.
 
 Do not let the workflow continue if the feature is too vague to specify.
 
+After clarification, create coordination.md:
+
+1. Ensure `docs/specs/<feature>/` directory exists (create if not).
+2. Create `docs/specs/<feature>/coordination.md` using `docs/templates/coordination-template.md` as the structure.
+3. Fill `## Orchestrator` section with:
+   - **Feature**: `<kebab-case feature name>`
+   - **Status**: in-progress
+   - **Current step**: clarification-complete
+   - **Initial instructions**: the human's feature request / intent
+   - **Notes**: (orchestrator's initial notes)
+4. Fill all sub-agent sections with **Status**: pending, empty summaries/artifacts, and "none" for questions, warnings, and blocking issues.
+
+### Delegation invariant
+
+When delegating to any sub-agent, the orchestrator MUST include in its instructions: "After completing your work, read coordination.md, find your section (`## <agent-name>`), and update it with your status, summary, artifacts, questions, warnings, and blocking issues."
+
+**Note:** `**Warnings**` are non-blocking and do NOT affect gate decisions — they are informational only. Gates check only `**Status**`, `**Blocking issues**`, and `**Questions for human**`.
+
 ### 2. Spec author
 
-Ask `spec-author` to draft a spec into `docs/specs/<feature>/spec.md` (Status: Draft).
+Ask `spec-author` to draft a spec into `docs/specs/<feature>/spec.md`.
 
 Give the spec-author:
-
 - human intent
 - relevant scout findings
 - constraints
 - open questions already answered by the human
 
+Gate (after spec-author reports completion):
+- Read coordination.md `## spec-author` section ONLY.
+- If **Status** is "blocked", resolve the blocker (ask human if needed).
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md.
+- If **Status** is "completed", proceed to spec-critic.
+- Update `## Orchestrator` → **Current step** to "spec-author-complete".
+
 ### 3. Spec critic
 
 Ask `spec-critic` to review and write `docs/specs/<feature>/spec-critic.md`.
 
-Gate:
-
-- read the review file
-- if `## Status` is `Rejected`, loop back to `spec-author`
-- if any unchecked `- [ ]` item remains under `## Blocking issues`, loop back to `spec-author`
-- if the critic raises questions you cannot answer from evidence, ask the human using the `question` tool
-
-When clear, update the spec's `## Status` to `Accepted`.
+Gate (after spec-critic reports completion):
+- Read coordination.md `## spec-critic` section ONLY.
+- If **Status** is "rejected" → loop back to spec-author (step 2).
+- If any unchecked `- [ ]` items under **Blocking issues** → loop back to spec-author (step 2).
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md.
+- When looping back: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context from blocking issues, re-invoke spec-author.
+  - **Note:** This is the one exception to the rule that sub-agents self-manage their own status. The orchestrator may temporarily reset a sub-agent's `**Status**` to "in-progress" during loop-backs. This is documented in the coordination.md template constraints.
+- If gate passes, update `## Orchestrator` → **Current step** to "spec-critic-approved".
+- Proceed to implementation-contract-author.
 
 ### 4. Implementation contract author
 
-Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md` (Status: Draft).
-
-The initial status should be `Draft`.
+Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md`.
 
 Give the contract author:
-
 - accepted spec
 - relevant scout findings
 - relevant critic notes
 - implementation constraints
+
+Gate (same pattern as spec-author):
+- Read coordination.md `## implementation-contract-author` section ONLY.
+- Check **Status**, **Questions for human**, **Blocking issues**.
+- Update `## Orchestrator` → **Current step**.
 
 ### 5. Implementation contract critic
 
 Ask `implementation-contract-critic` to review and write `docs/specs/<feature>/implementation-contract-critic.md`.
 
 Gate:
-
-- read the review file
-- if `## Status` is `Rejected`, loop back to `implementation-contract-author`
-- if any unchecked `- [ ]` item remains under `## Blocking issues`, loop back to `implementation-contract-author`
-- if the critic raises questions you cannot answer from evidence, ask the human using the `question` tool
-
-When clear, update the contract's `## Status` to `Accepted`.
+- Read coordination.md `## implementation-contract-critic` section ONLY.
+- If **Status** is "rejected" → loop back to implementation-contract-author (step 4).
+- If any unchecked `- [ ]` items under **Blocking issues**:
+  - If the issue is a spec-level problem requiring spec.md changes → loop to spec-author (step 2). After spec-author fixes, orchestrator MUST invoke spec-critic to re-review the modified spec. If spec-critic accepts (coordination.md `## spec-critic` **Status** is `completed`), then proceed to implementation-contract-author (step 4). If spec-critic rejects, continue looping.
+  - Otherwise → loop to implementation-contract-author (step 4).
+- If **Questions for human** is non-empty, ask human immediately.
+- When looping: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context.
+- If gate passes, update `## Orchestrator` → **Current step**.
 
 ### 6. Human validation
 
 Present the accepted spec and accepted implementation contract to the human.
+
+Use the `question` tool with a summary drawn from coordination.md sections (NOT from full artifact files):
+- Summary from `## spec-author` section
+- Summary from `## implementation-contract-author` section
+- Key ACs and done criteria
+
 Ask for explicit approval to proceed with implementation.
 
-Do not proceed until the user explicitly approves.
+Do not proceed until the human explicitly approves.
 
-Once approved, record approval in both files:
+Record approval in coordination.md `## Human Validation` section:
+- **Status**: approved (or rejected)
+- **Approver**: human identity
+- **Date**: <date>
+- **Time**: <time>
+- **Notes**: any human feedback or conditions
 
-- `docs/specs/<feature>/spec.md`
-- `docs/specs/<feature>/implementation-contract.md`
+Also record approval metadata in `## Orchestrator` → **Notes**.
 
-The approval section must include:
+If rejected, terminate workflow and report to human.
 
-- user's identity, when known
-- approval date
-- approval time
-- explicit approval text or summary
+If approved, update `## Orchestrator` → **Current step** to "human-approved".
 
 ### 7. Implement
 
 Delegate to `code-implementer`.
 
-Implementation is allowed only from an accepted and human-approved implementation contract.
+Implementation is allowed only from an accepted and human-approved implementation contract. The contract's `## Approval` section must be filled.
 
 Do not implement directly.
 Do not allow implementation from a raw user request.
 Do not allow implementation from a spec alone.
+
+Gate (after code-implementer reports completion):
+- Read coordination.md `## code-implementer` section ONLY.
+- Check **Status**, **Questions for human**, **Blocking issues**.
+- Update `## Orchestrator` → **Current step**.
 
 ### 8. Code review
 
 Ask `code-reviewer` to review and write `docs/specs/<feature>/code-review.md`.
 
 Gate:
-
-- read the review file
-- if `## Status` is `Rejected`, loop back to `code-implementer`
-- if any unchecked `- [ ]` item remains under `## Blocking issues`, loop back to `code-implementer`
-- always rerun `code-reviewer` after implementation modifications
-- if the reviewer raises questions you cannot answer from evidence, ask the human using the `question` tool
-- be sure to analyse rendering and confirm functional display using `budd capture` and vision analyse tool.
-
-When clear, the implementation is accepted.
+- Read coordination.md `## code-reviewer` section ONLY.
+- If **Status** is "rejected" → loop back to code-implementer (step 7).
+- If any unchecked `- [ ]` items under **Blocking issues** → loop back to code-implementer (step 7).
+- If **Questions for human** is non-empty, ask human immediately.
+- Always rerun code-reviewer after implementation modifications.
+- Be sure to analyze rendering and confirm functional display using `buddd capture` and vision analyze tool.
+- When looping: update `## Orchestrator` with loop note, set code-implementer status to "in-progress" with context.
+- If gate passes, update `## Orchestrator` → **Current step**.
 
 ### 9. Governance update
 
 Ask `adr-agent` and `constitution-agent` in parallel whether any governance artifact is needed.
 
-Never accept a constitutional change without explicit human approval.
+After each reports completion:
+- Read coordination.md `## adr-agent` or `## constitution-agent` section.
+- Check **Questions for human**: if present, ask human immediately.
+- Check **Blocking issues**: if present, resolve.
+- Never accept a constitutional change without explicit human approval.
+- Update `## Orchestrator` → **Current step**.
 
 ### 10. Wiki update
 
 Ask `wiki-agent` to update the wiki content.
 
-Use it when:
-
-- new implementation knowledge should be discoverable later
-- a workflow changed
-- a convention changed
-- the scout found stale or missing wiki content
-- a new feature creates reusable knowledge
+Gate:
+- Read coordination.md `## wiki-agent` section ONLY.
+- Check **Status**, **Questions for human**, **Blocking issues**.
+- Update `## Orchestrator` → **Current step**.
 
 ### 11. Final governance validation
 
 Ask `governance-reviewer` for cross-document validation.
 
 Gate:
-
-- read the governance review
-- if `## Status` is `Rejected`, resolve issues through the appropriate agent
-- if any unchecked `- [ ]` item remains under `## Blocking issues`, resolve issues through the appropriate agent
-- always rerun `governance-reviewer` after modifications
+- Read coordination.md `## governance-reviewer` section ONLY.
+- If **Status** is "rejected" → resolve issues through the appropriate agent.
+- If any unchecked `- [ ]` items under **Blocking issues** → resolve issues through the appropriate agent.
+- If **Questions for human** is non-empty, ask human immediately.
+- Always rerun governance-reviewer after modifications.
+- When looping: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context.
+- If gate passes, update `## Orchestrator` → **Current step**.
 
 ### 12. Done
+
+Set `## Orchestrator` → **Status** to "completed".
 
 Report completion to the human.
 
 Include:
-
 - implemented feature summary
 - spec path
 - contract path
@@ -386,8 +433,7 @@ Include:
 - remaining non-blocking notes, if any
 
 All artifacts stay in:
-
-```text
+```
 docs/specs/<feature>/
 ```
 
@@ -409,7 +455,8 @@ No file moving is needed.
 - Never ask the scout for repository dumps in normal mode.
 - Never ask the scout to return all file contents unless `DEEP_AUDIT` is explicitly required.
 - Never create or update ADR yourself, ask `adr-agent`.
-- Never create or update constitution yourself, ask `adr-agent`.
+- Never create or update constitution yourself, ask `constitution-agent`.
 - Never create or update wiki yourself, ask `wiki-agent`.
+- Never read full artifact files (spec.md, spec-critic.md, implementation-contract.md, etc.) for status or blocking-issue information — read only coordination.md sections.
 
 If you do not know the answer to a blocking question, ask the human using the `question` tool.

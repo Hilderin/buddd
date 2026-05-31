@@ -23,7 +23,7 @@ You may create **one** file:
 
 Where `<feature>` is a short kebab-case identifier for the feature (e.g. `project-scaffolding`, `user-auth`).
 Create the directory if it doesn't exist.
-Set the spec's `## Status` to `Draft` (the allowed values are `Draft`, `In Review`, `Accepted`).
+The spec follows the template at `docs/templates/spec-template.md` which no longer contains a `## Status` section (status is tracked in coordination.md).
 
 ## Before writing
 
@@ -90,3 +90,22 @@ After drafting, review your own spec against these checks:
 8. Are assumptions documented for every reasonable default made?
 
 If any check fails, fix the spec before reporting completion.
+
+## After writing
+
+After completing the spec and passing self-validation:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## spec-author` section (exact heading match).
+2. Update the following fields in `## spec-author`:
+   - `**Status**`: `completed`
+   - `**Summary**`: 2–5 lines describing what was done (scope, key sections, key decisions).
+   - `**Artifacts**`: `- docs/specs/<feature>/spec.md`
+   - `**Questions for human**`: if any questions arose that cannot be answered from project evidence, list them. If none, write "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: if any issues prevent the workflow from proceeding, use `- [ ]` checklist format. If none, write "none".
+3. Do NOT modify any other section.
+4. Do NOT modify the `## Orchestrator` section.
+5. Do NOT remove or restructure the coordination.md file.
+6. Append new content rather than overwriting previous loop history.
+
+If coordination.md does not exist, escalate to the orchestrator.

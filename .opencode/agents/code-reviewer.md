@@ -72,12 +72,30 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
     - Document whether the visual output matches the spec's expectations (camera position, colors, scene content, dimensions, etc.).
 8. Perform the review checks against the full diff and any prior related commits.
 9. Write the review to `docs/specs/<feature>/code-review.md` using the template.
-10. Set the review file's `## Status` to one of: `Accepted`, `Accepted with warnings`, `Rejected`.
-11. List every issue as a `- [ ]` checklist item under the appropriate section.
+10. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
 
 - Be strict.
 - Prefer rejection over vague approval.
-- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the verdict.
+- On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the review summary text to reflect the new verdict (verdict is expressed in coordination.md, not as a separate status field in the review file).
 - Never delete a review file — append and update it across review cycles so the full resolution history is preserved.
+
+## After writing
+
+After writing the review artifact and before reporting completion:
+
+1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## code-reviewer` section (exact heading match).
+2. Update the following fields in `## code-reviewer`:
+   - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
+   - `**Summary**`: 2–5 lines describing review outcome.
+   - `**Artifacts**`: `- docs/specs/<feature>/code-review.md`
+   - `**Questions for human**`: list any questions, or "none".
+   - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
+   - `**Blocking issues**`: copy the blocking issues checklist from code-review.md `## Blocking issues`. If none, write "none".
+3. Do NOT modify other sections.
+4. Do NOT modify the `## Orchestrator` section.
+5. Append rather than overwrite previous loop history.
+6. If coordination.md does not exist, escalate.
+
+Note: Do NOT set the review file's `## Status`. The verdict is expressed exclusively in coordination.md.

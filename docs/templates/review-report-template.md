@@ -1,13 +1,5 @@
 # [Spec | Implementation Contract] Review — <feature-name>
 
-## Status
-
-`Accepted`
-
-Allowed values: `Accepted`, `Accepted with warnings`, `Rejected`
-
-> The next workflow step MUST NOT proceed while the status is `Rejected` or any blocking issue remains unchecked.
-
 ## Blocking issues
 
 Items that must be resolved before the artifact can be accepted.
