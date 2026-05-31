@@ -14,6 +14,10 @@ auto PlatformHeadless::input_system() -> InputSystem& {
     return input_system_;
 }
 
+auto PlatformHeadless::delta_time() const noexcept -> float {
+    return 1.0f / 60.0f;
+}
+
 auto PlatformHeadless::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {
     if (config.width <= 0 || config.height <= 0) {
         return make_error(Error::Category::WindowCreationFailed, "Invalid window dimensions");

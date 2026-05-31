@@ -32,6 +32,10 @@ public:
     /// The reference remains valid for the lifetime of the Platform.
     virtual auto input_system() -> InputSystem& = 0;
 
+    /// Returns the time elapsed since the last poll_events() call, in seconds.
+    /// Under normal operation, always > 0. Useful for framerate-independent movement.
+    [[nodiscard]] virtual auto delta_time() const noexcept -> float = 0;
+
     Platform(const Platform&) = delete;
     auto operator=(const Platform&) -> Platform& = delete;
     Platform(Platform&&) = delete;

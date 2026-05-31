@@ -12,6 +12,15 @@ PlatformSDL3::~PlatformSDL3() {
 }
 
 auto PlatformSDL3::poll_events() -> bool {
+    // Compute delta time from SDL_GetTicks
+    Uint64 now = SDL_GetTicks();
+    if (last_frame_ticks_ != 0) {
+        delta_time_ = static_cast<float>(now - last_frame_ticks_) / 1000.0f;
+    } else {
+        delta_time_ = 1.0f / 60.0f;
+    }
+    last_frame_ticks_ = now;
+
     // 1. Begin the input frame (copies current→previous, resets delta/wheel)
     input_system_.begin_frame();
 
@@ -29,6 +38,10 @@ auto PlatformSDL3::poll_events() -> bool {
 
 auto PlatformSDL3::input_system() -> InputSystem& {
     return input_system_;
+}
+
+auto PlatformSDL3::delta_time() const noexcept -> float {
+    return delta_time_;
 }
 
 auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {

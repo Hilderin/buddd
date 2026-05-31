@@ -29,7 +29,7 @@ Each command produces its own output:
 | Command | stdout | stderr |
 |---|---|---|
 | `run` / (default) | `"Window opened: 1024x768"` then `"Window closed, shutting down."` | — |
-| `demo <name>` | — | `"Demo started: <name> (N frames)"` then `"Demo complete: <name> (N frames rendered)"` (or abort: `"Demo aborted by user (frame N)"`). If no name: demo usage text. If unknown name: `"Unknown demo: '<name>'"` + usage. |
+| `demo <name>` | — | `"Demo started: <name> (N frames)"` then `"Demo complete: <name> (N frames rendered)"` (or abort: `"Demo aborted by user (frame N)"`). Interactive demos (`free-camera`) print `"Demo started: free-camera (interactive)"`. On Escape, they exit with `"Demo complete: free-camera (interactive)"` via `std::cerr`. On window close, they exit with `"Demo aborted by user"` via `std::cerr`. If no name: demo usage text. If unknown name: `"Unknown demo: '<name>'"` + usage. |
 | `version` | `"buddd 0.1.0"` | — |
 | `help` | Usage text (5 commands: `run`, `demo`, `capture`, `version`, `help`) | — |
 | `capture <scenario> [--frame N] [path]` | `"Captured: <path>"` | `"Capturing: <scenario> (N frame(s))"` then error or success. If no scenario: `"Usage: buddd capture <scenario>"` + scenario list. If unknown scenario: `"Unknown capture scenario: '<name>'"` + usage. If extra args: `"Warning: unexpected arguments..."`. |
@@ -121,12 +121,14 @@ RenderDevice::create(window)
         ▼
     [Frame loop: poll_events() orchestrates input and rendering]
     - Each poll_events() call:
-        1. Calls InputSystem::begin_frame() — copies current→previous state, resets
+        1. Computes delta_time from SDL_GetTicks () — time since the previous
+           poll_events() call in seconds. First call after construction returns 1/60.
+        2. Calls InputSystem::begin_frame() — copies current→previous state, resets
            accumulated mouse delta/wheel to zero.
-        2. Processes SDL events — routes non-quit events to InputSystemSDL3::on_sdl_event()
+        3. Processes SDL events — routes non-quit events to InputSystemSDL3::on_sdl_event()
            (keyboard, mouse-motion, mouse-button, mouse-wheel).
-    - Application queries input state via platform.input_system() between poll_events()
-      and render/update logic.
+    - Application queries input state via platform.input_system() and delta time via
+      platform.delta_time() between poll_events() and render/update logic.
 
     [Destruction order: RenderDevice → Window → Platform]
     - ~RenderDeviceOpenGL: SDL_GL_DestroyContext

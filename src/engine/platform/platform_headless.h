@@ -12,6 +12,7 @@ public:
     auto create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> override;
     auto poll_events() -> bool override;
     auto input_system() -> InputSystem& override;
+    [[nodiscard]] auto delta_time() const noexcept -> float override;
 
     PlatformHeadless(const PlatformHeadless&) = delete;
     auto operator=(const PlatformHeadless&) -> PlatformHeadless& = delete;

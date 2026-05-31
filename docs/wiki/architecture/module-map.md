@@ -44,12 +44,12 @@ The Platform abstraction now integrates the InputSystem: each concrete Platform 
 
 | File | Role |
 |---|---|
-| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory and `virtual auto input_system() -> InputSystem& = 0` |
+| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory, `virtual auto input_system() -> InputSystem& = 0`, and `virtual auto delta_time() const noexcept -> float = 0` |
 | `platform.cpp` | Factory implementation: dispatches to SDL3 or Headless backend based on `Backend` enum |
-| `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member |
-| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation, `poll_events()` calls `begin_frame()` and routes events to `InputSystemSDL3::on_sdl_event()` |
-| `platform_headless.h` | Private header: `PlatformHeadless` concrete class (final) with embedded `InputSystemHeadless` member |
-| `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions; `poll_events()` calls `begin_frame()` |
+| `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member, `delta_time_` member, and `last_frame_ticks_` for frame timing |
+| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation, `poll_events()` computes delta from `SDL_GetTicks`, calls `begin_frame()`, routes events to `InputSystemSDL3::on_sdl_event()` |
+| `platform_headless.h` | Private header: `PlatformHeadless` concrete class (final) with embedded `InputSystemHeadless` member and `delta_time()` override |
+| `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions; `poll_events()` calls `begin_frame()`; `delta_time()` returns fixed 1/60f |
 
 ### Window submodule (`window/`)
 
@@ -184,6 +184,7 @@ Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::c
 | `triangle_demo.h` / `triangle_demo.cpp` | Declares `buddd::cmd::demo::run_triangle_demo()` — 120-frame render loop with a coloured triangle (extracted from the old `test_command.cpp`). |
 | `cube_demo.h` / `cube_demo.cpp` | Declares `buddd::cmd::demo::run_cube_demo()` — 120-frame render loop with a rotating per-face-coloured cube using Camera + MVP. Header exposes no backend types (only forward declarations). |
 | `cube_scene_demo.h` / `cube_scene_demo.cpp` | Declares `buddd::cmd::demo::run_cube_scene_demo()` — 120-frame render loop using `World` + `RenderSystem` (ECS approach) instead of manual camera/MVP/draw calls. Creates entities with `CameraComponent` and `MeshRenderer`. Not yet wired into `demo_command.cpp` dispatch. |
+| `free_camera_demo.h` / `free_camera_demo.cpp` | Declares `buddd::cmd::demo::run_free_camera_demo()` — interactive fly-through camera demo with WASD movement, mouse look, and Space/Control vertical movement. Uses `Platform::delta_time()` for frame-rate-independent movement. Exit via Escape key. |
 
 ### Capture files (`src/cmd/capture/`)
 
@@ -196,7 +197,7 @@ Each capture scenario is a `.h`/`.cpp` pair exposing a single free function in t
 ### Subcommand behavior
 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
-- `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames) and `cube` (120 frames, rotating coloured cube). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
+- `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), and `free-camera` (interactive, WASD + mouse look + Space/Control). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
 - `buddd version` → prints `buddd 0.1.0` to stdout
 - `buddd capture <scenario> [--frame N] [output_path]` → opens 800×600 window titled "Buddd Engine — Capture: \<scenario\>", renders N frames (default: 1), captures the Nth frame as PNG, saves to `output_path` (or `/tmp/buddd_capture_<scenario>_<timestamp>.png`), prints `"Captured: <path>"`. With `--frame N` where N > 1, the cube rotates 0.5 rad/s around Y. Currently available: `cube`. If no scenario is given, prints usage to stderr and exits 1. If scenario is unknown, prints error to stderr and exits 1.
 - `buddd help` → prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
