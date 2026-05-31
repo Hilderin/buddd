@@ -23,7 +23,7 @@ You may create **one** file:
 
 Where `<feature>` is a short kebab-case identifier for the feature (e.g. `project-scaffolding`, `user-auth`).
 Create the directory if it doesn't exist.
-The spec follows the template at `docs/templates/spec-template.md` which no longer contains a `## Status` section (status is tracked in coordination.md).
+The spec follows the template at `docs/templates/spec-template.md`.
 
 ## Before writing
 

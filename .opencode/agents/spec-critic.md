@@ -72,5 +72,3 @@ After writing the review artifact and before reporting completion:
 4. Do NOT modify the `## Orchestrator` section.
 5. Append rather than overwrite previous loop history.
 6. If coordination.md does not exist, escalate.
-
-Note: Do NOT update the spec file's `## Status` (the spec no longer carries a status field). The review verdict is expressed exclusively through the coordination.md `## spec-critic` section.

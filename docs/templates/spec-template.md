@@ -1,15 +1,5 @@
 # SPEC-YYYY-NNNN - Title
 
-## Approval
-
-> This section is filled when the human validates the spec and implementation contract, authorizing implementation to proceed.
-
-| | |
-|---|---|
-| Approved by | |
-| Date | |
-| Time | |
-
 ## Problem
 
 ## Goals

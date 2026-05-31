@@ -73,5 +73,3 @@ After writing the governance review and before reporting completion:
 4. Do NOT modify the `## Orchestrator` section.
 5. Append rather than overwrite previous loop history.
 6. If coordination.md does not exist, escalate.
-
-Note: Do NOT set the review file's `## Status`. The verdict is expressed exclusively in coordination.md.

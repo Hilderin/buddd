@@ -23,7 +23,7 @@ You may create **one** file per feature:
 
 Where `<feature>` is the feature directory name (e.g. `project-scaffolding`).
 Create the directory if it doesn't exist.
-The implementation contract follows the template at `docs/templates/implementation-contract-template.md` which no longer contains a `## Status` section (status is tracked in coordination.md).
+The implementation contract follows the template at `docs/templates/implementation-contract-template.md`.
 
 ## Before writing
 

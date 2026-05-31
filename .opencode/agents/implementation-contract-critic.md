@@ -75,5 +75,3 @@ After writing the review artifact and before reporting completion:
 4. Do NOT modify the `## Orchestrator` section.
 5. Append rather than overwrite previous loop history.
 6. If coordination.md does not exist, escalate.
-
-Note: Do NOT update the contract file's `## Status`. The review verdict is expressed exclusively in coordination.md.

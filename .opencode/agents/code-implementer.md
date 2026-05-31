@@ -22,9 +22,7 @@ Your job is to produce a working, building, fully-tested implementation. Do not 
 
 ## Before editing
 
-- Read the accepted implementation contract at `docs/specs/<feature>/implementation-contract.md` — confirm the `## Approval` section is filled (human-approved). Also read `docs/specs/<feature>/coordination.md` `## Human Validation` section to confirm **Status** is `approved`.
-- Read the referenced accepted spec at `docs/specs/<feature>/spec.md`.
-- Read the `## implementation-contract-critic` section from `docs/specs/<feature>/coordination.md` — confirm **Status** is `completed` (not `rejected`) and no unchecked `- [ ]` items remain under **Blocking issues**. Do NOT read the full artifact file (implementation-contract-critic.md) for status or blocking-issue information.
+- Read the accepted implementation contract at `docs/specs/<feature>/implementation-contract.md`.
 - Read relevant constitution rules.
 - Read relevant ADRs.
 - Search the wiki for relevant architecture context and conventions using wiki search tools.
