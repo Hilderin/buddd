@@ -16,8 +16,10 @@ namespace buddd::cmd::capture {
 ///   5 lights (1 directional, 3 point, 1 spot)
 ///   Fixed camera at (6, 3.5, 8) looking at origin
 ///
-/// Renders `num_frames` frames, then reads back the framebuffer.
-/// The scene is deterministic (no orbiting lights, no animation).
+/// Renders `num_frames` frames (minimum 2 for driver quirk workaround),
+/// then reads back the last frame's framebuffer.
+/// Point lights A and B orbit continuously (matching the interactive demo),
+/// so --frames N produces different light positions for each frame.
 ///
 /// @param platform   The engine platform (for event polling).
 /// @param device     The render device (for rendering and readback).
