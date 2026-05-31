@@ -1,5 +1,6 @@
 #include "commands/capture_command.h"
 #include "capture/cube_capture.h"
+#include "capture/phong_capture.h"
 
 #include "image/image.h"
 #include "image/image_buffer.h"
@@ -25,6 +26,7 @@ inline constexpr std::string_view k_capture_usage =
     "\n"
     "Available scenarios:\n"
     "  cube    Capture a frame of the rotating cube demo\n"
+    "  phong   Capture a frame of the phong lighting demo\n"
     "\n"
     "Options:\n"
     "  --frame N   Render N frames and capture the Nth frame (default: 1)\n"
@@ -33,7 +35,7 @@ inline constexpr std::string_view k_capture_usage =
 
 /// Returns true if the given scenario name is valid.
 auto is_valid_scenario(std::string_view name) -> bool {
-    return name == "cube";
+    return name == "cube" || name == "phong";
 }
 
 /// Generates a default output path: /tmp/buddd_capture_<scenario>_<timestamp>.png
@@ -168,6 +170,9 @@ auto bc::CaptureCommand::run(int argc, const char* const* argv) -> int {
         be::Error::Category::Unknown, "Unknown scenario");
     if (scenario == "cube") {
         readback_result = buddd::cmd::capture::capture_cube_scene(
+            **platform, **device, 800, 600, num_frames);
+    } else if (scenario == "phong") {
+        readback_result = buddd::cmd::capture::capture_phong_scene(
             **platform, **device, 800, 600, num_frames);
     }
 

@@ -48,7 +48,7 @@ uniform float    u_light_outer_cones[MAX_LIGHTS];
 
 uniform vec3     u_camera_pos;
 
-uniform vec3     u_material_ambient   = vec3(0.1);
+uniform vec3     u_material_ambient   = vec3(0.2);
 uniform vec4     u_material_specular  = vec4(1.0);
 uniform float    u_material_shininess = 32.0;
 
@@ -76,6 +76,7 @@ void main() {
         float range     = u_light_ranges[i];
         vec3 L;
         float attenuation = 1.0;
+        bool light_valid = true;
 
         if (pos_or_dir.w == 0.0) {
             // Directional light
@@ -84,40 +85,86 @@ void main() {
             // Point light
             vec3 light_to_frag = pos_or_dir.xyz - v_world_pos;
             float dist = length(light_to_frag);
-            L = light_to_frag / dist;
+
+            // Guard against division by zero: if the light is exactly at the
+            // fragment position, skip this light to avoid NaN propagation.
+            if (dist < 0.0001) { light_valid = false; }
+            else { L = light_to_frag / dist; }
 
             float normalized_dist = clamp(dist / range, 0.0, 1.0);
-            attenuation = 1.0 - normalized_dist * normalized_dist;
+            if (light_valid) {
+                attenuation = 1.0 - normalized_dist * normalized_dist;
+            }
         } else {
             // Spot light (w == 2.0)
             vec3 light_to_frag = pos_or_dir.xyz - v_world_pos;
             float dist = length(light_to_frag);
-            L = light_to_frag / dist;
+
+            // Guard against division by zero (same as point light).
+            if (dist < 0.0001) { light_valid = false; }
+            else { L = light_to_frag / dist; }
 
             float normalized_dist = clamp(dist / range, 0.0, 1.0);
-            attenuation = 1.0 - normalized_dist * normalized_dist;
+            if (light_valid) {
+                attenuation = 1.0 - normalized_dist * normalized_dist;
 
-            // Spot cone falloff
-            vec3 spot_dir = normalize(u_light_spot_directions[i].xyz);
-            float cos_angle = max(dot(-L, spot_dir), 0.0);
-            float cos_inner = u_light_inner_cones[i];
-            float cos_outer = u_light_outer_cones[i];
-            attenuation *= spot_cone_attenuation(cos_angle, cos_inner, cos_outer);
+                // Spot cone falloff
+                vec3 spot_dir = normalize(u_light_spot_directions[i].xyz);
+                float cos_angle = max(dot(-L, spot_dir), 0.0);
+                float cos_inner = u_light_inner_cones[i];
+                float cos_outer = u_light_outer_cones[i];
+                attenuation *= spot_cone_attenuation(cos_angle, cos_inner, cos_outer);
+            }
         }
 
-        // Diffuse (Lambert)
-        float NdotL = max(dot(N, L), 0.0);
-        vec3 diffuse = diffuse_colour * light_col * NdotL;
+        if (light_valid) {
+            // Diffuse (Lambert)
+            float NdotL = max(dot(N, L), 0.0);
+            vec3 diffuse = diffuse_colour * light_col * NdotL;
 
-        // Specular (Blinn-Phong)
-        vec3 H = normalize(L + V);
-        float NdotH = max(dot(N, H), 0.0);
-        vec3 specular = u_material_specular.rgb * light_col * pow(NdotH, u_material_shininess);
+            // Specular (Blinn-Phong)
+            // Guard against degenerate half-vector (L + V ~ 0) which would
+            // cause normalize() to produce NaN and pow() to propagate it
+            // as white pixels at silhouette edges.
+            vec3 half_vec = L + V;
+            float half_len = length(half_vec);
+            vec3 specular = vec3(0.0);
+            if (half_len > 0.001) {
+                vec3 H = half_vec / half_len;
+                float NdotH = max(dot(N, H), 0.0);
+                specular = u_material_specular.rgb * light_col
+                         * pow(NdotH, u_material_shininess);
+            }
 
-        final_colour += (diffuse + specular) * attenuation;
+            final_colour += (diffuse + specular) * attenuation;
+        }
     }
 
-    frag_color = vec4(final_colour, 1.0);
+    // Reinhard tone mapping with exposure compensation.
+    // Exposure amplifies the signal before compression so that the
+    // resulting image has a natural brightness. Without exposure,
+    // a typical diffuse-lit surface (value ~1.0) would map to 0.5 (gray).
+    // ------------------------------------------------------------------
+    // Key mappings (exposure = 3.0):
+    //   0.0 → 0.0  |  0.33 → 0.50 (128)  |  0.5 → 0.60 (153)
+    //   1.0 → 0.75 (191)  |  2.0 → 0.86 (219)  |  5.0 → 0.94 (239)
+    //   ∞ → 1.0 (never reached)
+    // ------------------------------------------------------------------
+    // The higher exposure keeps mid-tones brighter while still preventing
+    // hard white clip. Specular highlights from multiple strong lights
+    // accumulating to extreme values (5.0+) compress smoothly to ~239+
+    // without ever saturating to pure 255.
+    const float k_exposure = 3.0;
+    vec3 exposed = final_colour * k_exposure;
+    vec3 tonemapped = exposed / (exposed + vec3(1.0));
+
+    // Safety net: replace any NaN with black to prevent GPU-dependent
+    // artifacts at silhouette edges.
+    if (isnan(tonemapped.x) || isnan(tonemapped.y) || isnan(tonemapped.z)) {
+        tonemapped = vec3(0.0);
+    }
+
+    frag_color = vec4(tonemapped, 1.0);
 }
 )";
 
