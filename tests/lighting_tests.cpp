@@ -690,9 +690,9 @@ TEST_CASE("RenderSystem sets u_camera_pos", "[lighting]") {
 }
 
 // ============================================================================
-// AC-021: RenderSystem sets material property defaults
+// AC-021: Material property defaults are provided by GLSL shader (not overwritten by RenderSystem)
 // ============================================================================
-TEST_CASE("RenderSystem sets material property defaults", "[lighting]") {
+TEST_CASE("RenderSystem does not overwrite material properties", "[lighting]") {
     auto engine = make_headless_engine();
     auto& device = engine->device();
     World world;
@@ -702,7 +702,13 @@ TEST_CASE("RenderSystem sets material property defaults", "[lighting]") {
     cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     cam_entity.add_component<CameraComponent>(cam);
 
+    // Set custom material properties before rendering
     auto phong_mat = std::make_shared<PhongMaterial>(device);
+    phong_mat->set_uniform("u_material_ambient", math::Vec3{0.2f, 0.3f, 0.4f});
+    phong_mat->set_uniform("u_material_specular", math::Vec4{0.5f, 0.6f, 0.7f, 0.8f});
+    phong_mat->set_uniform("u_material_shininess", 64.0f);
+    phong_mat->set_uniform("u_material_diffuse_tint", math::Vec4{0.9f, 0.8f, 0.7f, 1.0f});
+
     make_mesh_entity(world, device, phong_mat);
 
     auto* headless_mat = dynamic_cast<MaterialHeadless*>(&phong_mat->inner_material());
@@ -711,23 +717,24 @@ TEST_CASE("RenderSystem sets material property defaults", "[lighting]") {
     RenderSystem render_system(device, world);
     render_system.render();
 
+    // Verify custom values PERSIST after render (RenderSystem no longer overwrites them)
     auto ambient_opt = headless_mat->get_uniform_vec3("u_material_ambient");
     REQUIRE(ambient_opt.has_value());
-    REQUIRE(ambient_opt->x == Approx(0.1f).margin(TOL));
-    REQUIRE(ambient_opt->y == Approx(0.1f).margin(TOL));
-    REQUIRE(ambient_opt->z == Approx(0.1f).margin(TOL));
+    REQUIRE(ambient_opt->x == Approx(0.2f).margin(TOL));
+    REQUIRE(ambient_opt->y == Approx(0.3f).margin(TOL));
+    REQUIRE(ambient_opt->z == Approx(0.4f).margin(TOL));
 
     auto spec_opt = headless_mat->get_uniform_vec4("u_material_specular");
     REQUIRE(spec_opt.has_value());
-    REQUIRE(spec_opt->x == Approx(1.0f).margin(TOL));
+    REQUIRE(spec_opt->x == Approx(0.5f).margin(TOL));
 
     auto shin_opt = headless_mat->get_uniform_float("u_material_shininess");
     REQUIRE(shin_opt.has_value());
-    REQUIRE(*shin_opt == Approx(32.0f).margin(TOL));
+    REQUIRE(*shin_opt == Approx(64.0f).margin(TOL));
 
     auto tint_opt = headless_mat->get_uniform_vec4("u_material_diffuse_tint");
     REQUIRE(tint_opt.has_value());
-    REQUIRE(tint_opt->x == Approx(1.0f).margin(TOL));
+    REQUIRE(tint_opt->x == Approx(0.9f).margin(TOL));
 }
 
 // ============================================================================

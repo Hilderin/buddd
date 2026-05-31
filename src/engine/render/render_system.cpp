@@ -142,11 +142,10 @@ auto RenderSystem::render() -> void {
                     "u_light_outer_cones[" + std::to_string(i) + "]", ld.outer_cone_cos);
             }
 
-            // Material defaults
-            material.set_uniform("u_material_ambient", math::Vec3{0.1f, 0.1f, 0.1f});
-            material.set_uniform("u_material_specular", math::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
-            material.set_uniform("u_material_shininess", 32.0f);
-            material.set_uniform("u_material_diffuse_tint", math::Vec4{1.0f, 1.0f, 1.0f, 1.0f});
+            // Material defaults are NOT set here — they are provided by GLSL shader defaults
+            // (u_material_ambient = 0.1, u_material_specular = 1.0, 
+            //  u_material_shininess = 32.0, u_material_diffuse_tint = 1.0).
+            // The demo or application sets custom values during material creation.
         }
 
         mr.model().draw(*device_);
