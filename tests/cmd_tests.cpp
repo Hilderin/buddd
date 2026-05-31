@@ -111,10 +111,16 @@ TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
     const auto out_file = temp_filename("buddd_run_out");
     const auto err_file = temp_filename("buddd_run_err");
 
+    // Use offscreen SDL driver to prevent a real window from popping up
+    // during test runs (the run command opens a 1024x768 SDL3 window).
+    static_cast<void>(setenv("SDL_VIDEO_DRIVER", "offscreen", 1));
+
     const std::string shell_cmd = "timeout 2 \"" + binary + "\" > \""
                                   + out_file + "\" 2> \"" + err_file + "\" || true";
 
     const int sys_ret = std::system(shell_cmd.c_str());
+
+    unsetenv("SDL_VIDEO_DRIVER");
     (void)sys_ret;
 
     auto read_file = [](const std::string& path) -> std::string {
