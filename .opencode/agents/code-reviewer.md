@@ -98,4 +98,7 @@ After writing the review artifact and before reporting completion:
 5. Append rather than overwrite previous loop history.
 6. If coordination.md does not exist, escalate.
 
-Note: Do NOT set the review file's `## Status`. The verdict is expressed exclusively in coordination.md.
+
+## Hard rules
+
+Your last message should be short, only return a simple summary sentence to the caller. The goal is to keep the context of the caller agent as small as possible.

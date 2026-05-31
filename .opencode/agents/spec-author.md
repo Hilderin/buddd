@@ -109,3 +109,8 @@ After completing the spec and passing self-validation:
 6. Append new content rather than overwriting previous loop history.
 
 If coordination.md does not exist, escalate to the orchestrator.
+
+
+## Hard rules
+
+Your last message should be short, only return a simple summary sentence to the caller. The goal is to keep the context of the caller agent as small as possible.

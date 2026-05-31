@@ -196,15 +196,23 @@ clarification with human, challenges request, decisions and assumptions
 **CREATE** coordination.md from template (all sections filled with "pending")
   ↓
 spec-author → writes spec.md → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the spec-author with the answers.
   ↓
 spec-critic → writes spec-critic.md → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the spec-critic with the answers.
   ↓  (gate: check coordination.md ## spec-critic)
   ↓  Status == rejected? → loop to spec-author
   ↓  Blocking issues unchecked? → loop to spec-author
   ↓
 implementation-contract-author → writes implementation-contract.md → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the implementation-contract-author with the answers.
   ↓
 implementation-contract-critic → writes implementation-contract-critic.md → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the implementation-contract-critic with the answers.
   ↓  (gate: check coordination.md ## implementation-contract-critic)
   ↓  Status == rejected? → loop to impl-contract-author (or spec-author for spec-level issues)
   ↓  Blocking issues unchecked? → loop to appropriate agent
@@ -213,21 +221,33 @@ implementation-contract-critic → writes implementation-contract-critic.md → 
 **human validation gate** — present summaries from coordination.md, get explicit approval, record in ## Human Validation
   ↓
 code-implementer → implements code → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the code-implementer with the answers.
   ↓
 code-reviewer → writes code-review.md → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the code-reviewer with the answers.
   ↓  (gate: check coordination.md ## code-reviewer)
   ↓  Status == rejected? → loop to code-implementer
   ↓  Blocking issues unchecked? → loop to code-implementer
   ↓
 adr-agent → updates coordination.md
 constitution-agent (parallel) → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the adr-agent with the answers.
   ↓
 wiki-agent → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the wiki-agent with the answers.
   ↓
 governance-reviewer → writes governance-review.md → updates coordination.md
+  ↓  Ask questions to the human if added on coordination.md
+  ↓    Recall the governance-reviewer with the answers.
   ↓  (gate: check coordination.md ## governance-reviewer)
   ↓  Status == rejected? → loop to appropriate agent
   ↓  Blocking issues unchecked? → loop to appropriate agent
+  ↓
+when ever code is updated outside the normal workflow, restart the critics and following steps.
   ↓
 orchestrator sets ## Orchestrator Status to "completed" → reports to human
   ↓
@@ -270,6 +290,8 @@ When delegating to any sub-agent, the orchestrator MUST include in its instructi
 
 **Note:** `**Warnings**` are non-blocking and do NOT affect gate decisions — they are informational only. Gates check only `**Status**`, `**Blocking issues**`, and `**Questions for human**`.
 
+Also add instruction to agent to keep the last message as small as possible to keep your context small.
+
 ### 2. Spec author
 
 Ask `spec-author` to draft a spec into `docs/specs/<feature>/spec.md`.
@@ -283,7 +305,7 @@ Give the spec-author:
 Gate (after spec-author reports completion):
 - Read coordination.md `## spec-author` section ONLY.
 - If **Status** is "blocked", resolve the blocker (ask human if needed).
-- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and then recall the spec-author.
 - If **Status** is "completed", proceed to spec-critic.
 - Update `## Orchestrator` → **Current step** to "spec-author-complete".
 
@@ -295,7 +317,7 @@ Gate (after spec-critic reports completion):
 - Read coordination.md `## spec-critic` section ONLY.
 - If **Status** is "rejected" → loop back to spec-author (step 2).
 - If any unchecked `- [ ]` items under **Blocking issues** → loop back to spec-author (step 2).
-- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke spec-critic or previous agent depending on the questions and answers.
 - When looping back: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context from blocking issues, re-invoke spec-author.
   - **Note:** This is the one exception to the rule that sub-agents self-manage their own status. The orchestrator may temporarily reset a sub-agent's `**Status**` to "in-progress" during loop-backs. This is documented in the coordination.md template constraints.
 - If gate passes, update `## Orchestrator` → **Current step** to "spec-critic-approved".
@@ -314,6 +336,7 @@ Give the contract author:
 Gate (same pattern as spec-author):
 - Read coordination.md `## implementation-contract-author` section ONLY.
 - Check **Status**, **Questions for human**, **Blocking issues**.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke implementation-contract-author or previous agent depending on the questions and answers.
 - Update `## Orchestrator` → **Current step**.
 
 ### 5. Implementation contract critic
@@ -326,7 +349,7 @@ Gate:
 - If any unchecked `- [ ]` items under **Blocking issues**:
   - If the issue is a spec-level problem requiring spec.md changes → loop to spec-author (step 2). After spec-author fixes, orchestrator MUST invoke spec-critic to re-review the modified spec. If spec-critic accepts (coordination.md `## spec-critic` **Status** is `completed`), then proceed to implementation-contract-author (step 4). If spec-critic rejects, continue looping.
   - Otherwise → loop to implementation-contract-author (step 4).
-- If **Questions for human** is non-empty, ask human immediately.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke implementation-contract-critic or previous agent depending on the questions and answers.
 - When looping: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context.
 - If gate passes, update `## Orchestrator` → **Current step**.
 
@@ -356,6 +379,8 @@ If rejected, terminate workflow and report to human.
 
 If approved, update `## Orchestrator` → **Current step** to "human-approved".
 
+If human suggestion modifications, re-invoke the corresponding previous agent.
+
 ### 7. Implement
 
 Delegate to `code-implementer`.
@@ -369,6 +394,7 @@ Do not allow implementation from a spec alone.
 Gate (after code-implementer reports completion):
 - Read coordination.md `## code-implementer` section ONLY.
 - Check **Status**, **Questions for human**, **Blocking issues**.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke code-implementer or previous agent depending on the questions and answers.
 - Update `## Orchestrator` → **Current step**.
 
 ### 8. Code review
@@ -379,7 +405,7 @@ Gate:
 - Read coordination.md `## code-reviewer` section ONLY.
 - If **Status** is "rejected" → loop back to code-implementer (step 7).
 - If any unchecked `- [ ]` items under **Blocking issues** → loop back to code-implementer (step 7).
-- If **Questions for human** is non-empty, ask human immediately.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke code-reviewer or previous agent depending on the questions and answers.
 - Always rerun code-reviewer after implementation modifications.
 - Be sure to analyze rendering and confirm functional display using `buddd capture` and vision analyze tool.
 - When looping: update `## Orchestrator` with loop note, set code-implementer status to "in-progress" with context.
@@ -391,7 +417,7 @@ Ask `adr-agent` and `constitution-agent` in parallel whether any governance arti
 
 After each reports completion:
 - Read coordination.md `## adr-agent` or `## constitution-agent` section.
-- Check **Questions for human**: if present, ask human immediately.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke adr-agent or previous agent depending on the questions and answers.
 - Check **Blocking issues**: if present, resolve.
 - Never accept a constitutional change without explicit human approval.
 - Update `## Orchestrator` → **Current step**.
@@ -403,6 +429,7 @@ Ask `wiki-agent` to update the wiki content.
 Gate:
 - Read coordination.md `## wiki-agent` section ONLY.
 - Check **Status**, **Questions for human**, **Blocking issues**.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke wiki-agent or previous agent depending on the questions and answers.
 - Update `## Orchestrator` → **Current step**.
 
 ### 11. Final governance validation
@@ -413,7 +440,7 @@ Gate:
 - Read coordination.md `## governance-reviewer` section ONLY.
 - If **Status** is "rejected" → resolve issues through the appropriate agent.
 - If any unchecked `- [ ]` items under **Blocking issues** → resolve issues through the appropriate agent.
-- If **Questions for human** is non-empty, ask human immediately.
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke governance-reviewer or previous agent depending on the questions and answers.
 - Always rerun governance-reviewer after modifications.
 - When looping: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context.
 - If gate passes, update `## Orchestrator` → **Current step**.

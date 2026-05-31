@@ -167,3 +167,8 @@ After all implementation steps are complete and done criteria are verified, befo
 4. Do NOT modify the `## Orchestrator` section.
 5. Append rather than overwrite previous loop history.
 6. If coordination.md does not exist, escalate.
+
+
+## Hard rules
+
+Your last message should be short, only return a simple summary sentence to the caller. The goal is to keep the context of the caller agent as small as possible.
