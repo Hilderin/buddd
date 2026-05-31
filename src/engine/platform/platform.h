@@ -13,6 +13,7 @@ enum class Backend {
 
 class Window;
 struct WindowConfig;
+class InputSystem;
 
 class Platform {
 public:
@@ -26,6 +27,10 @@ public:
     /// Returns false if the user requested to quit (e.g., window close button),
     /// true otherwise. In headless mode, always returns true.
     virtual auto poll_events() -> bool = 0;
+
+    /// Returns a reference to the input system owned by this platform.
+    /// The reference remains valid for the lifetime of the Platform.
+    virtual auto input_system() -> InputSystem& = 0;
 
     Platform(const Platform&) = delete;
     auto operator=(const Platform&) -> Platform& = delete;

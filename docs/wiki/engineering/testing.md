@@ -70,7 +70,7 @@ The platform abstraction layer introduces headless backend tests that run **with
 
 SDL3 backend tests use SDL3's **offscreen video driver** (`SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`), so they do **not** require a physical display. They are conditionally compiled via the `BUDDD_HAS_DISPLAY` CMake option (default `ON`). Set `-DBUDDD_HAS_DISPLAY=OFF` to exclude them (e.g., in CI).
 
-The `<SDL3/SDL.h>` include in these test files is permitted by constitutional amendment [AMEND-2026-001](/docs/constitution/rules/CONST-001-architecture-boundaries.md#amendment-amend-2026-001--sdl3-test-file-exception) — a narrow exception to CONST-001 for setting video driver hints.
+The `<SDL3/SDL.h>` include in these test files is permitted by constitutional amendment [AMEND-2026-001](/docs/constitution/rules/CONST-001-architecture-boundaries.md#amendment-amend-2026-001--sdl3-test-file-exception) — a narrow exception to CONST-001 for testing SDL3-dependent engine functionality (hint-setting, synthetic event injection via `SDL_PushEvent()`, and SDL3 backend exercise).
 
 | Test case | Tags | Source file | Verification |
 |---|---|---|---|
@@ -82,6 +82,32 @@ The `<SDL3/SDL.h>` include in these test files is permitted by constitutional am
 | `SDL3 frame cycle completes` | `[sdl3][render]` | `tests/sdl3_backend_test.cpp` | `begin_frame()`/`end_frame()` sequence completes |
 
 The old `T-13` (formerly `Platform::create(SDL3) success` with `[!mayfail]`) has been removed from `platform_abstraction_test.cpp`. It is replaced by the offscreen-driver-based test above (first row), which runs reliably in any environment including headless CI.
+
+### Input system tests
+
+The input system test suite (`tests/input_tests.cpp`) provides 17 test cases covering the `InputSystem` abstraction, `KeyCode` enum, double-buffered state model, factory, Platform integration, and SDL3 event processing. The suite is split into 9 headless (always-run) and 8 SDL3 (conditional on `BUDDD_HAS_DISPLAY`) tests.
+
+Tags used: `[input]`, `[input_sdl3]`.
+
+| ID | Test case | Tags | Verification |
+|---|---|---|---|
+| T-01 | `Factory creates headless InputSystem` | `[headless][input]` | `InputSystem::create(Backend::Headless)` returns valid `unique_ptr<InputSystem>`, `dynamic_cast` confirms `InputSystemHeadless` |
+| T-02 | `Factory creates SDL3 InputSystem` | `[input_sdl3][input]` | `InputSystem::create(Backend::SDL3)` returns valid `unique_ptr<InputSystem>`, `dynamic_cast` confirms `InputSystemSDL3` |
+| T-03 | `KeyCode enum values match SDL_Scancode` | `[input]` | `static_cast<uint8_t>(KeyCode::A) == 4`, `static_cast<uint8_t>(KeyCode::Escape) == 41`, compiler check via `static_assert` |
+| T-04 | `KeyCode size is 1 byte` | `[input]` | `sizeof(KeyCode) == 1` |
+| T-05 | `Headless InputSystem returns defaults for all queries` | `[headless][input]` | All `is_down/is_pressed/is_released` return false; `mouse_position/delta/wheel` return `(0,0)` |
+| T-06 | `Double-buffered pressed/released transition` | `[headless][input]` | Simulate frame sequence: key down → `is_pressed=true`; next frame no events → `is_pressed=false`, `is_down=true`; key up → `is_released=true` |
+| T-07 | `Delta and wheel reset after begin_frame` | `[headless][input]` | Simulate events, call `begin_frame()`, verify delta/wheel reset to zero |
+| T-08 | `Unknown/out-of-range scancode maps to KeyCode::Unknown` | `[headless][input]` | Direct `InputSystemSDL3` test: invalid scancode produces `Unknown` key mapping |
+| T-09 | `KeyCode bounds check rejects out-of-range values` | `[headless][input]` | Scancode >= `KeyCode::_Count` maps to `KeyCode::Unknown` |
+| T-10 | `Platform::input_system() returns valid reference (SDL3)` | `[input_sdl3][input]` | `Platform::create(SDL3)` → `platform->input_system()` returns non-null `InputSystem&` |
+| T-11 | `SDL3 platform processes keyboard events through InputSystem` | `[input_sdl3][input]` | Push synthetic `SDL_EVENT_KEY_DOWN` (W), run `poll_events()`, verify `is_down(KeyCode::W)=true` |
+| T-12 | `SDL3 platform processes mouse motion events` | `[input_sdl3][input]` | Push synthetic `SDL_EVENT_MOUSE_MOTION` (100,200,rel 10,-5), verify position and delta |
+| T-13 | `SDL3 platform processes mouse button events` | `[input_sdl3][input]` | Push button-down for each `MouseButton`, verify `is_mouse_down/is_mouse_pressed`; push button-up, verify `is_mouse_released` |
+| T-14 | `SDL3 platform processes mouse wheel events` | `[input_sdl3][input]` | Push `SDL_EVENT_MOUSE_WHEEL` (x=1,y=2), verify `mouse_wheel()` returns (1,2) |
+| T-15 | `Mouse wheel accumulates multiple events before begin_frame` | `[input_sdl3][input]` | Push two wheel events of (1,2), call `poll_events()` once, verify `mouse_wheel()` returns (2,4) |
+| T-16 | `Mouse delta resets after frame` | `[input_sdl3][input]` | Push motion event, `poll_events()`, verify delta; second `poll_events()` with no events, verify delta is (0,0) |
+| T-17 | `Mouse wheel resets after frame` | `[input_sdl3][input]` | Push wheel event, `poll_events()`, verify wheel; second `poll_events()` with no events, verify wheel is (0,0) |
 
 ### Scene graph tests
 

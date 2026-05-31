@@ -19,7 +19,7 @@ The engine library is the core of the project. It provides a version API, a math
 
 | File | Role |
 |---|---|
-| `error.h` | Public header: defines `Error` struct (with `Category` enum: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `Unknown`), `int code`, `std::string message`, `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
+| `error.h` | Public header: defines `Error` struct (with `Category` enum: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `InputInitFailed`, `Unknown`), `int code`, `std::string message`, `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
 
 ### Math submodule (`math/`)
 
@@ -40,14 +40,16 @@ Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, gu
 
 ### Platform submodule (`platform/`)
 
+The Platform abstraction now integrates the InputSystem: each concrete Platform backend owns an embedded InputSystem backend, and `poll_events()` calls `begin_frame()` and routes SDL events to the input system.
+
 | File | Role |
 |---|---|
-| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory |
+| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory and `virtual auto input_system() -> InputSystem& = 0` |
 | `platform.cpp` | Factory implementation: dispatches to SDL3 or Headless backend based on `Backend` enum |
-| `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) |
-| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation |
-| `platform_headless.h` | Private header: `PlatformHeadless` concrete class (final) |
-| `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions |
+| `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member |
+| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation, `poll_events()` calls `begin_frame()` and routes events to `InputSystemSDL3::on_sdl_event()` |
+| `platform_headless.h` | Private header: `PlatformHeadless` concrete class (final) with embedded `InputSystemHeadless` member |
+| `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions; `poll_events()` calls `begin_frame()` |
 
 ### Window submodule (`window/`)
 
@@ -86,6 +88,20 @@ All types in namespace `buddd::engine`. Provides pixel buffer representation and
 | `image_buffer.h` | `ImageBuffer` aggregate struct — `int width`, `int height`, `int channels`, `std::vector<std::byte> data`. Pure aggregate, no methods. |
 | `image.h` | `Image` class — static `create(const ImageBuffer&) -> Result<Image>` (validates, flips rows), static `load(std::string_view) -> Result<Image>` (PNG via stb_image), `save(std::string_view) const -> Result<void>` (PNG via stb_image_write), and accessors. Non-copyable, movable. |
 | `image.cpp` | Image implementation: row-flipping logic (bottom-left → top-left), stb_image/stb_image_write implementation via `#define STB_IMAGE_IMPLEMENTATION` / `STB_IMAGE_WRITE_IMPLEMENTATION`. |
+
+### Input submodule (`input/`)
+
+All types in namespace `buddd::engine`. Provides a frame-based input abstraction with double-buffered state for keyboard and mouse. Follows the established pattern: abstract interface (`InputSystem`) + concrete SDL3/Headless backends + static factory. The `KeyCode` enum values match `SDL_Scancode` values — conversion is `static_cast` with a bounds check, no mapping table needed. See SPEC-013 for full specification.
+
+| File | Role |
+|---|---|
+| `key_code.h` | Public header: `KeyCode` enum (`uint8_t`, values matching SDL_Scancode: A–Z at 4–29, Digit1–Digit0 at 30–39, common keys at 40–57, F1–F12 at 58–69, navigation at 76–93, modifiers at 224–231). Includes `Unknown = 0` and `_Count` sentinel. |
+| `input_system.h` | Public header: `MouseButton` enum (`Left`, `Right`, `Middle`, `X1`, `X2`), abstract `InputSystem` class with `create(Backend)` static factory, frame lifecycle (`begin_frame()`), keyboard queries (`is_down`, `is_pressed`, `is_released`), mouse state queries (`mouse_position`, `mouse_delta`, `mouse_wheel`, `is_mouse_down`, `is_mouse_pressed`, `is_mouse_released`). Non-copyable, non-movable. |
+| `input_system.cpp` | Factory implementation: `Backend::SDL3` → `InputSystemSDL3`, `Backend::Headless` → `InputSystemHeadless` |
+| `input_system_sdl3.h` | Private header: `InputSystemSDL3` concrete class (final) with private `on_sdl_event(const SDL_Event&)` — processes `SDL_EVENT_KEY_DOWN/UP`, `SDL_EVENT_MOUSE_MOTION`, `SDL_EVENT_MOUSE_BUTTON_DOWN/UP`, `SDL_EVENT_MOUSE_WHEEL` |
+| `input_system_sdl3.cpp` | SDL3 backend: double-buffered state arrays, `static_cast` scancode conversion with bounds check, mouse delta/wheel accumulation |
+| `input_system_headless.h` | Private header: `InputSystemHeadless` concrete class (final). All queries return false/zero defaults. |
+| `input_system_headless.cpp` | Headless backend: `begin_frame()` is a no-op, all query methods return zero/false |
 
 ### Render submodule (`render/`)
 
@@ -207,6 +223,7 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 | `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 | `image_tests.cpp` | Image unit tests (tagged `[image]`): ImageBuffer aggregate, Image::create validation, row-flipping, save/load round-trip, load error cases, copy/move semantics, accessors, save error cases. All headless (CPU-only). |
+| `input_tests.cpp` | Input system tests: 9 headless tests (factory, headless defaults, double-buffered state model, KeyCode round-trip, edge cases) + 8 SDL3 tests (event processing integration, keyboard, mouse, wheel, accumulation, frame reset) — SDL3 tests conditional on `BUDDD_HAS_DISPLAY`. |
 | `scene_rendering_tests.cpp` | Scene rendering tests (AC-001 through AC-030): Component entity awareness, World::each<T>() iteration, camera registration lifecycle, CameraComponent auto-register/unregister, RenderSystem begin/end_frame, draw call counting, MVP computation, no-camera warning, uniform failure skip, cube-scene demo integration — all headless, compiled in both BUDDD_HAS_DISPLAY branches. |
 | `test_helpers.h` | Shared CLI test utilities: `buddd_binary_path()`, `temp_filename()`, `run_buddd()`, `CommandResult` |
 
@@ -244,3 +261,4 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
 - Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
 - Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)
+- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration)

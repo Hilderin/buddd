@@ -49,14 +49,17 @@ CONST-001 — Architecture Boundaries (this file).
 ### Change description
 Add the following exception to the rule:
 
-> **Exception:** SDL3 test files (`tests/*_sdl3*.cpp` or similar) that are
-> conditionally compiled with the `BUDDD_HAS_DISPLAY` CMake option set to `ON`
-> may include `<SDL3/SDL.h>` only for the purpose of setting video driver hints
-> (e.g., `SDL_SetHint(SDL_HINT_VIDEODRIVER, "dummy")`) before calling
-> `Platform::create()`. This exception is narrow: it applies only to test files
-> that test the SDL3 backend, only to `<SDL3/SDL.h>`, and only for setting
-> video driver hints. All other platform, graphics, or windowing library headers
-> remain prohibited outside `src/engine/`.
+> **Exception:** Test files (`tests/*.cpp`) that are conditionally compiled
+> with the `BUDDD_HAS_DISPLAY` CMake option set to `ON` may include
+> `<SDL3/SDL.h>` for the purpose of testing SDL3-dependent engine
+> functionality. This exception permits SDL3 API calls needed to set up the
+> test environment (e.g., `SDL_SetHint(SDL_HINT_VIDEODRIVER, "offscreen")`),
+> inject synthetic events (e.g., `SDL_PushEvent()`), and exercise SDL3
+> backends in any way required by the test. The exception remains narrow:
+> it applies only to test files that test SDL3 backend behaviour, only to
+> `<SDL3/SDL.h>`, and only under `#ifdef BUDDD_HAS_DISPLAY`. All other
+> platform, graphics, or windowing library headers remain prohibited outside
+> `src/engine/`.
 
 ### Reason
 SDL3 backend tests need to configure the video driver before engine
@@ -79,11 +82,16 @@ No migration required. The exception applies only to new or modified test files
 targeting the SDL3 backend. Existing code outside `tests/` is unaffected.
 
 ### Risks
-- Test files could misuse the exception to include other SDL3 headers or use
-  SDL3 APIs beyond hint-setting. Mitigation: code review must verify that
-  `#include <SDL3/SDL.h>` is used only for `SDL_SetHint()` and is guarded by
-  `#ifdef BUDDD_HAS_DISPLAY`. Automated enforcement (e.g., CI lint) is
-  recommended.
+- Test files could misuse the exception to include headers other than
+  `<SDL3/SDL.h>` or use SDL3 APIs for purposes unrelated to testing SDL3
+  backends. Mitigation: code review must verify that `#include <SDL3/SDL.h>`
+  is used only within `#ifdef BUDDD_HAS_DISPLAY` blocks and only for
+  testing SDL3-dependent engine functionality. Automated enforcement (e.g.,
+  CI lint verifying the header guard and directory) is recommended.
+- The broader scope increases potential misuse compared to the original
+  hint-only exception. Each SDL3 API call in test code must be justified as
+  necessary for testing SDL3 backend behaviour; calls replaceable by engine
+  abstraction methods should be flagged during review.
 - Future backend test files (e.g., for GLFW, Vulkan) might request similar
   exceptions. Each such request must be evaluated on its own merits; this
   amendment does not set a precedent for automatic approval.

@@ -43,7 +43,7 @@ namespace buddd::engine {
 
 ```cpp
 namespace buddd::engine {
-    enum class Error::Category { InitFailed, WindowCreationFailed, RenderDeviceCreationFailed, Unsupported, Unknown };
+    enum class Error::Category { InitFailed, WindowCreationFailed, RenderDeviceCreationFailed, Unsupported, InputInitFailed, Unknown };
     struct Error {
         Category category{Category::Unknown};
         int code{0};
@@ -90,7 +90,7 @@ namespace buddd::engine {
 
 ### Architecture boundary
 
-A hard architecture boundary is enforced: **no code outside `src/engine/`** may `#include <SDL3/`, `<GL/`, `<glad/`, or any graphics-library header. All platform/graphics access goes through the abstract `Platform`, `Window`, and `RenderDevice` interfaces. Concrete backend implementations (SDL3, OpenGL) live entirely within `src/engine/`. Violations are caught by code review.
+A hard architecture boundary is enforced: **no code outside `src/engine/`** may `#include <SDL3/`, `<GL/`, `<glad/`, or any graphics-library header. All platform/graphics/input access goes through the abstract `Platform`, `Window`, `RenderDevice`, and `InputSystem` interfaces. Concrete backend implementations (SDL3, OpenGL) live entirely within `src/engine/`. Violations are caught by code review.
 
 ### File and directory naming
 
@@ -111,3 +111,4 @@ A hard architecture boundary is enforced: **no code outside `src/engine/`** may 
 - Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 5, 7 (version and CLI behavior)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — User stories, Acceptance criteria, Error cases, Assumptions
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior, Edge cases
+- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration, frame-based state model)

@@ -42,12 +42,14 @@
 | Symptom | Likely cause | Solution |
 |---|---|---|
 | `Platform::create(Backend::SDL3)` fails with `InitFailed` | No display server available (e.g., headless CI, SSH session without X11 forwarding) | Use `Platform::create(Backend::Headless)` for headless environments |
+| `InputSystem::create()` returns `InputInitFailed` | SDL3 input backend initialisation error (forward-compatibility; no current path fails) | Check SDL3 availability; use `Backend::Headless` for testing |
+| Input queries always return false/zero | Headless platform in use, or `begin_frame()` not called before queries | Verify platform type; ensure `poll_events()` is called each frame |
 | `SDL_CreateWindow` returns null | Display unavailable, or window dimensions exceed desktop limits | Verify display is available; check window dimensions |
 | `SDL_GL_CreateContext` fails | OpenGL 4.5 Core profile not available on the system | Ensure the GPU driver supports OpenGL 4.5; try updating graphics drivers |
 | `find_package(OpenGL REQUIRED)` fails | OpenGL development headers not installed | Install `libgl-dev` (Debian/Ubuntu) or `mesa-libGL-devel` (Fedora) |
 | `FetchContent` for SDL3 fails | Network unavailable during first configure | Ensure network access; after first successful configure, SDL3 is cached locally |
 | `SDL_GL_SetAttribute` errors not reported | Return values are not checked individually — they may fail silently | If context creation fails shortly after, the `SDL_GL_CreateContext` failure will produce the error |
-| Architecture boundary violation (SDL3/OpenGL includes outside `src/engine/`) | Code in `src/cmd/`, `src/editor/`, or `tests/` includes SDL3 or OpenGL headers | Use the abstract `Platform`/`Window`/`RenderDevice` interfaces instead. Exception: test files under `tests/*_sdl3*.cpp` conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` for video driver hints per AMEND-2026-001 |
+| Architecture boundary violation (SDL3/OpenGL includes outside `src/engine/`) | Code in `src/cmd/`, `src/editor/`, or `tests/` includes SDL3 or OpenGL headers | Use the abstract `Platform`/`Window`/`RenderDevice`/`InputSystem` interfaces instead. Exception: test files under `tests/*.cpp` conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` for testing SDL3-dependent engine functionality per AMEND-2026-001 |
 | Multiple windows from a single Platform instance | Multiple `create_window()` calls on the same Platform | This is undefined behavior — only one window is supported at this stage |
 | Window destroyed before RenderDevice | Incorrect lifecycle ordering | Ensure `Window` outlives the `RenderDevice` created from it |
 | Platform destroyed before Window or RenderDevice | Incorrect lifecycle ordering | Ensure `Platform` outlives all `Window` and `RenderDevice` instances |
@@ -60,3 +62,4 @@
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Edge cases section
 - Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md) — Error cases, Constraints
 - Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — Edge cases
+- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (Error cases, Edge cases, Permissions and security)

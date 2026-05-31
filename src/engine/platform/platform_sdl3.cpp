@@ -12,14 +12,23 @@ PlatformSDL3::~PlatformSDL3() {
 }
 
 auto PlatformSDL3::poll_events() -> bool {
+    // 1. Begin the input frame (copies current→previous, resets delta/wheel)
+    input_system_.begin_frame();
+
+    // 2. Process all pending SDL events
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             return false;
         }
-        // Other events are discarded — input handling is future work.
+        // Route non-quit events to the input system
+        input_system_.on_sdl_event(event);
     }
     return true;
+}
+
+auto PlatformSDL3::input_system() -> InputSystem& {
+    return input_system_;
 }
 
 auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {

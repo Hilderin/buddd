@@ -23,6 +23,7 @@ buddd2/
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
 │   │   ├── image/           # Image I/O (ImageBuffer, Image, stb_image)
+│   │   ├── input/           # Input system (KeyCode, MouseButton, InputSystem)
 │   │   └── render/          # Render device abstraction (RenderDevice)
 │   ├── cmd/                 # CLI binary (links engine)
 │   └── editor/              # Editor placeholder (INTERFACE lib)
@@ -90,6 +91,12 @@ src/engine/
 │   ├── image_buffer.h       # ImageBuffer — raw GPU readback data (width, height, channels, bytes)
 │   ├── image.h              # Image — create from buffer, load/save PNG
 │   └── image.cpp            # Image implementation (stb_image, stb_image_write, row-flipping)
+├── input/                    # Input system (Keyboard, Mouse)
+│   ├── key_code.h           # Public header: KeyCode enum (uint8_t, values matching SDL_Scancode)
+│   ├── input_system.h       # Public header: InputSystem abstract class, MouseButton enum
+│   ├── input_system.cpp     # Factory: InputSystem::create(Backend)
+│   ├── input_system_sdl3.h/cpp  # SDL3 backend (InputSystemSDL3)
+│   └── input_system_headless.h/cpp # Headless backend (InputSystemHeadless)
 └── render/
     ├── primitive_topology.h        # PrimitiveTopology enum
     ├── vertex_format.h             # VertexAttributeType, VertexAttribute, VertexFormat
@@ -145,7 +152,7 @@ A hard architecture boundary is enforced: **no code outside `src/engine/`** may 
 
 GLM headers are included **only inside `src/engine/math/`** (the wrapper headers) and in the implementation files under `src/engine/` that include those wrappers. Outside `src/engine/math/`, no code may `#include` any GLM header directly. All math operations go through the wrapper types. The `.glm()` accessor on each wrapper type provides the official zero-overhead interop path via `reinterpret_cast` (guaranteed safe by `static_assert` checks for identical layout, size, and standard-layout conformance).
 
-**Narrow exception (AMEND-2026-001):** SDL3 test files (`tests/*_sdl3*.cpp` or similar) that are conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` **only** for setting video driver hints (e.g., `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`) before calling `Platform::create()`. This exception applies only to test files that test the SDL3 backend, only to `<SDL3/SDL.h>`, and only for setting video driver hints. All other platform, graphics, windowing, or math library headers remain prohibited outside `src/engine/`.
+**Narrow exception (AMEND-2026-001):** Test files (`tests/*.cpp`) that are conditionally compiled with `BUDDD_HAS_DISPLAY=ON` may include `<SDL3/SDL.h>` for testing SDL3-dependent engine functionality. This permits SDL3 API calls needed to set up test environments (e.g., `SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`), inject synthetic events (e.g., `SDL_PushEvent()`), and exercise SDL3 backends. The exception remains narrow: it applies only to test files that test the SDL3 backend, only to `<SDL3/SDL.h>`, and only under `#ifdef BUDDD_HAS_DISPLAY`. All other platform, graphics, windowing, or math library headers remain prohibited outside `src/engine/`.
 
 ## Key behaviors (scene graph)
 
@@ -183,3 +190,4 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
 - Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
 - Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)
+- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration)

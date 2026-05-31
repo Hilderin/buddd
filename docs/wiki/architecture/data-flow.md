@@ -119,6 +119,15 @@ RenderDevice::create(window)
             - size() returns stored dimensions
         │
         ▼
+    [Frame loop: poll_events() orchestrates input and rendering]
+    - Each poll_events() call:
+        1. Calls InputSystem::begin_frame() — copies current→previous state, resets
+           accumulated mouse delta/wheel to zero.
+        2. Processes SDL events — routes non-quit events to InputSystemSDL3::on_sdl_event()
+           (keyboard, mouse-motion, mouse-button, mouse-wheel).
+    - Application queries input state via platform.input_system() between poll_events()
+      and render/update logic.
+
     [Destruction order: RenderDevice → Window → Platform]
     - ~RenderDeviceOpenGL: SDL_GL_DestroyContext
     - ~WindowSDL3: SDL_DestroyWindow
@@ -128,7 +137,7 @@ RenderDevice::create(window)
 ### Error propagation
 
 All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
-- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `Unknown`
+- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `InputInitFailed`, `Unknown`
 - `code`: backend-specific numeric error code (defaults to 0)
 - `message`: human-readable description
 
@@ -155,3 +164,4 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
 - Spec: [SPEC-012](/docs/specs/depth-handling/spec.md) — Depth Buffer Support (24-bit depth allocation, GL_DEPTH_TEST, per-frame depth clear)
 - Implementation contract: [IMPL-012](/docs/specs/depth-handling/implementation-contract.md)
+- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, frame-based state model, Platform integration)

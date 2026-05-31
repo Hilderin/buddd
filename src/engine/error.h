@@ -18,6 +18,7 @@ struct Error {
         UniformNotFound,
         ReadbackFailed,    // Framebuffer readback (glReadPixels) failure
         IoFailed,          // File I/O error (read/write image file)
+        InputInitFailed,   // Input system initialisation failure
         Unsupported,
         Unknown
     };
@@ -44,6 +45,7 @@ inline auto to_string(const Error& error) -> std::string {
         case Error::Category::UniformNotFound:            category_str = "UniformNotFound"; break;
         case Error::Category::ReadbackFailed:             category_str = "ReadbackFailed"; break;
         case Error::Category::IoFailed:                   category_str = "IoFailed"; break;
+        case Error::Category::InputInitFailed:            category_str = "InputInitFailed"; break;
         case Error::Category::Unsupported:                category_str = "Unsupported"; break;
         case Error::Category::Unknown:                    category_str = "Unknown"; break;
     }
