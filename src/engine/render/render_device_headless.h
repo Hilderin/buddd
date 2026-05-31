@@ -18,8 +18,10 @@ namespace buddd::engine {
 
 class RenderDeviceHeadless final : public RenderDevice {
 public:
-    RenderDeviceHeadless(int width, int height);
+    explicit RenderDeviceHeadless(Window& window);
     ~RenderDeviceHeadless() override = default;
+
+    auto window() noexcept -> Window& override { return window_; }
 
     auto begin_frame() -> void override;
     auto end_frame() -> void override;
@@ -61,9 +63,9 @@ public:
     auto read_pixels() -> Result<ImageBuffer> override;
 
     // -- Diagnostics / counters --
-    auto frame_begin_count() const noexcept -> int { return frame_begin_count_; }
-    auto frame_end_count() const noexcept -> int { return frame_end_count_; }
-    auto draw_call_count() const noexcept -> int { return draw_call_count_; }
+    auto frame_begin_count() const noexcept -> int override { return frame_begin_count_; }
+    auto frame_end_count() const noexcept -> int override { return frame_end_count_; }
+    auto draw_call_count() const noexcept -> int override { return draw_call_count_; }
 
     RenderDeviceHeadless(const RenderDeviceHeadless&) = delete;
     auto operator=(const RenderDeviceHeadless&) -> RenderDeviceHeadless& = delete;
@@ -71,8 +73,7 @@ public:
     auto operator=(RenderDeviceHeadless&&) -> RenderDeviceHeadless& = delete;
 
 private:
-    int width_;
-    int height_;
+    Window& window_;
 
     // Headless state tracking (optional — for diagnostics)
     int shader_count_{0};

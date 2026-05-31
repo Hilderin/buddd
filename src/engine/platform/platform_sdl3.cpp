@@ -62,7 +62,7 @@ auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::uniq
     }
 
     std::cerr << "Window created: " << config.width << "x" << config.height << "\n";
-    return std::unique_ptr<Window>(new WindowSDL3(sdl_window, config.width, config.height));
+    return std::unique_ptr<Window>(new WindowSDL3(sdl_window, config.width, config.height, *this));
 }
 
 } // namespace buddd::engine

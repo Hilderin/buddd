@@ -6,12 +6,15 @@ namespace buddd::engine {
 
 class WindowHeadless final : public Window {
 public:
-    WindowHeadless(int width, int height);
+    WindowHeadless(int width, int height, Platform& platform);
     ~WindowHeadless() override = default;
 
     auto width() const noexcept -> int override;
     auto height() const noexcept -> int override;
     auto native_handle() const noexcept -> void* override;
+
+    auto set_mouse_capture(bool captured) -> void override;
+    auto is_mouse_captured() const noexcept -> bool override;
 
     WindowHeadless(const WindowHeadless&) = delete;
     auto operator=(const WindowHeadless&) -> WindowHeadless& = delete;

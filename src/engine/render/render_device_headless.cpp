@@ -1,4 +1,5 @@
 #include "render_device_headless.h"
+#include "window/window.h"
 #include "shader_headless.h"
 #include "material_headless.h"
 #include "vertex_buffer_headless.h"
@@ -194,8 +195,8 @@ auto extract_uniform_names(const std::string& source) -> std::vector<std::string
 // Constructor
 // ============================================================================
 
-RenderDeviceHeadless::RenderDeviceHeadless(int width, int height)
-    : width_(width), height_(height) {}
+RenderDeviceHeadless::RenderDeviceHeadless(Window& window)
+    : window_(window) {}
 
 auto RenderDeviceHeadless::begin_frame() -> void {
     ++frame_begin_count_;
@@ -206,7 +207,7 @@ auto RenderDeviceHeadless::end_frame() -> void {
 }
 
 auto RenderDeviceHeadless::size() const noexcept -> std::pair<int, int> {
-    return {width_, height_};
+    return {window_.width(), window_.height()};
 }
 
 // ============================================================================

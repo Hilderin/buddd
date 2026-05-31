@@ -8,6 +8,15 @@ The project is composed of four CMake targets organized into four source directo
 
 The engine library is the core of the project. It provides a version API, a math foundations module, and a platform abstraction layer. All source files under `src/engine/` are collected automatically via `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)` in `CMakeLists.txt`.
 
+### EngineService (`src/engine/`)
+
+| File | Role |
+|---|---|
+| `engine_service.h` | Public header: `EngineService` class — owns the `Platform` → `Window` → `RenderDevice` chain via `unique_ptr`. Factory: `EngineService::create(Backend, WindowConfig) -> Result<unique_ptr<EngineService>>`. Accessors: `platform() -> Platform&`, `window() -> Window&`, `device() -> RenderDevice&`. Member declaration order (`platform_`, `window_`, `device_`) guarantees correct destruction ordering. |
+| `engine_service.cpp` | Factory implementation: creates `Platform`, then `Window` (via `platform->create_window()`), then `RenderDevice` (via `RenderDevice::create()`), wrapping them in an `EngineService`. |
+
+See [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) for the architectural rationale.
+
 ### Version module
 
 | File | Role |
@@ -53,13 +62,15 @@ The Platform abstraction now integrates the InputSystem: each concrete Platform 
 
 ### Window submodule (`window/`)
 
+The `Window` class now stores a non-owning `Platform&` reference, creating a navigable back-link from `Window` to its creating `Platform`. It also exposes mouse capture API. (`window/` now forward-declares `Platform` from `platform/` — see ADR-012.)
+
 | File | Role |
 |---|---|
-| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class with width/height getters and `native_handle()` |
-| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*` |
-| `window_sdl3.cpp` | SDL3 implementation: `SDL_DestroyWindow` on destruction, `native_handle()` casts to `void*` |
-| `window_headless.h` | Private header: `WindowHeadless` concrete class |
-| `window_headless.cpp` | Headless implementation: stores width/height, `native_handle()` returns `nullptr` |
+| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via new `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. |
+| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. |
+| `window_sdl3.cpp` | SDL3 implementation: `SDL_DestroyWindow` on destruction, `native_handle()` casts to `void*`. |
+| `window_headless.h` | Private header: `WindowHeadless` concrete class. Mouse capture is no-op; `is_mouse_captured()` returns `false`. |
+| `window_headless.cpp` | Headless implementation: stores width/height, `native_handle()` returns `nullptr`. |
 
 ### Scene submodule (`scene/`)
 
@@ -117,12 +128,12 @@ The render submodule depends on the `scene/` submodule: `MeshRenderer` inherits 
 | `material.h` | Public header: abstract `Material` class with 6 `set_uniform` overloads (`float`, `int32_t`, `bool`, `math::Vec3`, `math::Vec4`, `math::Mat4`) and `has_uniform()`. Non-copyable, non-movable. |
 | `vertex_buffer.h` | Public header: abstract `VertexBuffer` class with `format()` pure virtual. Non-copyable, non-movable. |
 | `index_buffer.h` | Public header: `IndexType` enum (`Uint16`, `Uint32`), abstract `IndexBuffer` class with `type()` pure virtual. Non-copyable, non-movable. |
-| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_vertex_buffer`, `create_index_buffer`, `read_pixels()`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. |
-| `render_device.cpp` | Factory implementation: dispatches to OpenGL or Headless backend based on `native_handle()` value |
-| `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class wrapping `SDL_Window*` and `SDL_GLContext` and `glReadPixels` framebuffer readback |
+| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_vertex_buffer`, `create_index_buffer`, `read_pixels()`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. **New**: pure virtual `window() -> Window&` enables navigation to `Window` and via it to `Platform`/`InputSystem`. **New**: virtual diagnostic accessors `frame_begin_count()`, `frame_end_count()`, `draw_call_count()` with default `0` implementations (overridden by headless backend). See ADR-012. |
+| `render_device.cpp` | Factory implementation: dispatches to OpenGL or Headless backend based on `native_handle()` value. Passes `Window&` to both backend constructors. |
+| `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class. Stores `Window& window_` (for the `window()` accessor) and `SDL_Window* sdl_window_` for internal SDL calls, plus `SDL_GLContext`. |
 | `render_device_opengl.cpp` | OpenGL 4.5 Core implementation: GLSL compilation via `glCreateShader`/`glCompileShader`, program linking via `glCreateProgram`/`glLinkProgram`, VAO/VBO/IBO management via DSA APIs (`glCreateVertexArrays`, `glNamedBufferStorage`, etc.), and draw dispatch via `glDrawArrays`/`glDrawElements` |
-| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class with diagnostic counters (`draw_call_count_`, `frame_begin_count_`, `frame_end_count_`) and public accessors (`frame_begin_count()`, `frame_end_count()`, `draw_call_count()`). Unconditional `read_pixels()` error. |
-| `render_device_headless.cpp` | Headless implementation: stores shader source and vertex data in memory; simulates compilation errors via `#error` marker and linking errors via vertex/fragment I/O mismatch detection; draw calls are no-ops; increments `frame_begin_count_`/`frame_end_count_` in `begin_frame()`/`end_frame()` |
+| `render_device_headless.h` | Private header: `RenderDeviceHeadless` concrete class. Stores `Window& window_` (replaces `int width_, height_`). `size()` delegates to `window_.width()`/`window_.height()`. Overrides diagnostic counters (`frame_begin_count()`, `frame_end_count()`, `draw_call_count()`). Unconditional `read_pixels()` error. |
+| `render_device_headless.cpp` | Headless implementation: stores shader source and vertex data in memory; simulates compilation errors via `#error` marker and linking errors via vertex/fragment I/O mismatch detection; draw calls are no-ops; increments `frame_begin_count_`/`frame_end_count_` in `begin_frame()`/`end_frame_`() |
 | `shader_opengl.h` | Private header: `ShaderOpenGL` concrete class wrapping a `GLuint` shader handle |
 | `shader_opengl.cpp` | OpenGL shader backend: resource lifetime managed via `glCreateShader`/`glDeleteShader` |
 | `shader_headless.h` | Private header: `ShaderHeadless` concrete class storing type and GLSL source string |
@@ -176,7 +187,7 @@ Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pa
 
 ### Demo files (`src/cmd/demo/`)
 
-Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::demo` namespace. The per-demo function receives a `Platform&`, `RenderDevice&`, and `argc`/`argv` (where `argv[0]` is the demo name).
+Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::demo` namespace. The per-demo function receives a `RenderDevice&` (no separate `Platform&` parameter) and `argc`/`argv` (where `argv[0]` is the demo name). Platform access is via the navigable object graph: `device.window().platform()`. See ADR-012 and SPEC-016.
 
 | File | Role |
 |---|---|
@@ -217,15 +228,16 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | |---|---|---|
 | `version_tests.cpp` | Single Catch2 test: `"engine version is non-empty"` tagged `[sanity]` |
 | `cmd_tests.cpp` | CLI command integration tests (tagged `[cli]`): argument parsing, error handling, default command, capture CLI tests — uses shared helpers from `test_helpers.h` |
-| `demo_tests.cpp` | Demo execution tests (tagged `[cli][demo]`): triangle and cube demos run as subprocesses with timeout — uses shared helpers from `test_helpers.h` |
+| `demo_tests.cpp` | **No `[cli][demo]` subprocess tests** — removed as part of SPEC-016. File retained for future non-subprocess demo tests. Demo correctness verified via compilation and EngineService creation tests. |
 | `platform_abstraction_tests.cpp` | Headless platform tests (T-01 through T-12), always compiled |
 | `sdl3_backend_tests.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
 | `math_tests.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
 | `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
-| `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
+| `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches. Uses `EngineService::create()` instead of direct `RenderDeviceHeadless` construction. |
 | `image_tests.cpp` | Image unit tests (tagged `[image]`): ImageBuffer aggregate, Image::create validation, row-flipping, save/load round-trip, load error cases, copy/move semantics, accessors, save error cases. All headless (CPU-only). |
 | `input_tests.cpp` | Input system tests: 9 headless tests (factory, headless defaults, double-buffered state model, KeyCode round-trip, edge cases) + 8 SDL3 tests (event processing integration, keyboard, mouse, wheel, accumulation, frame reset) — SDL3 tests conditional on `BUDDD_HAS_DISPLAY`. |
-| `scene_rendering_tests.cpp` | Scene rendering tests (AC-001 through AC-030): Component entity awareness, World::each<T>() iteration, camera registration lifecycle, CameraComponent auto-register/unregister, RenderSystem begin/end_frame, draw call counting, MVP computation, no-camera warning, uniform failure skip, cube-scene demo integration — all headless, compiled in both BUDDD_HAS_DISPLAY branches. |
+| `render_device_tests.cpp` | Render device tests: uses `EngineService::create()` instead of constructing `RenderDeviceHeadless` directly. Tests headless read_pixels error, navigable graph access (device.window().platform()), and diagnostic counters. |
+| `scene_rendering_tests.cpp` | Scene rendering tests (AC-001 through AC-030): Component entity awareness, World::each<T>() iteration, camera registration lifecycle, CameraComponent auto-register/unregister, RenderSystem begin/end_frame, draw call counting, MVP computation, no-camera warning, uniform failure skip, cube-scene demo integration — all headless, compiled in both BUDDD_HAS_DISPLAY branches. Uses `EngineService::create()` for headless engine setup. |
 | `test_helpers.h` | Shared CLI test utilities: `buddd_binary_path()`, `temp_filename()`, `run_buddd()`, `CommandResult` |
 
 ## API conventions
@@ -263,3 +275,5 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
 - Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)
 - Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration)
+- Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph (RenderDevice → Window → Platform → InputSystem)
+- ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions

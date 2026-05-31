@@ -13,8 +13,10 @@ namespace buddd::engine {
 
 class RenderDeviceOpenGL final : public RenderDevice {
 public:
-    RenderDeviceOpenGL(SDL_Window* window, SDL_GLContext context);
+    RenderDeviceOpenGL(Window& window, SDL_Window* sdl_window, SDL_GLContext context);
     ~RenderDeviceOpenGL() override;
+
+    auto window() noexcept -> Window& override { return window_; }
 
     auto begin_frame() -> void override;
     auto end_frame() -> void override;
@@ -61,7 +63,8 @@ public:
     auto operator=(RenderDeviceOpenGL&&) -> RenderDeviceOpenGL& = delete;
 
 private:
-    SDL_Window* window_;
+    Window& window_;
+    SDL_Window* sdl_window_;
     SDL_GLContext context_;
 };
 

@@ -5,6 +5,9 @@
 #include "render/material.h"
 #include "render/vertex_format.h"
 #include "render/primitive_topology.h"
+#include "engine_service.h"
+#include "platform/platform.h"
+#include "window/window.h"
 #include "error.h"
 
 #include "math/mat4.h"
@@ -20,9 +23,13 @@
 
 namespace be = buddd::engine;
 
-/// Creates a headless device for testing.
-auto create_headless_device() -> std::unique_ptr<be::RenderDevice> {
-    return std::make_unique<be::RenderDeviceHeadless>(800, 600);
+/// Creates a headless EngineService for testing.
+auto make_headless_engine() -> std::unique_ptr<be::EngineService> {
+    auto engine = be::EngineService::create(
+        be::Backend::Headless,
+        be::WindowConfig{.title = "Test", .width = 800, .height = 600});
+    REQUIRE(engine.has_value());
+    return std::move(*engine);
 }
 
 /// Minimal vertex shader with position + color attributes and u_mvp uniform.
@@ -67,12 +74,13 @@ struct CubeVertex { float px, py, pz, cr, cg, cb; };
 // ===========================================================================
 
 TEST_CASE("Model default construction creates null model", "[model]") {
-    auto device = create_headless_device();
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     be::Model null_model;
     // Calling draw on null model is a no-op (no crash)
-    device->begin_frame();
-    null_model.draw(*device);
-    device->end_frame();
+    device.begin_frame();
+    null_model.draw(device);
+    device.end_frame();
     // Verify it's null
     REQUIRE(null_model.vertex_count() == 0);
     REQUIRE(null_model.index_count() == 0);
@@ -85,8 +93,9 @@ TEST_CASE("Model is non-copyable and movable", "[model]") {
     static_assert(std::is_move_constructible_v<be::Model>,
                   "Model must be movable");
 
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     // Create a simple model
     be::VertexFormat format;
@@ -99,7 +108,7 @@ TEST_CASE("Model is non-copyable and movable", "[model]") {
         0.0f, 1.0f, 0.0f,
     };
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     // Move construct
@@ -114,8 +123,9 @@ TEST_CASE("Model is non-copyable and movable", "[model]") {
 }
 
 TEST_CASE("Model::create with valid data succeeds", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -127,7 +137,7 @@ TEST_CASE("Model::create with valid data succeeds", "[model]") {
         0.0f, 1.0f, 0.0f,
     };
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
     REQUIRE(model->has_indices() == false);
     REQUIRE(model->vertex_count() == 3);
@@ -135,8 +145,9 @@ TEST_CASE("Model::create with valid data succeeds", "[model]") {
 }
 
 TEST_CASE("Model::create_indexed with valid data succeeds", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -152,7 +163,7 @@ TEST_CASE("Model::create_indexed with valid data succeeds", "[model]") {
     auto vertex_data = std::as_bytes(std::span(verts));
     auto index_data = std::as_bytes(std::span(idxs));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
     REQUIRE(model->has_indices() == true);
@@ -161,21 +172,23 @@ TEST_CASE("Model::create_indexed with valid data succeeds", "[model]") {
 }
 
 TEST_CASE("Model::create returns InvalidArgument for empty vertex data", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
     format.attributes = {{0, be::VertexAttributeType::Float3, 0, false}};
 
-    auto result = be::Model::create(*device, format, {}, mat);
+    auto result = be::Model::create(device, format, {}, mat);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().category == be::Error::Category::InvalidArgument);
 }
 
 TEST_CASE("Model::create returns InvalidArgument for zero stride", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 0;
@@ -183,14 +196,15 @@ TEST_CASE("Model::create returns InvalidArgument for zero stride", "[model]") {
 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto result = be::Model::create(*device, format, vertex_data, mat);
+    auto result = be::Model::create(device, format, vertex_data, mat);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().category == be::Error::Category::InvalidArgument);
 }
 
 TEST_CASE("Model::create returns InvalidArgument for zero attributes", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -198,14 +212,15 @@ TEST_CASE("Model::create returns InvalidArgument for zero attributes", "[model]"
 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto result = be::Model::create(*device, format, vertex_data, mat);
+    auto result = be::Model::create(device, format, vertex_data, mat);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().category == be::Error::Category::InvalidArgument);
 }
 
 TEST_CASE("Model::create_indexed returns InvalidArgument for empty index data", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -214,7 +229,7 @@ TEST_CASE("Model::create_indexed returns InvalidArgument for empty index data", 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
     auto result = be::Model::create_indexed(
-        *device, format, vertex_data, {},
+        device, format, vertex_data, {},
         be::IndexType::Uint16, mat);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().category == be::Error::Category::InvalidArgument);
@@ -225,8 +240,9 @@ TEST_CASE("Model::create_indexed returns InvalidArgument for empty index data", 
 // ===========================================================================
 
 TEST_CASE("Model::material returns writable reference", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -234,7 +250,7 @@ TEST_CASE("Model::material returns writable reference", "[model]") {
 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     // Set a uniform via material() reference
@@ -244,8 +260,9 @@ TEST_CASE("Model::material returns writable reference", "[model]") {
 }
 
 TEST_CASE("Model::material const overload", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -253,7 +270,7 @@ TEST_CASE("Model::material const overload", "[model]") {
 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
-    const auto model = be::Model::create(*device, format, vertex_data, mat);
+    const auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     // Const reference — ensure it compiles and returns const ref
@@ -263,8 +280,9 @@ TEST_CASE("Model::material const overload", "[model]") {
 }
 
 TEST_CASE("Model::vertices returns non-null reference", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -272,7 +290,7 @@ TEST_CASE("Model::vertices returns non-null reference", "[model]") {
 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     // &model.vertices() is a valid non-null pointer
@@ -280,8 +298,9 @@ TEST_CASE("Model::vertices returns non-null reference", "[model]") {
 }
 
 TEST_CASE("Model::indices returns reference on indexed model", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -292,7 +311,7 @@ TEST_CASE("Model::indices returns reference on indexed model", "[model]") {
     auto vertex_data = std::as_bytes(std::span(verts));
     auto index_data = std::as_bytes(std::span(idxs));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
     REQUIRE(model->has_indices() == true);
@@ -304,8 +323,9 @@ TEST_CASE("Model::indices returns reference on indexed model", "[model]") {
 // ===========================================================================
 
 TEST_CASE("Model::draw on non-indexed model", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -317,19 +337,20 @@ TEST_CASE("Model::draw on non-indexed model", "[model]") {
         0.0f, 1.0f, 0.0f,
     };
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
-    device->begin_frame();
-    model->draw(*device);
-    device->end_frame();
+    device.begin_frame();
+    model->draw(device);
+    device.end_frame();
     // No crash — test passes
     REQUIRE(true);
 }
 
 TEST_CASE("Model::draw on indexed model", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -344,31 +365,33 @@ TEST_CASE("Model::draw on indexed model", "[model]") {
     auto vertex_data = std::as_bytes(std::span(verts));
     auto index_data = std::as_bytes(std::span(idxs));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
 
-    device->begin_frame();
-    model->draw(*device);
-    device->end_frame();
+    device.begin_frame();
+    model->draw(device);
+    device.end_frame();
     // No crash — test passes
     REQUIRE(true);
 }
 
 TEST_CASE("Model::draw on null model is no-op", "[model]") {
-    auto device = create_headless_device();
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     be::Model null_model;
 
-    device->begin_frame();
+    device.begin_frame();
     // Should not crash
-    null_model.draw(*device);
-    device->end_frame();
+    null_model.draw(device);
+    device.end_frame();
     REQUIRE(true);
 }
 
 TEST_CASE("Moved-from Model draw is no-op", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -380,14 +403,14 @@ TEST_CASE("Moved-from Model draw is no-op", "[model]") {
         0.0f, 1.0f, 0.0f,
     };
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     be::Model moved(std::move(*model));
-    device->begin_frame();
+    device.begin_frame();
     // Draw on moved-from (null) model — should be no-op
-    model->draw(*device);
-    device->end_frame();
+    model->draw(device);
+    device.end_frame();
     REQUIRE(true);
 }
 
@@ -396,8 +419,9 @@ TEST_CASE("Moved-from Model draw is no-op", "[model]") {
 // ===========================================================================
 
 TEST_CASE("Move constructor transfers ownership", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -409,7 +433,7 @@ TEST_CASE("Move constructor transfers ownership", "[model]") {
         0.0f, 1.0f, 0.0f,
     };
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     auto vcount_orig = model->vertex_count();
@@ -422,14 +446,15 @@ TEST_CASE("Move constructor transfers ownership", "[model]") {
     // Source is null — draw is no-op
     REQUIRE(model->vertex_count() == 0);
     REQUIRE(model->index_count() == 0);
-    device->begin_frame();
-    model->draw(*device);
-    device->end_frame();
+    device.begin_frame();
+    model->draw(device);
+    device.end_frame();
 }
 
 TEST_CASE("Move assignment transfers ownership", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = 12;
@@ -441,7 +466,7 @@ TEST_CASE("Move assignment transfers ownership", "[model]") {
         0.0f, 1.0f, 0.0f,
     };
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     be::Model m2;
@@ -452,9 +477,9 @@ TEST_CASE("Move assignment transfers ownership", "[model]") {
     REQUIRE(model->vertex_count() == 0);
 
     // Draw on m2 works
-    device->begin_frame();
-    m2.draw(*device);
-    device->end_frame();
+    device.begin_frame();
+    m2.draw(device);
+    device.end_frame();
 }
 
 // ===========================================================================
@@ -462,7 +487,8 @@ TEST_CASE("Move assignment transfers ownership", "[model]") {
 // ===========================================================================
 
 TEST_CASE("Model with 24 vertices and 36 indices (cube data)", "[cube]") {
-    auto device = create_headless_device();
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
 
     const CubeVertex vertices[] = {
         { 1.f, -1.f, -1.f,  1.f, 0.f, 0.f },
@@ -507,11 +533,11 @@ TEST_CASE("Model with 24 vertices and 36 indices (cube data)", "[cube]") {
             static_cast<uint32_t>(offsetof(CubeVertex, cr)), false},
     };
 
-    auto mat = create_test_material(*device);
+    auto mat = create_test_material(device);
     auto vertex_data = std::as_bytes(std::span(vertices));
     auto index_data = std::as_bytes(std::span(indices));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
     REQUIRE(model->vertex_count() == 24);
@@ -520,8 +546,9 @@ TEST_CASE("Model with 24 vertices and 36 indices (cube data)", "[cube]") {
 }
 
 TEST_CASE("Cube material has u_mvp uniform", "[cube]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = sizeof(CubeVertex);
@@ -536,7 +563,7 @@ TEST_CASE("Cube material has u_mvp uniform", "[cube]") {
     auto vertex_data = std::as_bytes(std::span(verts));
     auto index_data = std::as_bytes(std::span(idxs));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
 
@@ -545,8 +572,9 @@ TEST_CASE("Cube material has u_mvp uniform", "[cube]") {
 }
 
 TEST_CASE("Cube material does NOT have u_color uniform", "[cube]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = sizeof(CubeVertex);
@@ -561,7 +589,7 @@ TEST_CASE("Cube material does NOT have u_color uniform", "[cube]") {
     auto vertex_data = std::as_bytes(std::span(verts));
     auto index_data = std::as_bytes(std::span(idxs));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
 
@@ -570,8 +598,9 @@ TEST_CASE("Cube material does NOT have u_color uniform", "[cube]") {
 }
 
 TEST_CASE("Setting u_mvp on cube material succeeds", "[cube]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
 
     be::VertexFormat format;
     format.stride = sizeof(CubeVertex);
@@ -586,7 +615,7 @@ TEST_CASE("Setting u_mvp on cube material succeeds", "[cube]") {
     auto vertex_data = std::as_bytes(std::span(verts));
     auto index_data = std::as_bytes(std::span(idxs));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
 
@@ -601,7 +630,8 @@ TEST_CASE("Setting u_mvp on cube material succeeds", "[cube]") {
 TEST_CASE("run_cube_demo completes without crash (headless)", "[cube]") {
     // This test requires linking with demo code, so we create a minimal
     // test that creates the cube resources and runs a loop manually.
-    auto device = create_headless_device();
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
 
     const CubeVertex vertices[] = {
         { 1.f, -1.f, -1.f,  1.f, 0.f, 0.f },
@@ -646,11 +676,11 @@ TEST_CASE("run_cube_demo completes without crash (headless)", "[cube]") {
             static_cast<uint32_t>(offsetof(CubeVertex, cr)), false},
     };
 
-    auto mat = create_test_material(*device);
+    auto mat = create_test_material(device);
     auto vertex_data = std::as_bytes(std::span(vertices));
     auto index_data = std::as_bytes(std::span(indices));
     auto model = be::Model::create_indexed(
-        *device, format, vertex_data, index_data,
+        device, format, vertex_data, index_data,
         be::IndexType::Uint16, mat);
     REQUIRE(model.has_value());
     REQUIRE(model->vertex_count() == 24);
@@ -659,11 +689,11 @@ TEST_CASE("run_cube_demo completes without crash (headless)", "[cube]") {
     // Run a small loop (simulate run_cube_demo behavior)
     constexpr int target_frames = 5;
     for (int frame = 0; frame < target_frames; ++frame) {
-        device->begin_frame();
+        device.begin_frame();
         auto result = mat->set_uniform("u_mvp", be::math::Mat4::identity());
         REQUIRE(result.has_value());
-        model->draw(*device);
-        device->end_frame();
+        model->draw(device);
+        device.end_frame();
     }
     // No crash — test passes
     REQUIRE(true);
@@ -674,8 +704,9 @@ TEST_CASE("run_cube_demo completes without crash (headless)", "[cube]") {
 // ===========================================================================
 
 TEST_CASE("Model shares material ownership via shared_ptr", "[model]") {
-    auto device = create_headless_device();
-    auto mat = create_test_material(*device);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto mat = create_test_material(device);
     auto* raw_ptr = mat.get();
 
     be::VertexFormat format;
@@ -684,7 +715,7 @@ TEST_CASE("Model shares material ownership via shared_ptr", "[model]") {
 
     const float verts[] = {0.0f, 0.0f, 0.0f};
     auto vertex_data = std::as_bytes(std::span(verts));
-    auto model = be::Model::create(*device, format, vertex_data, mat);
+    auto model = be::Model::create(device, format, vertex_data, mat);
     REQUIRE(model.has_value());
 
     // Verify the model's material is the same object

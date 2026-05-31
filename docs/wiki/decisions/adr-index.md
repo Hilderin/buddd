@@ -12,6 +12,7 @@
 | ADR-008 | `docs/adr/008-ci-docker-infrastructure.md` — Docker-based CI infrastructure | Accepted |
 | ADR-009 | `docs/adr/009-test-file-naming-convention.md` — Plural `_tests.cpp` suffix for test files | Accepted |
 | ADR-010 | `docs/adr/010-no-raw-pointers-in-public-api.md` — Raw pointers prohibited in public API signatures; prefer `T&`, `std::optional<T&>`, `std::reference_wrapper<T>`, `std::span<T>` | Accepted |
+| ADR-012 | `docs/adr/012-navigable-object-graph-engine-service.md` — Navigable object graph (RenderDevice→Window→Platform), EngineService lifecycle owner, virtual diagnostic accessors on RenderDevice, mouse capture on Window abstract interface | Accepted |
 
 The current project state was established via:
 

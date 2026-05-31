@@ -14,7 +14,7 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
     if (native == nullptr) {
         std::cerr << "Render device created (Headless)\n";
         return std::unique_ptr<RenderDevice>(
-            new RenderDeviceHeadless(window.width(), window.height()));
+            new RenderDeviceHeadless(window));
     }
 
     // SDL3/OpenGL backend
@@ -43,7 +43,7 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
 
     std::cerr << "Render device created (OpenGL 4.5 Core)\n";
     return std::unique_ptr<RenderDevice>(
-        new RenderDeviceOpenGL(sdl_window, gl_context));
+        new RenderDeviceOpenGL(window, sdl_window, gl_context));
 }
 
 } // namespace buddd::engine

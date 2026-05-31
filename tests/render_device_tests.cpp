@@ -1,4 +1,7 @@
-#include "render/render_device_headless.h"
+#include "engine_service.h"
+#include "platform/platform.h"
+#include "window/window.h"
+#include "render/render_device.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
@@ -10,7 +13,11 @@
 // ---------------------------------------------------------------------------
 
 TEST_CASE("Headless read_pixels returns Unsupported error", "[render][headless]") {
-    buddd::engine::RenderDeviceHeadless device(800, 600);
+    auto engine = buddd::engine::EngineService::create(
+        buddd::engine::Backend::Headless,
+        buddd::engine::WindowConfig{.title = "Test", .width = 800, .height = 600});
+    REQUIRE(engine.has_value());
+    auto& device = engine.value()->device();
 
     auto result = device.read_pixels();
 

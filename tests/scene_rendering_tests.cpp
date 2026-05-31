@@ -7,6 +7,9 @@
 #include "render/render_device_headless.h"
 #include "render/material_headless.h"
 #include "render/model.h"
+#include "engine_service.h"
+#include "platform/platform.h"
+#include "window/window.h"
 #include "math/math.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -24,6 +27,16 @@ using Catch::Approx;
 
 namespace {
     constexpr float TOL = 1e-5f;
+}
+
+namespace {
+    auto make_headless_engine() -> std::unique_ptr<EngineService> {
+        auto engine = EngineService::create(
+            Backend::Headless,
+            WindowConfig{.title = "Test", .width = 800, .height = 600});
+        REQUIRE(engine.has_value());
+        return std::move(*engine);
+    }
 }
 
 // ===========================================================================
@@ -249,7 +262,8 @@ TEST_CASE("CameraComponent destructor guards null world", "[scene_rendering]") {
 // MeshRenderer storage and access (AC-017, AC-018)
 // ===========================================================================
 TEST_CASE("MeshRenderer storage and access", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
 
     // Create a simple model for testing
     // Vertex shader with u_mvp
@@ -304,7 +318,8 @@ TEST_CASE("MeshRenderer storage and access", "[scene_rendering]") {
 // RenderSystem construction (AC-019)
 // ===========================================================================
 TEST_CASE("RenderSystem construction", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     World world;
     RenderSystem render_system(device, world);
     REQUIRE(true); // Construction succeeded
@@ -314,7 +329,8 @@ TEST_CASE("RenderSystem construction", "[scene_rendering]") {
 // RenderSystem begin_frame/end_frame counters (AC-020)
 // ===========================================================================
 TEST_CASE("RenderSystem begin_frame/end_frame counters", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     World world;
     RenderSystem render_system(device, world);
 
@@ -331,7 +347,8 @@ TEST_CASE("RenderSystem begin_frame/end_frame counters", "[scene_rendering]") {
 // RenderSystem draw call count (AC-021)
 // ===========================================================================
 TEST_CASE("RenderSystem draw call count", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     World world;
 
     // Create camera entity
@@ -389,7 +406,8 @@ TEST_CASE("RenderSystem draw call count", "[scene_rendering]") {
 // RenderSystem MVP computation (AC-022)
 // ===========================================================================
 TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     World world;
 
     // Camera at origin looking down -Z (default camera)
@@ -483,7 +501,8 @@ TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
 // RenderSystem no camera warning (AC-023)
 // ===========================================================================
 TEST_CASE("RenderSystem no camera warning", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     World world;
     RenderSystem render_system(device, world);
 
@@ -509,7 +528,8 @@ TEST_CASE("RenderSystem no camera warning", "[scene_rendering]") {
 // RenderSystem set_uniform failure skip (AC-024)
 // ===========================================================================
 TEST_CASE("RenderSystem set_uniform failure skip", "[scene_rendering]") {
-    RenderDeviceHeadless device(800, 600);
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
     World world;
 
     // Camera entity

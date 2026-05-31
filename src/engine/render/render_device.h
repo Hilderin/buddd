@@ -28,9 +28,15 @@ public:
 
     virtual ~RenderDevice() = default;
 
+    virtual auto window() noexcept -> Window& = 0;
+
     virtual auto begin_frame() -> void = 0;
     virtual auto end_frame() -> void = 0;
     virtual auto size() const noexcept -> std::pair<int, int> = 0;
+
+    virtual auto frame_begin_count() const noexcept -> int { return 0; }
+    virtual auto frame_end_count() const noexcept -> int { return 0; }
+    virtual auto draw_call_count() const noexcept -> int { return 0; }
 
     // -- Resource factories --
     [[nodiscard]] virtual auto create_shader(ShaderType type, std::string_view source) -> Result<std::unique_ptr<Shader>> = 0;

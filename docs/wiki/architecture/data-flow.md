@@ -64,61 +64,84 @@ It is consumed by:
 
 The version in `CMakeLists.txt` (`project(buddd VERSION 0.1.0 ...)`) must be kept in sync with `version.cpp` manually — no automation is introduced at bootstrap.
 
-## Platform abstraction lifecycle
+## EngineService lifecycle
 
-The platform abstraction layer follows a linear three-phase lifecycle:
+As of SPEC-016 / ADR-012, the `EngineService` class owns the entire Platform → Window → RenderDevice chain. It is the single entry point for engine lifecycle in both tests and production:
 
 ```
-Platform::create(Backend)
+EngineService::create(Backend, WindowConfig)
         │
-        ▼
-  [Platform initialized]
-  - SDL3 backend: SDL_Init(SDL_INIT_VIDEO) called
-  - Headless backend: no-op initialization
+        ├── 1. Platform::create(backend)
+        │         │
+        │         └── [Platform initialized]
+        │             - SDL3 backend: SDL_Init(SDL_INIT_VIDEO) called
+        │             - Headless backend: no-op initialization
         │
-        ▼
-platform->create_window(WindowConfig{title, width, height})
+        ├── 2. platform->create_window(WindowConfig)
+        │         │
+        │         ├── Valid config (width>0, height>0)
+        │         │       │
+        │         │       └── [Window created with Platform& back-link]
+        │         │           - SDL3 backend: SDL_CreateWindow with SDL_WINDOW_OPENGL flag
+        │         │             WindowSDL3(sdl_window, w, h, *this)
+        │         │           - Headless backend: in-memory width/height storage
+        │         │             WindowHeadless(w, h, *this)
+        │         │
+        │         └── Invalid config (width≤0 or height≤0)
+        │                 │
+        │                 └── Error{WindowCreationFailed, "Invalid window dimensions"}
         │
-        ├── Valid config (width>0, height>0)
-        │       │
-        │       ▼
-        │   [Window created]
-        │   - SDL3 backend: SDL_CreateWindow with SDL_WINDOW_OPENGL flag
-        │   - Headless backend: in-memory width/height storage
+        ├── 3. RenderDevice::create(window)
+        │         │
+        │         ├── native_handle() != nullptr (SDL3 backend)
+        │         │       │
+        │         │       └── [OpenGL 4.5 Core context created with 24-bit depth buffer]
+        │         │           - RenderDeviceOpenGL(window, sdl_window, gl_context)
+        │         │           - SDL_GL_SetAttribute for Core profile 4.5
+        │         │           - SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24)
+        │         │           - SDL_GL_CreateContext, SDL_GL_MakeCurrent
+        │         │           - GL_DEPTH_TEST (GL_LESS) enabled
+        │         │
+        │         └── native_handle() == nullptr (Headless backend)
+        │                 │
+        │                 └── [Headless render device]
+        │                     - RenderDeviceHeadless(window)
+        │                     - size() delegates to window_.width() / height()
+        │                     - begin_frame() and end_frame() are no-ops
         │
-        └── Invalid config (width≤0 or height≤0)
-                │
-                ▼
-            Error{WindowCreationFailed, "Invalid window dimensions"}
-        │
-        ▼
-RenderDevice::create(window)
-        │
-        ├── native_handle() != nullptr (SDL3 backend)
-        │       │
-        │       ▼
-    │   [OpenGL 4.5 Core context created with 24-bit depth buffer]
-    │   - SDL_GL_SetAttribute for Core profile 4.5
-    │   - SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24)
-    │   - SDL_GL_CreateContext
-    │   - SDL_GL_MakeCurrent
-    │   - RenderDeviceOpenGL constructor enables GL_DEPTH_TEST (GL_LESS)
-        │       │
-        │       ▼
-│   device->begin_frame() → glClearColor(0.02f, 0.02f, 0.05f, 1.0f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-│   device->end_frame()   → SDL_GL_SwapWindow()
-│   device->read_pixels() → glReadBuffer(GL_BACK); glReadPixels(...)
-│                          (must be called before end_frame() to read the
-│                           freshly rendered back buffer before the swap)
-│
-└── native_handle() == nullptr (Headless backend)
-                │
-                ▼
-            [Headless render device]
-            - begin_frame() and end_frame() are no-ops
-            - size() returns stored dimensions
-        │
-        ▼
+        └── EngineService{platform, window, device}
+            - Accessors: .platform(), .window(), .device()
+            - Navigable graph: device().window().platform().input_system()
+            - Member order guarantees destruction: ~device → ~window → ~platform
+```
+
+### Legacy manual lifecycle (pre-SPEC-016, pre-EngineService)
+
+Before EngineService was introduced, the chain was constructed manually in `demo_command.cpp` and `CaptureCommand`. EngineService now formalises this pattern.
+
+### Navigable object graph access
+
+From any `RenderDevice&`, the full upstream graph is reachable without additional parameters:
+
+```
+RenderDevice& device
+    │
+    ├── device.window()                       → Window&
+    │       │
+    │       ├── .platform()                   → Platform&
+    │       ├── .set_mouse_capture(bool)      → void
+    │       └── .is_mouse_captured() → bool
+    │
+    └── device.window().platform()
+            │
+            ├── .input_system()               → InputSystem&
+            ├── .delta_time()                 → float
+            └── .poll_events()                → void
+```
+
+### Frame loop (after EngineService setup)
+
+```
     [Frame loop: poll_events() orchestrates input and rendering]
     - Each poll_events() call:
         1. Computes delta_time from SDL_GetTicks () — time since the previous
@@ -127,13 +150,9 @@ RenderDevice::create(window)
            accumulated mouse delta/wheel to zero.
         3. Processes SDL events — routes non-quit events to InputSystemSDL3::on_sdl_event()
            (keyboard, mouse-motion, mouse-button, mouse-wheel).
-    - Application queries input state via platform.input_system() and delta time via
-      platform.delta_time() between poll_events() and render/update logic.
-
-    [Destruction order: RenderDevice → Window → Platform]
-    - ~RenderDeviceOpenGL: SDL_GL_DestroyContext
-    - ~WindowSDL3: SDL_DestroyWindow
-    - ~PlatformSDL3: SDL_Quit()
+    - Application queries input state via device.window().platform().input_system()
+      and delta time via device.window().platform().delta_time() between
+      poll_events() and render/update logic.
 ```
 
 ### Error propagation
@@ -149,6 +168,8 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - `Window` must outlive the `RenderDevice` that was created from it.
 - Violating these rules is undefined behavior at the abstract level.
 - The backend is fixed for the lifetime of a `Platform` instance — no runtime switching.
+- `EngineService` guarantees the lifecycle invariants via member declaration order (`platform_`, `window_`, `device_`), ensuring `~RenderDevice` → `~Window` → `~Platform` on destruction.
+- All back-references (`Window::platform_`, `RenderDevice::window_`) are non-owning (`T&`), compliant with ADR-010. See ADR-012 for the full rationale.
 
 ## Reference
 
@@ -167,3 +188,5 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - Spec: [SPEC-012](/docs/specs/depth-handling/spec.md) — Depth Buffer Support (24-bit depth allocation, GL_DEPTH_TEST, per-frame depth clear)
 - Implementation contract: [IMPL-012](/docs/specs/depth-handling/implementation-contract.md)
 - Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, frame-based state model, Platform integration)
+- Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
+- ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions

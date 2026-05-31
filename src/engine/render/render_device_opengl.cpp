@@ -77,8 +77,8 @@ auto to_hex_string(GLenum value) -> std::string {
 // Constructor / Destructor
 // ============================================================================
 
-RenderDeviceOpenGL::RenderDeviceOpenGL(SDL_Window* window, SDL_GLContext context)
-    : window_(window), context_(context)
+RenderDeviceOpenGL::RenderDeviceOpenGL(Window& window, SDL_Window* sdl_window, SDL_GLContext context)
+    : window_(window), sdl_window_(sdl_window), context_(context)
 {
     // Enable hardware depth testing — fragments closer to the camera
     // (smaller Z after perspective divide and viewport depth-range
@@ -106,19 +106,19 @@ RenderDeviceOpenGL::~RenderDeviceOpenGL() {
 
 auto RenderDeviceOpenGL::begin_frame() -> void {
     int w, h;
-    SDL_GetWindowSize(window_, &w, &h);
+    SDL_GetWindowSize(sdl_window_, &w, &h);
     glViewport(0, 0, w, h);
     glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 auto RenderDeviceOpenGL::end_frame() -> void {
-    SDL_GL_SwapWindow(window_);
+    SDL_GL_SwapWindow(sdl_window_);
 }
 
 auto RenderDeviceOpenGL::size() const noexcept -> std::pair<int, int> {
     int w, h;
-    SDL_GetWindowSize(window_, &w, &h);
+    SDL_GetWindowSize(sdl_window_, &w, &h);
     return {w, h};
 }
 

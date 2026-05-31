@@ -54,6 +54,24 @@ buddd_editor            (standalone, no dependencies)
 
 The project requires OpenGL 4.5 Core profile headers at build time. On Linux these are typically provided by `libgl-dev` or `mesa-common-dev` packages. The build will fail at configure time if OpenGL is not found.
 
+## Navigable object graph
+
+As of SPEC-016 / ADR-012, the engine establishes a navigable object graph through non-owning back-references:
+
+```
+RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
+```
+
+- `Window` stores a non-owning `Platform&` reference (forward declaration of `Platform` in `window.h`). **New module dependency**: `window/` → `platform/`.
+- `RenderDevice` declares a pure virtual `window() -> Window&` accessor. **New module dependency**: `render/` → `window/`.
+- From any `RenderDevice&`, the entire upstream graph is reachable: `device.window().platform().input_system()`.
+- All back-references are non-owning (`T&`), compliant with ADR-010.
+- Lifecycle invariants: `Platform` outlives `Window` outlives `RenderDevice`.
+
+## EngineService
+
+`EngineService` (in `src/engine/engine_service.h/.cpp`) is the lifecycle owner of the component chain. Created via the factory method `EngineService::create(Backend, WindowConfig)`, it owns `Platform` → `Window` → `RenderDevice` via `std::unique_ptr`. Used by both tests and production code (`demo_command.cpp`). Member declaration order (`platform_`, `window_`, `device_`) guarantees correct destruction ordering (RenderDevice first, then Window, then Platform).
+
 ## Key constraints
 
 - The engine is a **static library** (`STATIC`), not header-only. This may change in the future.

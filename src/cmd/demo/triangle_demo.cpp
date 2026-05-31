@@ -2,6 +2,7 @@
 #include "demo/demo_helpers.h"
 
 #include "platform/platform.h"
+#include "window/window.h"
 #include "render/render_device.h"
 #include "render/primitive_topology.h"
 
@@ -14,7 +15,7 @@
 namespace be = buddd::engine;
 
 auto buddd::cmd::demo::run_triangle_demo(
-    be::Platform& platform, be::RenderDevice& device,
+    be::RenderDevice& device,
     [[maybe_unused]] int argc, [[maybe_unused]] const char* const* argv) -> int {
 
     auto [material, vb] = buddd::cmd::demo::setup_triangle(device);
@@ -28,7 +29,7 @@ auto buddd::cmd::demo::run_triangle_demo(
     for (int frame = 0; frame < target_frames; ++frame) {
         auto frame_start = std::chrono::steady_clock::now();
 
-        if (!platform.poll_events()) {
+        if (!device.window().platform().poll_events()) {
             std::cerr << "Demo aborted by user (frame " << frame << ")\n";
             return EXIT_SUCCESS;
         }

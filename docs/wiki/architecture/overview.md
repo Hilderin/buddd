@@ -57,6 +57,7 @@ buddd2/
 ```
 src/engine/
 ├── CMakeLists.txt           # GLOB_RECURSE collects all .h/.cpp (includes GLM FetchContent)
+├── engine_service.h/.cpp   # EngineService — owns Platform→Window→RenderDevice chain
 ├── version.h / version.cpp  # Version API
 ├── error.h                  # Error struct, Result<T>, make_error, to_string
 ├── math/                    # Math foundations
@@ -129,7 +130,7 @@ src/engine/
 - `./build/debug/src/cmd/buddd` (or `buddd run`) — opens a window (1024×768), clears the framebuffer each frame (no draw calls), runs until the user closes the window
 - `./build/debug/src/cmd/buddd demo triangle` — opens a window (800×600, title "Buddd Engine — Demo: triangle"), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically. `buddd demo` (no name) or `buddd demo <unknown>` prints an error to stderr.
 - `./build/debug/src/cmd/buddd demo cube` — opens a window (800×600, title "Buddd Engine — Demo: cube"), renders a rotating per-face-coloured cube (24 vertices, 36 indices) for 120 frames at ~60 FPS with MVP computed from a Camera at (3,2,3), then exits. `buddd demo` lists `cube` as available.
-- `./build/debug/src/cmd/buddd demo free-camera` — opens a window (800×600, title "Buddd Engine — Demo: free-camera"), renders a cube from a controllable camera (WASD for forward/back/strafe, mouse for look, Space/Control for up/down). Runs interactively until Escape is pressed. Uses `Platform::delta_time()` for frame-rate-independent movement. `buddd demo` lists `free-camera` as available.
+- `./build/debug/src/cmd/buddd demo free-camera` — opens a window (800×600, title "Buddd Engine — Demo: free-camera"), renders a cube from a controllable camera (WASD for forward/back/strafe, mouse for look, Space/Control for up/down). Right-click to capture mouse (relative mode, cursor hidden); camera movement/rotation only while captured (Godot editor pattern). Runs interactively until Escape is pressed. Uses `device.window().platform().delta_time()` for frame-rate-independent movement. `buddd demo` lists `free-camera` as available.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd help` — prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
 - `./build/debug/src/cmd/buddd capture <scenario> [--frame N] [output_path]` — opens an 800×600 window, renders N frames (default: 1), captures the framebuffer of the Nth frame as a PNG file, and exits. Currently available: `cube` (camera at (0,0,3) (front-facing reference view)). With `--frame N` where N > 1, the cube rotates 0.5 rad/s around Y and frame N is captured (animation matches the cube demo timing). If no scenario is given or the scenario is unknown, prints an error to stderr and exits with code 1.
@@ -148,6 +149,20 @@ src/engine/
 ## Architecture boundary
 
 A hard architecture boundary is enforced: **no code outside `src/engine/`** may `#include` SDL3, OpenGL, or GLM headers. All access to windowing and graphics functionality goes through the abstract `Platform`, `Window`, and `RenderDevice` interfaces. All access to linear algebra types goes through the math wrapper types (`Vec2`, `Vec3`, `Vec4`, `Mat4`, `Quat`). Concrete backend implementations and math wrappers live entirely within `src/engine/`.
+
+### Navigable object graph
+
+As of SPEC-016 / ADR-012, the engine establishes a navigable object graph:
+
+```
+RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
+```
+
+- `Window` stores a non-owning `Platform&` reference (forward declaration in `window.h`).
+- `RenderDevice` exposes a pure virtual `window() -> Window&` accessor, implemented by each backend.
+- From any `RenderDevice&`, the entire upstream graph is reachable: `device.window().platform().input_system()`.
+- Demo functions no longer receive a separate `Platform&` parameter — they access platform services via the navigable graph.
+- `EngineService` owns the entire chain via `std::unique_ptr` with correct destruction ordering. See [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md).
 
 ### GLM boundary
 

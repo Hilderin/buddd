@@ -103,13 +103,13 @@ auto bc::DemoCommand::run(int argc, const char* const* argv) -> int {
     // Dispatch to per-demo function using if/else chain
     // Pass argc - 2, argv + 2 so the demo receives argv[0] == demo name
     if (demo_name == "triangle") {
-        return buddd::cmd::demo::run_triangle_demo(**platform, **device, argc - 2, argv + 2);
+        return buddd::cmd::demo::run_triangle_demo(**device, argc - 2, argv + 2);
     } else if (demo_name == "cube-scene") {
-        return buddd::cmd::demo::run_cube_scene_demo(**platform, **device, argc - 2, argv + 2);
+        return buddd::cmd::demo::run_cube_scene_demo(**device, argc - 2, argv + 2);
     } else if (demo_name == "free-camera") {
-        return buddd::cmd::demo::run_free_camera_demo(**platform, **device, argc - 2, argv + 2);
+        return buddd::cmd::demo::run_free_camera_demo(**device, argc - 2, argv + 2);
     } else {
         // demo_name == "cube" (validated above)
-        return buddd::cmd::demo::run_cube_demo(**platform, **device, argc - 2, argv + 2);
+        return buddd::cmd::demo::run_cube_demo(**device, argc - 2, argv + 2);
     }
 }

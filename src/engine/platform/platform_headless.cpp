@@ -24,7 +24,7 @@ auto PlatformHeadless::create_window(const WindowConfig& config) -> Result<std::
     }
 
     std::cerr << "Window created (Headless): " << config.width << "x" << config.height << "\n";
-    return std::unique_ptr<Window>(new WindowHeadless(config.width, config.height));
+    return std::unique_ptr<Window>(new WindowHeadless(config.width, config.height, *this));
 }
 
 } // namespace buddd::engine
