@@ -355,23 +355,19 @@ Gate:
 
 ### 6. Human validation
 
-Present the accepted spec and accepted implementation contract to the human.
-
-Use the `question` tool with a summary drawn from coordination.md sections (NOT from full artifact files):
-- Summary from `## spec-author` section
-- Summary from `## implementation-contract-author` section
-- Key ACs and done criteria
-
 Ask for explicit approval to proceed with implementation.
+Use the `question`tool.
 
 Do not proceed until the human explicitly approves.
 
 Record approval in coordination.md `## Human Validation` section:
 - **Status**: approved (or rejected)
-- **Approver**: human identity
-- **Date**: <date>
-- **Time**: <time>
+- **Approver**: <git user name>
+- **Date**: <date and time>
 - **Notes**: any human feedback or conditions
+
+Use `date` command to get the current date and time.
+Use `git config user.name` command to get get the current human identity.
 
 Also record approval metadata in `## Orchestrator` → **Notes**.
 
@@ -384,8 +380,6 @@ If human suggestion modifications, re-invoke the corresponding previous agent.
 ### 7. Implement
 
 Delegate to `code-implementer`.
-
-Implementation is allowed only from an accepted and human-approved implementation contract. The contract's `## Approval` section must be filled.
 
 Do not implement directly.
 Do not allow implementation from a raw user request.
