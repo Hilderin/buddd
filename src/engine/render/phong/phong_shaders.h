@@ -48,7 +48,7 @@ uniform float    u_light_outer_cones[MAX_LIGHTS];
 
 uniform vec3     u_camera_pos;
 
-uniform vec3     u_material_ambient   = vec3(0.2);
+uniform vec3     u_material_ambient   = vec3(0.1);
 uniform vec4     u_material_specular  = vec4(1.0);
 uniform float    u_material_shininess = 32.0;
 
@@ -76,7 +76,6 @@ void main() {
         float range     = u_light_ranges[i];
         vec3 L;
         float attenuation = 1.0;
-        bool light_valid = true;
 
         if (pos_or_dir.w == 0.0) {
             // Directional light
@@ -85,59 +84,37 @@ void main() {
             // Point light
             vec3 light_to_frag = pos_or_dir.xyz - v_world_pos;
             float dist = length(light_to_frag);
-
-            // Guard against division by zero: if the light is exactly at the
-            // fragment position, skip this light to avoid NaN propagation.
-            if (dist < 0.0001) { light_valid = false; }
-            else { L = light_to_frag / dist; }
+            L = light_to_frag / dist;
 
             float normalized_dist = clamp(dist / range, 0.0, 1.0);
-            if (light_valid) {
-                attenuation = 1.0 - normalized_dist * normalized_dist;
-            }
+            attenuation = 1.0 - normalized_dist * normalized_dist;
         } else {
             // Spot light (w == 2.0)
             vec3 light_to_frag = pos_or_dir.xyz - v_world_pos;
             float dist = length(light_to_frag);
-
-            // Guard against division by zero (same as point light).
-            if (dist < 0.0001) { light_valid = false; }
-            else { L = light_to_frag / dist; }
+            L = light_to_frag / dist;
 
             float normalized_dist = clamp(dist / range, 0.0, 1.0);
-            if (light_valid) {
-                attenuation = 1.0 - normalized_dist * normalized_dist;
+            attenuation = 1.0 - normalized_dist * normalized_dist;
 
-                // Spot cone falloff
-                vec3 spot_dir = normalize(u_light_spot_directions[i].xyz);
-                float cos_angle = max(dot(-L, spot_dir), 0.0);
-                float cos_inner = u_light_inner_cones[i];
-                float cos_outer = u_light_outer_cones[i];
-                attenuation *= spot_cone_attenuation(cos_angle, cos_inner, cos_outer);
-            }
+            // Spot cone falloff
+            vec3 spot_dir = normalize(u_light_spot_directions[i].xyz);
+            float cos_angle = max(dot(-L, spot_dir), 0.0);
+            float cos_inner = u_light_inner_cones[i];
+            float cos_outer = u_light_outer_cones[i];
+            attenuation *= spot_cone_attenuation(cos_angle, cos_inner, cos_outer);
         }
 
-        if (light_valid) {
-            // Diffuse (Lambert)
-            float NdotL = max(dot(N, L), 0.0);
-            vec3 diffuse = diffuse_colour * light_col * NdotL;
+        // Diffuse (Lambert)
+        float NdotL = max(dot(N, L), 0.0);
+        vec3 diffuse = diffuse_colour * light_col * NdotL;
 
-            // Specular (Blinn-Phong)
-            // Guard against degenerate half-vector (L + V ~ 0) which would
-            // cause normalize() to produce NaN and pow() to propagate it
-            // as white pixels at silhouette edges.
-            vec3 half_vec = L + V;
-            float half_len = length(half_vec);
-            vec3 specular = vec3(0.0);
-            if (half_len > 0.001) {
-                vec3 H = half_vec / half_len;
-                float NdotH = max(dot(N, H), 0.0);
-                specular = u_material_specular.rgb * light_col
-                         * pow(NdotH, u_material_shininess);
-            }
+        // Specular (Blinn-Phong)
+        vec3 H = normalize(L + V);
+        float NdotH = max(dot(N, H), 0.0);
+        vec3 specular = u_material_specular.rgb * light_col * pow(NdotH, u_material_shininess);
 
-            final_colour += (diffuse + specular) * attenuation;
-        }
+        final_colour += (diffuse + specular) * attenuation;
     }
 
     // Reinhard tone mapping with exposure compensation.
