@@ -144,6 +144,8 @@ none
 none
 **Bug fix (post-review, 2026-05-31)**: Crash fix in `render_device_opengl.cpp` — `draw()` and `draw_indexed()` used `static_cast<const MaterialOpenGL&>(material).bind()` which crashes when material is a `PhongMaterial` (not a `MaterialOpenGL`). Fixed by using virtual dispatch: `material.bind()`. All 273 tests pass. Demo runs >300 frames without crash.
 
+**Re-verification (2026-05-31 2nd pass)**: Confirmed the fix is correct: `Material::bind()` is pure virtual, overridden by `MaterialOpenGL`, `PhongMaterial`, and `MaterialHeadless`; the old `static_cast` was invalid UB for non-`MaterialOpenGL` types. All 273 tests pass (12780 assertions, 100%). No regressions. Fix accepted.
+
 ## adr-agent
 
 **Status**: completed
