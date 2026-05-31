@@ -97,13 +97,15 @@ RenderDevice::create(window)
         ├── native_handle() != nullptr (SDL3 backend)
         │       │
         │       ▼
-        │   [OpenGL 4.5 Core context created]
-        │   - SDL_GL_SetAttribute for Core profile 4.5
-        │   - SDL_GL_CreateContext
-        │   - SDL_GL_MakeCurrent
+    │   [OpenGL 4.5 Core context created with 24-bit depth buffer]
+    │   - SDL_GL_SetAttribute for Core profile 4.5
+    │   - SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24)
+    │   - SDL_GL_CreateContext
+    │   - SDL_GL_MakeCurrent
+    │   - RenderDeviceOpenGL constructor enables GL_DEPTH_TEST (GL_LESS)
         │       │
         │       ▼
-│   device->begin_frame() → glClearColor(0.02f, 0.02f, 0.05f, 1.0f); glClear(GL_COLOR_BUFFER_BIT)
+│   device->begin_frame() → glClearColor(0.02f, 0.02f, 0.05f, 1.0f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 │   device->end_frame()   → SDL_GL_SwapWindow()
 │   device->read_pixels() → glReadBuffer(GL_BACK); glReadPixels(...)
 │                          (must be called before end_frame() to read the
@@ -151,3 +153,5 @@ All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`
 - Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Cube demo dispatch integration, output messages
 - Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
 - Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
+- Spec: [SPEC-012](/docs/specs/depth-handling/spec.md) — Depth Buffer Support (24-bit depth allocation, GL_DEPTH_TEST, per-frame depth clear)
+- Implementation contract: [IMPL-012](/docs/specs/depth-handling/implementation-contract.md)

@@ -134,7 +134,7 @@ src/engine/
 - `Platform::create(Backend::SDL3)` — creates an SDL3-based platform (uses offscreen video driver in tests; requires a display in production)
 - Factory methods return `Result<T>` (`std::expected<T, Error>`) for error propagation
 - **Exception to ADR-001**: `RenderDevice::draw()` and `draw_indexed()` return `void` rather than `Result<void>`, because draw calls are on a performance-sensitive hot path where per-frame error checking is impractical. Precondition violations are undefined behaviour.
-- `RenderDeviceOpenGL::begin_frame()` sets clear colour to `(0.02, 0.02, 0.05)` (dark blue) via `glClearColor` before `glClear(GL_COLOR_BUFFER_BIT)`, rather than the default black.
+- `RenderDeviceOpenGL::begin_frame()` sets clear colour to `(0.02, 0.02, 0.05)` (dark blue) via `glClearColor` before `glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)`, rather than the default black. A 24-bit depth buffer is allocated via `SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24)` before context creation, and `GL_DEPTH_TEST` (with `GL_LESS` comparison) is enabled in the constructor, providing correct 3D occlusion. (See SPEC-012.)
 - `RenderDeviceOpenGL::read_pixels()` calls `glReadBuffer(GL_BACK)` before `glReadPixels` to ensure the freshly rendered back buffer is read — this must be called before `end_frame()` (before the buffer swap).
 
 ## Architecture boundary

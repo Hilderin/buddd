@@ -78,7 +78,27 @@ auto to_hex_string(GLenum value) -> std::string {
 // ============================================================================
 
 RenderDeviceOpenGL::RenderDeviceOpenGL(SDL_Window* window, SDL_GLContext context)
-    : window_(window), context_(context) {}
+    : window_(window), context_(context)
+{
+    // Enable hardware depth testing — fragments closer to the camera
+    // (smaller Z after perspective divide and viewport depth-range
+    // transform, in window coordinates [0,1]) occlude farther ones.
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
+#ifndef NDEBUG
+    std::cerr << "Depth testing enabled (GL_LESS)\n";
+
+    // Check for OpenGL errors after depth state setup (debug builds only).
+    // Clear any prior error first, then check.
+    glGetError();
+    GLenum depth_err = glGetError();
+    if (depth_err != GL_NO_ERROR) {
+        std::cerr << "Warning: OpenGL error during depth state setup: "
+                  << depth_err << "\n";
+    }
+#endif
+}
 
 RenderDeviceOpenGL::~RenderDeviceOpenGL() {
     SDL_GL_DestroyContext(context_);
@@ -89,7 +109,7 @@ auto RenderDeviceOpenGL::begin_frame() -> void {
     SDL_GetWindowSize(window_, &w, &h);
     glViewport(0, 0, w, h);
     glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 auto RenderDeviceOpenGL::end_frame() -> void {

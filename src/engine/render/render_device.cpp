@@ -27,6 +27,12 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
+    // Request a 24-bit depth buffer for correct 3D occlusion.
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+#ifndef NDEBUG
+    std::cerr << "Depth buffer requested: 24-bit\n";
+#endif
+
     auto* gl_context = SDL_GL_CreateContext(sdl_window);
     if (gl_context == nullptr) {
         return make_error(Error::Category::RenderDeviceCreationFailed,
