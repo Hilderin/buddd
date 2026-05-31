@@ -24,7 +24,7 @@ class Window;
 
 class RenderDevice {
 public:
-    static auto create(Window& window) -> Result<std::unique_ptr<RenderDevice>>;
+    [[nodiscard]] static auto create(Window& window) -> Result<std::unique_ptr<RenderDevice>>;
 
     virtual ~RenderDevice() = default;
 
@@ -33,17 +33,17 @@ public:
     virtual auto size() const noexcept -> std::pair<int, int> = 0;
 
     // -- Resource factories --
-    virtual auto create_shader(ShaderType type, std::string_view source) -> Result<std::unique_ptr<Shader>> = 0;
-    virtual auto create_material(
+    [[nodiscard]] virtual auto create_shader(ShaderType type, std::string_view source) -> Result<std::unique_ptr<Shader>> = 0;
+    [[nodiscard]] virtual auto create_material(
         std::unique_ptr<Shader> vertex_shader,
         std::unique_ptr<Shader> fragment_shader,
         std::span<const std::string> known_uniforms = {}
     ) -> Result<std::unique_ptr<Material>> = 0;
-    virtual auto create_vertex_buffer(
+    [[nodiscard]] virtual auto create_vertex_buffer(
         const VertexFormat& format,
         std::span<const std::byte> data
     ) -> Result<std::unique_ptr<VertexBuffer>> = 0;
-    virtual auto create_index_buffer(
+    [[nodiscard]] virtual auto create_index_buffer(
         std::span<const std::byte> data,
         IndexType type
     ) -> Result<std::unique_ptr<IndexBuffer>> = 0;
@@ -71,7 +71,7 @@ public:
     /// The caller should use Image::create() to flip rows to top-left origin.
     /// @return ImageBuffer with width, height, channels=4, raw RGBA data.
     ///         Returns an error if the backend does not support readback.
-    virtual auto read_pixels() -> Result<ImageBuffer> = 0;
+    [[nodiscard]] virtual auto read_pixels() -> Result<ImageBuffer> = 0;
 
     RenderDevice(const RenderDevice&) = delete;
     auto operator=(const RenderDevice&) -> RenderDevice& = delete;

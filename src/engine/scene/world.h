@@ -33,18 +33,34 @@ public:
 
     // -- Internal (called by Entity) --
     auto is_pending_destroy(EntityId id) const noexcept -> bool;
+
+    /// Returns the Transform for the given entity.
+    /// Returned reference is valid until the entity is destroyed or
+    /// the World is destroyed. Do not store across frames.
     auto get_transform(EntityId id) noexcept -> Transform&;
+
+    /// Returns the Transform for the given entity (const).
+    /// Returned reference is valid until the entity is destroyed or
+    /// the World is destroyed. Do not store across frames.
     auto get_transform(EntityId id) const noexcept -> const Transform&;
 
     // -- Component management (called by Entity templates) --
     template<typename T, typename... Args>
     auto add_component(EntityId id, Args&&... args) -> T&;
 
+    /// Returns a component of type T for the given entity.
+    /// Returned reference is valid until the component is removed,
+    /// the entity is destroyed, or the World is destroyed.
+    /// Do not store across frames.
     template<typename T>
-    auto get_component(EntityId id) noexcept -> std::optional<T&>;
+    [[nodiscard]] auto get_component(EntityId id) noexcept -> std::optional<T&>;
 
+    /// Returns a component of type T for the given entity (const).
+    /// Returned reference is valid until the component is removed,
+    /// the entity is destroyed, or the World is destroyed.
+    /// Do not store across frames.
     template<typename T>
-    auto get_component(EntityId id) const noexcept -> std::optional<const T&>;
+    [[nodiscard]] auto get_component(EntityId id) const noexcept -> std::optional<const T&>;
 
     template<typename T>
     auto remove_component(EntityId id) -> bool;
@@ -69,7 +85,7 @@ public:
     /// Returns the currently active camera component, or std::nullopt if
     /// no camera has been registered (or the last registered camera
     /// was unregistered).
-    auto active_camera() const noexcept -> std::optional<CameraComponent&>;
+    [[nodiscard]] auto active_camera() const noexcept -> std::optional<CameraComponent&>;
 
 private:
     friend class Entity;
@@ -116,7 +132,10 @@ private:
     std::vector<uint32_t> free_slots_;
     uint32_t next_slot_ = 0;
 
-    std::optional<CameraComponent&> active_camera_;
+    // ADR-011: raw pointer allowed as private data member (implementation detail).
+    // Non-owning observer; must not be stored across frames or after
+    // the pointed-to CameraComponent is destroyed.
+    CameraComponent* active_camera_ = nullptr;
 };
 
 // -- World template method implementations (inline, defined in header) --
@@ -201,25 +220,7 @@ inline auto World::each(Func&& func) -> size_t {
     return count;
 }
 
-// -- Camera API inline implementations --
-
-inline auto World::register_camera(CameraComponent& camera) -> void {
-    active_camera_ = camera;  // std::optional<CameraComponent&> stores the reference
-}
-
-inline auto World::unregister_camera(const CameraComponent& camera) -> void {
-    // Address comparison: only clear if this component is the active camera
-    if (active_camera_.has_value() && &*active_camera_ == &camera) {
-        active_camera_.reset();
-    }
-}
-
-inline auto World::active_camera() const noexcept -> std::optional<CameraComponent&> {
-    if (!active_camera_.has_value()) {
-        return std::nullopt;
-    }
-    return active_camera_;
-}
+// Camera API implementations are in world.cpp (require CameraComponent to be complete).
 
 // -- Entity template method implementations (delegate to World) --
 // These are defined here (not in entity.h) because they require World

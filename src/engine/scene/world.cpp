@@ -1,4 +1,5 @@
 #include "scene/world.h"
+#include "scene/camera_component.h"
 
 namespace buddd::engine {
 
@@ -257,6 +258,29 @@ void World::reparent(EntityId id, EntityId new_parent_id) {
         roots_.push_back(std::move(owned));
         node->parent_ = nullptr;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Camera registration
+// ---------------------------------------------------------------------------
+
+void World::register_camera(CameraComponent& camera) {
+    // ADR-011: raw pointer allowed as private data member (implementation detail).
+    active_camera_ = &camera;
+}
+
+void World::unregister_camera(const CameraComponent& camera) {
+    // Address comparison: only clear if this component is the active camera
+    if (active_camera_ == &camera) {
+        active_camera_ = nullptr;
+    }
+}
+
+auto World::active_camera() const noexcept -> std::optional<CameraComponent&> {
+    if (!active_camera_) {
+        return std::nullopt;
+    }
+    return *active_camera_;
 }
 
 } // namespace buddd::engine

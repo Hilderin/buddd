@@ -26,7 +26,7 @@ public:
     /// Creates a non-indexed Model.
     /// On failure, returns an Error describing the failure.
     /// The material is shared (not owned exclusively) via shared_ptr.
-    static auto create(
+    [[nodiscard]] static auto create(
         RenderDevice& device,
         const VertexFormat& vertex_format,
         std::span<const std::byte> vertex_data,
@@ -35,7 +35,7 @@ public:
     ) -> Result<Model>;
 
     /// Creates an indexed Model.
-    static auto create_indexed(
+    [[nodiscard]] static auto create_indexed(
         RenderDevice& device,
         const VertexFormat& vertex_format,
         std::span<const std::byte> vertex_data,

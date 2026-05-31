@@ -39,10 +39,10 @@ public:
     auto add_component(Args&&... args) -> T&;
 
     template<typename T>
-    auto get_component() const noexcept -> std::optional<const T&>;
+    [[nodiscard]] auto get_component() const noexcept -> std::optional<const T&>;
 
     template<typename T>
-    auto get_component() noexcept -> std::optional<T&>;
+    [[nodiscard]] auto get_component() noexcept -> std::optional<T&>;
 
     template<typename T>
     auto remove_component() -> bool;

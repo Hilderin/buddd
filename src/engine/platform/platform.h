@@ -16,11 +16,11 @@ struct WindowConfig;
 
 class Platform {
 public:
-    static auto create(Backend backend) -> Result<std::unique_ptr<Platform>>;
+    [[nodiscard]] static auto create(Backend backend) -> Result<std::unique_ptr<Platform>>;
 
     virtual ~Platform() = default;
 
-    virtual auto create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> = 0;
+    [[nodiscard]] virtual auto create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> = 0;
 
     /// Polls the platform event queue.
     /// Returns false if the user requested to quit (e.g., window close button),
