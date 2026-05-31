@@ -67,9 +67,8 @@
 ## Human Validation
 
 **Status**: pending | approved | rejected
-**Approver**: <human identity>
-**Date**: <date>
-**Time**: <time>
+**Approver**: <git user name>
+**Date**: <date and time>
 **Warnings**:
 <none, or a bullet list of non-blocking concerns>
 **Notes**: <any human feedback or conditions>
