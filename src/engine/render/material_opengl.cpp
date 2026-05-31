@@ -1,5 +1,6 @@
 #define GL_GLEXT_PROTOTYPES
 #include "material_opengl.h"
+#include "render/texture_opengl.h"
 
 #include <iostream>
 
@@ -36,12 +37,16 @@ auto MaterialOpenGL::get_uniform_location(std::string_view name) -> Result<GLint
     return location;
 }
 
+// ============================================================================
+// set_uniform overloads — cache values, do NOT call glUniform* immediately
+// ============================================================================
+
 auto MaterialOpenGL::set_uniform(std::string_view name, float value) -> Result<void> {
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
-    glUniform1f(*loc, value);
+    uniform_cache_[std::string(name)] = value;
 #ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=float)\n";
+    std::cerr << "Uniform cached: " << name << " (type=float)\n";
 #endif
     return {};
 }
@@ -49,9 +54,9 @@ auto MaterialOpenGL::set_uniform(std::string_view name, float value) -> Result<v
 auto MaterialOpenGL::set_uniform(std::string_view name, int32_t value) -> Result<void> {
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
-    glUniform1i(*loc, value);
+    uniform_cache_[std::string(name)] = value;
 #ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=int)\n";
+    std::cerr << "Uniform cached: " << name << " (type=int)\n";
 #endif
     return {};
 }
@@ -59,9 +64,9 @@ auto MaterialOpenGL::set_uniform(std::string_view name, int32_t value) -> Result
 auto MaterialOpenGL::set_uniform(std::string_view name, bool value) -> Result<void> {
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
-    glUniform1i(*loc, value ? 1 : 0);
+    uniform_cache_[std::string(name)] = value;
 #ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=bool)\n";
+    std::cerr << "Uniform cached: " << name << " (type=bool)\n";
 #endif
     return {};
 }
@@ -69,9 +74,9 @@ auto MaterialOpenGL::set_uniform(std::string_view name, bool value) -> Result<vo
 auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec3& value) -> Result<void> {
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
-    glUniform3fv(*loc, 1, &value.x);
+    uniform_cache_[std::string(name)] = value;
 #ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=Vec3)\n";
+    std::cerr << "Uniform cached: " << name << " (type=Vec3)\n";
 #endif
     return {};
 }
@@ -79,9 +84,9 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec3& value)
 auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec4& value) -> Result<void> {
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
-    glUniform4fv(*loc, 1, &value.x);
+    uniform_cache_[std::string(name)] = value;
 #ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=Vec4)\n";
+    std::cerr << "Uniform cached: " << name << " (type=Vec4)\n";
 #endif
     return {};
 }
@@ -89,17 +94,90 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec4& value)
 auto MaterialOpenGL::set_uniform(std::string_view name, const math::Mat4& value) -> Result<void> {
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
-    // GLM/Mat4 is column-major; GL_FALSE means "don't transpose"
-    glUniformMatrix4fv(*loc, 1, GL_FALSE, &value[0].x);
+    uniform_cache_[std::string(name)] = value;
 #ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=Mat4)\n";
+    std::cerr << "Uniform cached: " << name << " (type=Mat4)\n";
 #endif
     return {};
 }
 
+// ============================================================================
+// has_uniform
+// ============================================================================
+
 auto MaterialOpenGL::has_uniform(std::string_view name) const -> bool {
     GLint location = glGetUniformLocation(program_, name.data());
     return location != -1;
+}
+
+// ============================================================================
+// Texture support
+// ============================================================================
+
+auto MaterialOpenGL::set_texture(std::string_view name, std::shared_ptr<Texture> texture) -> Result<void> {
+    if (!texture) {
+        return make_error(Error::Category::InvalidArgument,
+            "Texture is null");
+    }
+
+    auto loc = get_uniform_location(name);
+    if (!loc) return std::unexpected(loc.error());
+
+    texture_map_[std::string(name)] = std::move(texture);
+#ifndef NDEBUG
+    std::cerr << "Texture set: " << name << "\n";
+#endif
+    return {};
+}
+
+auto MaterialOpenGL::has_texture(std::string_view name) const -> bool {
+    GLint location = glGetUniformLocation(program_, name.data());
+    return location != -1;
+}
+
+// ============================================================================
+// bind() — activate program, apply cached uniforms, bind textures
+// ============================================================================
+
+auto MaterialOpenGL::bind() const -> void {
+    // 1. Activate the shader program
+    glUseProgram(program_);
+#ifndef NDEBUG
+    std::cerr << "Material bind: program " << program_ << "\n";
+#endif
+
+    // 2. Apply cached uniforms
+    for (const auto& [name, value] : uniform_cache_) {
+        GLint loc = glGetUniformLocation(program_, name.c_str());
+        if (loc == -1) continue;  // uniform was removed or program changed — skip
+        std::visit([loc](const auto& v) {
+            using T = std::decay_t<decltype(v)>;
+            if constexpr (std::is_same_v<T, float>)          glUniform1f(loc, v);
+            else if constexpr (std::is_same_v<T, int32_t>)   glUniform1i(loc, v);
+            else if constexpr (std::is_same_v<T, bool>)      glUniform1i(loc, v ? 1 : 0);
+            else if constexpr (std::is_same_v<T, math::Vec3>) glUniform3fv(loc, 1, &v.x);
+            else if constexpr (std::is_same_v<T, math::Vec4>) glUniform4fv(loc, 1, &v.x);
+            else if constexpr (std::is_same_v<T, math::Mat4>) glUniformMatrix4fv(loc, 1, GL_FALSE, &v[0].x);
+        }, value);
+    }
+
+    // 3. Bind textures
+    for (const auto& [name, texture] : texture_map_) {
+        int unit = next_unit_++;
+        glActiveTexture(GL_TEXTURE0 + unit);
+        auto* gl_tex = static_cast<TextureOpenGL*>(texture.get());
+        glBindTexture(GL_TEXTURE_2D, gl_tex->handle());
+        GLint loc = glGetUniformLocation(program_, name.c_str());
+        if (loc != -1) {
+            glUniform1i(loc, unit);
+        }
+#ifndef NDEBUG
+        std::cerr << "Bind texture: " << name << " (unit=" << unit << ")\n";
+#endif
+    }
+
+    // 4. Reset unit counter for next bind() call
+    next_unit_ = 0;
 }
 
 } // namespace buddd::engine

@@ -102,17 +102,20 @@ src/engine/
     ├── primitive_topology.h        # PrimitiveTopology enum
     ├── vertex_format.h             # VertexAttributeType, VertexAttribute, VertexFormat
     ├── shader.h                    # Abstract Shader class, ShaderType enum
-    ├── material.h                  # Abstract Material class (6 set_uniform overloads)
+    ├── material.h                  # Abstract Material class (6 set_uniform overloads, set_texture/has_texture, bind for deferred state application)
+    ├── texture.h                   # Abstract Texture class (width, height, channels)
     ├── vertex_buffer.h             # Abstract VertexBuffer class
     ├── index_buffer.h              # IndexType enum, abstract IndexBuffer class
-    ├── render_device.h             # Abstract RenderDevice class (factories + draw)
+    ├── render_device.h             # Abstract RenderDevice class (factories + draw + create_texture)
     ├── render_device.cpp           # RenderDevice::create() factory
-    ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (+ factory/draw overrides)
-    ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides)
+    ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (+ factory/draw overrides + create_texture via DSA)
+    ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides + in-memory create_texture)
     ├── shader_opengl.h/cpp         # OpenGL shader backend (ShaderOpenGL)
     ├── shader_headless.h/cpp       # Headless shader backend (ShaderHeadless)
-    ├── material_opengl.h/cpp       # OpenGL material backend (MaterialOpenGL)
+    ├── material_opengl.h/cpp       # OpenGL material backend (MaterialOpenGL) — deferred uniform caching + texture unit management in bind()
     ├── material_headless.h/cpp     # Headless material backend (MaterialHeadless)
+    ├── texture_opengl.h/cpp        # OpenGL texture backend (TextureOpenGL) — DSA-based GPU upload via glCreateTextures/glTextureStorage2D/glTextureSubImage2D
+    ├── texture_headless.h/cpp      # Headless texture backend (TextureHeadless) — in-memory pixel storage
     ├── vertex_buffer_opengl.h/cpp  # OpenGL vertex buffer backend (VertexBufferOpenGL)
     ├── vertex_buffer_headless.h/cpp# Headless vertex buffer backend (VertexBufferHeadless)
     ├── index_buffer_opengl.h/cpp   # OpenGL index buffer backend (IndexBufferOpenGL)
@@ -130,6 +133,7 @@ src/engine/
 - `./build/debug/src/cmd/buddd` (or `buddd run`) — opens a window (1024×768), clears the framebuffer each frame (no draw calls), runs until the user closes the window
 - `./build/debug/src/cmd/buddd demo triangle` — opens a window (800×600, title "Buddd Engine — Demo: triangle"), renders a coloured triangle for exactly 120 frames at ~60 FPS, then exits automatically. `buddd demo` (no name) or `buddd demo <unknown>` prints an error to stderr.
 - `./build/debug/src/cmd/buddd demo cube` — opens a window (800×600, title "Buddd Engine — Demo: cube"), renders a rotating per-face-coloured cube (24 vertices, 36 indices) for 120 frames at ~60 FPS with MVP computed from a Camera at (3,2,3), then exits. `buddd demo` lists `cube` as available.
+- `./build/debug/src/cmd/buddd demo textured-cube` — opens a window (800×600, title "Buddd Engine — Demo: textured-cube"), renders a rotating UV-mapped cube with a brick texture loaded from `assets/brick.png` for 120 frames at ~60 FPS using the scene graph (World + Entity + MeshRenderer + RenderSystem), then exits. `buddd demo` lists `textured-cube` as available.
 - `./build/debug/src/cmd/buddd demo free-camera` — opens a window (800×600, title "Buddd Engine — Demo: free-camera"), renders a cube from a controllable camera (WASD for forward/back/strafe, mouse for look, Space/Control for up/down). Right-click to capture mouse (relative mode, cursor hidden); camera movement/rotation only while captured (Godot editor pattern). Runs interactively until Escape is pressed. Uses `device.window().platform().delta_time()` for frame-rate-independent movement. `buddd demo` lists `free-camera` as available.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd help` — prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)

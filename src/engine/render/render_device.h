@@ -12,8 +12,10 @@
 
 namespace buddd::engine {
 
+class Image;
 class Shader;
 class Material;
+class Texture;
 class VertexBuffer;
 class IndexBuffer;
 enum class ShaderType;
@@ -53,6 +55,9 @@ public:
         std::span<const std::byte> data,
         IndexType type
     ) -> Result<std::unique_ptr<IndexBuffer>> = 0;
+
+    [[nodiscard]] virtual auto create_texture(const Image& image)
+        -> Result<std::unique_ptr<Texture>> = 0;
 
     // -- Drawing --
     virtual auto draw(

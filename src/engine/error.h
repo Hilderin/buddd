@@ -17,6 +17,7 @@ struct Error {
         InvalidArgument,
         UniformNotFound,
         ReadbackFailed,    // Framebuffer readback (glReadPixels) failure
+        TextureCreationFailed,
         IoFailed,          // File I/O error (read/write image file)
         InputInitFailed,   // Input system initialisation failure
         Unsupported,
@@ -44,6 +45,7 @@ inline auto to_string(const Error& error) -> std::string {
         case Error::Category::InvalidArgument:            category_str = "InvalidArgument"; break;
         case Error::Category::UniformNotFound:            category_str = "UniformNotFound"; break;
         case Error::Category::ReadbackFailed:             category_str = "ReadbackFailed"; break;
+        case Error::Category::TextureCreationFailed:       category_str = "TextureCreationFailed"; break;
         case Error::Category::IoFailed:                   category_str = "IoFailed"; break;
         case Error::Category::InputInitFailed:            category_str = "InputInitFailed"; break;
         case Error::Category::Unsupported:                category_str = "Unsupported"; break;

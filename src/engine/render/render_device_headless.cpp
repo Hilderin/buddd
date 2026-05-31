@@ -4,6 +4,9 @@
 #include "material_headless.h"
 #include "vertex_buffer_headless.h"
 #include "index_buffer_headless.h"
+#include "texture_headless.h"
+
+#include "image/image.h"
 
 #include <algorithm>
 #include <cctype>
@@ -342,6 +345,41 @@ auto RenderDeviceHeadless::create_index_buffer(
         new IndexBufferHeadless(type, data));
 }
 
+auto RenderDeviceHeadless::create_texture(const Image& image) -> Result<std::unique_ptr<Texture>> {
+    // Validation
+    if (image.width() <= 0 || image.height() <= 0) {
+        return make_error(Error::Category::InvalidArgument,
+            "Image dimensions must be positive (got " + std::to_string(image.width())
+            + "x" + std::to_string(image.height()) + ")");
+    }
+
+    int ch = image.channels();
+    if (ch != 1 && ch != 3 && ch != 4) {
+        return make_error(Error::Category::Unsupported,
+            "Unsupported channel count: " + std::to_string(ch)
+            + " (supported: 1, 3, 4)");
+    }
+
+    if (image.data().empty()) {
+        return make_error(Error::Category::InvalidArgument,
+            "Image data is empty");
+    }
+
+    if (image.data().size() != static_cast<size_t>(image.width() * image.height() * ch)) {
+        return make_error(Error::Category::InvalidArgument,
+            "Image data size mismatch: expected "
+            + std::to_string(image.width() * image.height() * ch)
+            + " bytes, got " + std::to_string(image.data().size()));
+    }
+
+    std::cerr << "Texture created (Headless, " << image.width() << "x"
+              << image.height() << ", " << ch << " channels)\n";
+
+    return std::unique_ptr<Texture>(
+        new TextureHeadless(image.width(), image.height(), ch,
+                            image.data()));
+}
+
 // ============================================================================
 // Drawing methods
 // ============================================================================
@@ -349,11 +387,12 @@ auto RenderDeviceHeadless::create_index_buffer(
 auto RenderDeviceHeadless::draw(
     PrimitiveTopology /*topology*/,
     const VertexBuffer& /*vertices*/,
-    const Material& /*material*/,
+    const Material& material,
     uint32_t /*vertex_count*/,
     uint32_t /*start_vertex*/
 ) -> void
 {
+    material.bind();
     ++draw_call_count_;
 
 #ifndef NDEBUG
@@ -366,11 +405,12 @@ auto RenderDeviceHeadless::draw_indexed(
     PrimitiveTopology /*topology*/,
     const VertexBuffer& /*vertices*/,
     const IndexBuffer& /*indices*/,
-    const Material& /*material*/,
+    const Material& material,
     uint32_t /*index_count*/,
     uint32_t /*start_index*/
 ) -> void
 {
+    material.bind();
     ++draw_call_count_;
 
 #ifndef NDEBUG

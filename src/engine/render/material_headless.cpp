@@ -103,6 +103,44 @@ auto MaterialHeadless::set_uniform(std::string_view name, const math::Mat4& valu
     return {};
 }
 
+auto MaterialHeadless::set_texture(std::string_view name, std::shared_ptr<Texture> texture) -> Result<void> {
+    if (!texture) {
+        return make_error(Error::Category::InvalidArgument,
+            "Texture is null");
+    }
+
+    auto key = std::string(name);
+    if (known_uniforms_.count(key) == 0 && uniform_values_.count(key) == 0) {
+        std::cerr << "Uniform not found: " << name << "\n";
+        return make_error(Error::Category::UniformNotFound,
+            "Uniform '" + std::string(name) + "' not found");
+    }
+
+    known_uniforms_.insert(key);
+    texture_values_[key] = std::move(texture);
+#ifndef NDEBUG
+    std::cerr << "Texture set (Headless): " << name << "\n";
+#endif
+    return {};
+}
+
+auto MaterialHeadless::has_texture(std::string_view name) const -> bool {
+    auto key = std::string(name);
+    return known_uniforms_.count(key) > 0 || texture_values_.count(key) > 0;
+}
+
+auto MaterialHeadless::bind() const -> void {
+    // No-op for headless backend
+}
+
+auto MaterialHeadless::get_texture(std::string_view name) const -> std::optional<std::shared_ptr<Texture>> {
+    auto it = texture_values_.find(std::string(name));
+    if (it == texture_values_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
+}
+
 auto MaterialHeadless::get_uniform_mat4(std::string_view name) const -> std::optional<math::Mat4> {
     auto it = uniform_values_.find(std::string(name));
     if (it == uniform_values_.end()) {

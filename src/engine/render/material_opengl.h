@@ -1,11 +1,14 @@
 #pragma once
 
 #include "material.h"
+#include "render/texture.h"
 
 #include <SDL3/SDL_opengl.h>
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <variant>
 
 namespace buddd::engine {
 
@@ -23,6 +26,10 @@ public:
 
     auto has_uniform(std::string_view name) const -> bool override;
 
+    auto set_texture(std::string_view name, std::shared_ptr<Texture> texture) -> Result<void> override;
+    auto has_texture(std::string_view name) const -> bool override;
+    auto bind() const -> void override;
+
     auto program() const noexcept -> GLuint;
 
     MaterialOpenGL(const MaterialOpenGL&) = delete;
@@ -35,6 +42,10 @@ private:
 
     GLuint program_;
     mutable std::unordered_map<std::string, GLint> location_cache_;
+
+    std::unordered_map<std::string, std::variant<float, int32_t, bool, math::Vec3, math::Vec4, math::Mat4>> uniform_cache_;
+    std::unordered_map<std::string, std::shared_ptr<Texture>> texture_map_;
+    mutable int next_unit_{0};
 };
 
 } // namespace buddd::engine

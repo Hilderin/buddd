@@ -4,6 +4,9 @@
 #include "material_opengl.h"
 #include "vertex_buffer_opengl.h"
 #include "index_buffer_opengl.h"
+#include "texture_opengl.h"
+
+#include "image/image.h"
 
 #include <SDL3/SDL_opengl.h>
 
@@ -284,6 +287,66 @@ auto RenderDeviceOpenGL::create_index_buffer(
         new IndexBufferOpenGL(ibo, type, data.size()));
 }
 
+auto RenderDeviceOpenGL::create_texture(const Image& image) -> Result<std::unique_ptr<Texture>> {
+    // Validation
+    if (image.width() <= 0 || image.height() <= 0) {
+        return make_error(Error::Category::InvalidArgument,
+            "Image dimensions must be positive (got " + std::to_string(image.width())
+            + "x" + std::to_string(image.height()) + ")");
+    }
+
+    int ch = image.channels();
+    if (ch != 1 && ch != 3 && ch != 4) {
+        return make_error(Error::Category::Unsupported,
+            "Unsupported channel count: " + std::to_string(ch)
+            + " (supported: 1, 3, 4)");
+    }
+
+    if (image.data().empty()) {
+        return make_error(Error::Category::InvalidArgument,
+            "Image data is empty");
+    }
+
+    if (image.data().size() != static_cast<size_t>(image.width() * image.height() * ch)) {
+        return make_error(Error::Category::InvalidArgument,
+            "Image data size mismatch: expected "
+            + std::to_string(image.width() * image.height() * ch)
+            + " bytes, got " + std::to_string(image.data().size()));
+    }
+
+    // Create OpenGL texture with DSA
+    GLuint tex;
+    glCreateTextures(GL_TEXTURE_2D, 1, &tex);
+
+    GLenum internal_format = (ch == 4) ? GL_RGBA8 :
+                             (ch == 3) ? GL_RGB8 : GL_R8;
+
+    GLenum format = (ch == 4) ? GL_RGBA :
+                    (ch == 3) ? GL_RGB : GL_RED;
+
+    glTextureStorage2D(tex, 1, internal_format, image.width(), image.height());
+    glTextureSubImage2D(tex, 0, 0, 0, image.width(), image.height(), format, GL_UNSIGNED_BYTE, image.data().data());
+
+    glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTextureParameteri(tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Check for GL errors after upload
+    GLenum gl_error = glGetError();
+    if (gl_error != GL_NO_ERROR) {
+        glDeleteTextures(1, &tex);
+        return make_error(Error::Category::TextureCreationFailed,
+            "OpenGL texture creation failed with error code 0x"
+            + to_hex_string(gl_error));
+    }
+
+    std::cerr << "Texture created (OpenGL, " << image.width() << "x"
+              << image.height() << ", " << ch << " channels)\n";
+
+    return std::unique_ptr<Texture>(new TextureOpenGL(tex, image.width(), image.height(), ch));
+}
+
 // ============================================================================
 // Drawing methods
 // ============================================================================
@@ -299,7 +362,7 @@ auto RenderDeviceOpenGL::draw(
     auto& mat = static_cast<const MaterialOpenGL&>(material);
     auto& vb = static_cast<const VertexBufferOpenGL&>(vertices);
 
-    glUseProgram(mat.program());
+    mat.bind();
     glBindVertexArray(vb.vao());
     glDrawArrays(primitive_topology_to_gl(topology), static_cast<GLint>(start_vertex), static_cast<GLsizei>(vertex_count));
 
@@ -328,7 +391,7 @@ auto RenderDeviceOpenGL::draw_indexed(
     GLsizeiptr index_byte_size = (ib.index_type() == IndexType::Uint16)
         ? static_cast<GLsizeiptr>(sizeof(uint16_t)) : static_cast<GLsizeiptr>(sizeof(uint32_t));
 
-    glUseProgram(mat.program());
+    mat.bind();
     glBindVertexArray(vb.vao());
     // The index buffer binding is part of the VAO state, so we bind it before drawing
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.handle());

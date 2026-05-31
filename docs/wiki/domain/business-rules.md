@@ -43,7 +43,7 @@ namespace buddd::engine {
 
 ```cpp
 namespace buddd::engine {
-    enum class Error::Category { InitFailed, WindowCreationFailed, RenderDeviceCreationFailed, Unsupported, InputInitFailed, Unknown };
+    enum class Error::Category { InitFailed, WindowCreationFailed, RenderDeviceCreationFailed, ShaderCompilationFailed, LinkingFailed, ResourceCreationFailed, InvalidArgument, UniformNotFound, ReadbackFailed, TextureCreationFailed, IoFailed, InputInitFailed, Unsupported, Unknown };
     struct Error {
         Category category{Category::Unknown};
         int code{0};

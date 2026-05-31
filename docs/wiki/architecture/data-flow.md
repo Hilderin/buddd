@@ -155,10 +155,58 @@ RenderDevice& device
       poll_events() and render/update logic.
 ```
 
+### Texture data flow
+
+Textures flow from loaded PNG files through the image subsystem to the render pipeline:
+
+```
+assets/brick.png
+        │
+        ▼
+Image::load("assets/brick.png")
+        │
+        ├── Success ──► Image (width, height, channels=4, RGBA pixel data)
+        │                    │
+        │                    ▼
+        │               RenderDevice::create_texture(image)
+        │                    │
+        │                    ├── OpenGL backend ──► TextureOpenGL (GPU texture via DSA)
+        │                    │     glCreateTextures(GL_TEXTURE_2D, 1, &handle)
+        │                    │     glTextureStorage2D(handle, 1, GL_RGBA8, w, h)
+        │                    │     glTextureSubImage2D(handle, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data)
+        │                    │     glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        │                    │     glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        │                    │     glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+        │                    │     glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+        │                    │
+        │                    └── Headless backend ──► TextureHeadless (in-memory pixels)
+        │
+        ▼
+Material::set_texture("uTexture", shared_ptr<Texture>)
+        │
+        ▼
+Material::bind()  [called at draw time by RenderDevice::draw/draw_indexed]
+        │
+        ├── 1. glUseProgram(program)
+        ├── 2. For each cached uniform: glUniform*(location, value)
+        ├── 3. For each bound texture:
+        │         glActiveTexture(GL_TEXTURE0 + unit)
+        │         glBindTexture(GL_TEXTURE_2D, handle)
+        │         glUniform1i(sampler_location, unit)
+        │         unit++
+        └── 4. (Ready for draw call)
+```
+
+The key design decisions in this flow:
+
+- **Deferred uniform application**: `Material::set_uniform()` caches values but does NOT call `glUniform*` immediately. All GL state is applied in `Material::bind()`, which must be called after `glUseProgram()` — fixing the ordering bug where `glUniform*` calls before `glUseProgram()` were silently ignored.
+- **Automatic texture unit management**: `MaterialOpenGL::bind()` assigns texture units sequentially (`GL_TEXTURE0`, `GL_TEXTURE1`, ...) per draw call, starting at 0 each time `bind()` is called.
+- **`create_texture(const Image&)`**: accepts an `Image` (loaded PNG with row-flipping already applied via `Image::load` / `Image::create`). The image data is expected to be RGBA (4 channels). Returns `Result<std::unique_ptr<Texture>>`.
+
 ### Error propagation
 
-All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
-- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `IoFailed`, `Unsupported`, `InputInitFailed`, `Unknown`
+All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`, `create_texture`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
+- `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `TextureCreationFailed`, `IoFailed`, `Unsupported`, `InputInitFailed`, `Unknown`
 - `code`: backend-specific numeric error code (defaults to 0)
 - `message`: human-readable description
 

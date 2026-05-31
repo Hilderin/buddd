@@ -72,6 +72,14 @@ RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
 
 `EngineService` (in `src/engine/engine_service.h/.cpp`) is the lifecycle owner of the component chain. Created via the factory method `EngineService::create(Backend, WindowConfig)`, it owns `Platform` → `Window` → `RenderDevice` via `std::unique_ptr`. Used by both tests and production code (`demo_command.cpp`). Member declaration order (`platform_`, `window_`, `device_`) guarantees correct destruction ordering (RenderDevice first, then Window, then Platform).
 
+## Texture data dependency
+
+`RenderDevice::create_texture(const Image&)` introduces a dependency from `render/` → `image/`:
+
+- `RenderDeviceOpenGL::create_texture()` calls `glCreateTextures`/`glTextureStorage2D`/`glTextureSubImage2D` using image width, height, channels, and RGBA pixel data from the `Image` object.
+- `RenderDeviceHeadless::create_texture()` copies pixel data into an in-memory `TextureHeadless`.
+- `Texture` is backend-agnostic: `TextureOpenGL` and `TextureHeadless` are private headers inside `src/engine/render/`, maintaining the architecture boundary.
+
 ## Key constraints
 
 - The engine is a **static library** (`STATIC`), not header-only. This may change in the future.

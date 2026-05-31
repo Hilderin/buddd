@@ -38,6 +38,8 @@ public:
         IndexType type
     ) -> Result<std::unique_ptr<IndexBuffer>> override;
 
+    auto create_texture(const Image& image) -> Result<std::unique_ptr<Texture>> override;
+
     // -- Drawing --
     auto draw(
         PrimitiveTopology topology,
