@@ -1,5 +1,10 @@
 # Buddd Engine
 
+[![CI](https://github.com/Hilderin/buddd/actions/workflows/ci.yml/badge.svg)](https://github.com/Hilderin/buddd/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![C++26](https://img.shields.io/badge/C%2B%2B-26-00599C.svg)](https://en.cppreference.com/w/cpp/26)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
 **Buddd** is a C++26 3D graphics engine and the living testbed for a custom **Spec-Driven Development (SDD)** framework built on top of [OpenCode](https://opencode.ai).
 
 > **Spec-Driven Development** means that every line of production code is derived from an accepted functional spec, refined through a multi-agent critique pipeline, and gated behind a rigorous workflow — no code is written directly from a raw user request or an unvalidated spec.
