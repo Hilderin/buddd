@@ -8,6 +8,8 @@
 
 #include "image/image.h"
 #include "render/glsl_util.h"
+#include "render/shader_program.h"
+#include "render/shader_program_headless.h"
 
 #include <algorithm>
 #include <cctype>
@@ -165,6 +167,14 @@ auto RenderDeviceHeadless::create_shader(ShaderType type, std::string_view sourc
     return std::unique_ptr<Shader>(new ShaderHeadless(type, std::string(source)));
 }
 
+auto RenderDeviceHeadless::create_shader_program(
+    std::unique_ptr<Shader> vertex_shader,
+    std::unique_ptr<Shader> fragment_shader
+) -> Result<std::unique_ptr<ShaderProgram>>
+{
+    return ShaderProgramHeadless::create(std::move(vertex_shader), std::move(fragment_shader));
+}
+
 auto RenderDeviceHeadless::create_material(
     std::unique_ptr<Shader> vertex_shader,
     std::unique_ptr<Shader> fragment_shader,
@@ -218,6 +228,26 @@ auto RenderDeviceHeadless::create_material(
 
     std::cerr << "Material created (Headless)\n";
 
+    return std::unique_ptr<Material>(
+        new MaterialHeadless(std::move(uniform_names)));
+}
+
+auto RenderDeviceHeadless::create_material(std::shared_ptr<ShaderProgram> program)
+    -> Result<std::unique_ptr<Material>>
+{
+    if (!program || !program->is_valid()) {
+        return make_error(Error::Category::InvalidArgument, "Invalid ShaderProgram");
+    }
+    ++material_count_;
+
+    // Extract uniform names from shader sources (available in headless mode)
+    std::unordered_set<std::string> uniform_names;
+    auto vs_uniforms = detail::extract_uniform_names(program->vs_source());
+    auto fs_uniforms = detail::extract_uniform_names(program->fs_source());
+    uniform_names.insert(vs_uniforms.begin(), vs_uniforms.end());
+    uniform_names.insert(fs_uniforms.begin(), fs_uniforms.end());
+
+    std::cerr << "Material created (Headless, from ShaderProgram)\n";
     return std::unique_ptr<Material>(
         new MaterialHeadless(std::move(uniform_names)));
 }

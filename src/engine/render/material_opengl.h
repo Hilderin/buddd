@@ -2,10 +2,12 @@
 
 #include "material.h"
 #include "render/texture.h"
+#include "render/shader_program.h"
 
 #include <SDL3/SDL_opengl.h>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -15,6 +17,7 @@ namespace buddd::engine {
 class MaterialOpenGL final : public Material {
 public:
     explicit MaterialOpenGL(GLuint program);
+    explicit MaterialOpenGL(std::shared_ptr<ShaderProgram> program);
     ~MaterialOpenGL() override;
 
     auto set_uniform(std::string_view name, float value) -> Result<void> override;
@@ -39,8 +42,10 @@ public:
 
 private:
     auto get_uniform_location(std::string_view name) -> Result<GLint>;
+    auto active_program() const noexcept -> GLuint;
 
     GLuint program_;
+    std::shared_ptr<ShaderProgram> shader_program_;
     mutable std::unordered_map<std::string, GLint> location_cache_;
 
     std::unordered_map<std::string, std::variant<float, int32_t, bool, math::Vec3, math::Vec4, math::Mat4>> uniform_cache_;

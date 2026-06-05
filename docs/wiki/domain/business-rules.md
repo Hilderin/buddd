@@ -14,6 +14,7 @@
 | `buddd run textured-cube` | `TexturedCubeApp` | Runs until window close |
 | `buddd run free-camera` | `FreeCameraApp` | Interactive, ESC to exit |
 | `buddd run phong` | `PhongApp` | Interactive, ESC to exit |
+| `buddd run asset-demo` | `AssetDemoApp` | Runs until window close (120 frames) |
 | `buddd run <scene> --frame N` | (same App) | Limit to N frames |
 | `buddd run <scene> --capture N:path` | (same App) | Capture frame N to path |
 | `buddd version` | — | Prints version to stdout |
@@ -32,6 +33,7 @@
 | textured-cube | Textured cube with UV-mapped brick texture | Runs until window close |
 | free-camera | Interactive free camera (WASD + mouse look, ESC to exit) | Interactive, ESC to exit |
 | phong | Phong lighting demo (5 cubes + 5 lights) | Interactive, ESC to exit |
+| asset-demo | Asset pipeline demo: textured cube loaded via YAML metadata | Runs until window close (120 frames) |
 
 ### Flags for `buddd run`
 
@@ -242,6 +244,63 @@ All three light components follow the `CameraComponent` accessor pattern:
 - `extract_uniform_names()` parses GLSL source for `uniform` declarations, handling: `uniform type name;`, `uniform type name[N];`, `uniform type name = default;`, `uniform type name[N] = default;`, and `layout(...) uniform type name;`.
 - `normalize_uniform_name()` strips `[N]` array subscript suffixes (e.g., `"u_light_colours[3]"` → `"u_light_colours"`).
 - Both functions are shared by `RenderDeviceOpenGL` and `RenderDeviceHeadless` — replacing previously duplicated code.
+
+## Asset Manager Rules (SPEC-019)
+
+### Asset ID naming convention
+
+- **Asset ID = relative path from `assets/` without `.yaml` extension**. E.g., `"textures/brick"` maps to `assets/textures/brick.yaml`.
+- Asset IDs are unique — they serve as cache keys in `AssetManager::create<T>(id)`.
+- Asset IDs use forward slashes (`/`) as path separators regardless of platform.
+- The `base_path` passed to `AssetManager::create()` defaults to `"assets"` (resolved relative to the working directory).
+
+### YAML schemas
+
+**Texture YAML** (`assets/textures/<name>.yaml`):
+```yaml
+type: Texture          # required, must be "Texture"
+version: 1              # optional, default 1
+source: path/to.png     # required, absolute or relative to CWD
+settings:               # optional, parsed but NOT applied in V1
+  wrap_s: repeat        # repeat / clamp / mirrored_repeat
+  wrap_t: repeat
+  min_filter: linear    # nearest / linear / nearest_mipmap_linear / linear_mipmap_linear
+  mag_filter: linear    # nearest / linear
+  generate_mipmaps: true
+```
+
+**Material YAML** (`assets/materials/<name>.yaml`):
+```yaml
+type: Material          # required, must be "Material"
+version: 1              # optional, default 1
+shaders:                # required
+  vertex: path/to.vert  # required, absolute or relative to CWD
+  fragment: path/to.frag # required
+textures:               # optional — map sampler name → asset ID
+  albedo: textures/brick
+constants:              # optional — map uniform name → float value
+  roughness: 0.5
+```
+
+### Loading rules
+
+- Assets are loaded **lazily** — no filesystem scan at startup. The first `create<T>(id)` call parses the YAML and loads all dependencies.
+- Loading the same asset ID twice returns the **cached instance** (same `shared_ptr` address). Cache persists for the lifetime of the `AssetManager`.
+- `create<T>(id)` validates that the YAML `type` field matches the requested C++ type `T`. Mismatch returns `Error::Category::InvalidArgument`.
+- `create<T>(id)` validates the `version` field. If present and not `1`, returns `Error::Category::Unsupported`.
+- Texture `settings` fields (wrap, filter, mipmap) are **parsed and validated but NOT applied in V1**. GPU texture creation uses the current defaults (linear filtering, clamp-to-edge wrapping).
+
+### Shader program deduplication
+
+- Two `MaterialAsset`s with the same `(vertex_path, fragment_path)` share a single `shared_ptr<ShaderProgram>` — they share **only** the compiled GL program.
+- Each `Material` retains independent uniform/texture state.
+- The deduplication map lives inside `AssetManager` (`unordered_map<ShaderProgramKey, shared_ptr<ShaderProgram>>`).
+
+### Hot-reload (V1 — stub handlers)
+
+- The FileWatcher is Linux inotify only (`#ifdef __linux__`). On non-Linux or headless, `NullFileWatcher` is used.
+- `poll_file_events()` must be called explicitly by user code (e.g., once per frame) — the engine does not call it automatically.
+- Hot-reload handlers are implemented as stubs in V1 — no actual reload occurs. The pipeline structure (dependency map lookup, event injection) is tested but functional reload is deferred.
 
 ### MaterialHeadless diagnostic accessors
 

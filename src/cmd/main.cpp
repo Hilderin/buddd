@@ -1,5 +1,6 @@
 #include "app.h"
 #include "app_config.h"
+#include "apps/asset_demo_app.h"
 #include "apps/cube_app.h"
 #include "apps/cube_scene_app.h"
 #include "apps/free_camera_app.h"
@@ -69,6 +70,8 @@ auto main(int argc, char* argv[]) -> int {
             app = std::make_unique<bc::app::FreeCameraApp>();
         else if (scene == "phong")
             app = std::make_unique<bc::app::PhongApp>();
+        else if (scene == "asset-demo")
+            app = std::make_unique<bc::app::AssetDemoApp>();
         else {
             std::fprintf(stderr, "Unknown scene: '%s'\n\n", argv[2]);
             std::fprintf(stderr,
@@ -82,6 +85,7 @@ auto main(int argc, char* argv[]) -> int {
                 "  textured-cube  Textured cube with UV-mapped brick texture (120 frames)\n"
                 "  free-camera  Interactive free camera (WASD + mouse look, ESC to exit)\n"
                 "  phong        Phong lighting demo (interactive, 5 cubes + 5 lights)\n"
+                "  asset-demo   Asset pipeline demo: textured cube loaded via YAML metadata (120 frames)\n"
                 "\n"
                 "Flags:\n"
                 "  --frame N        Render exactly N frames, then exit (default: interactive)\n"

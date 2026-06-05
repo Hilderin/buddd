@@ -3,6 +3,7 @@
 #include "render_device.h"
 #include "shader.h"
 #include "material.h"
+#include "render/shader_program.h"
 #include "vertex_buffer.h"
 #include "index_buffer.h"
 #include "primitive_topology.h"
@@ -24,11 +25,17 @@ public:
 
     // -- Resource factories --
     auto create_shader(ShaderType type, std::string_view source) -> Result<std::unique_ptr<Shader>> override;
+    auto create_shader_program(
+        std::unique_ptr<Shader> vertex_shader,
+        std::unique_ptr<Shader> fragment_shader
+    ) -> Result<std::unique_ptr<ShaderProgram>> override;
     auto create_material(
         std::unique_ptr<Shader> vertex_shader,
         std::unique_ptr<Shader> fragment_shader,
         std::span<const std::string> known_uniforms = {}
     ) -> Result<std::unique_ptr<Material>> override;
+    auto create_material(std::shared_ptr<ShaderProgram> program)
+        -> Result<std::unique_ptr<Material>> override;
     auto create_vertex_buffer(
         const VertexFormat& format,
         std::span<const std::byte> data

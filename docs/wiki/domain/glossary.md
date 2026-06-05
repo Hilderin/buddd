@@ -94,6 +94,24 @@
 
 The project uses [Semantic Versioning](https://semver.org/) (major.minor.patch). The initial version is `0.1.0`.
 
+### Asset system terms
+
+| Term | Definition |
+|---|---|
+| **Asset** | Abstract base class (`buddd::engine::Asset`) for all asset types. Virtual destructor, non-copyable, non-movable. Concrete subclasses: `TextureAsset`, `MaterialAsset`. |
+| **AssetManager** | Core class (`buddd::engine::AssetManager`) in `src/engine/asset/`. Provides ID-based lazy loading via `create<T>(id) -> Result<shared_ptr<T>>`. Owns the asset cache, shader program deduplication map, dependency map, and FileWatcher. Created via `AssetManager::create(RenderDevice&, base_path)`. Owned by `EngineService` and accessible via `engine_service.assets()`. |
+| **TextureAsset** | Concrete asset class (`buddd::engine::TextureAsset`) wrapping a `std::shared_ptr<Texture>`. Loaded from a YAML file with `type: Texture`. Accessor: `texture() -> const shared_ptr<Texture>&`. |
+| **MaterialAsset** | Concrete asset class (`buddd::engine::MaterialAsset`) wrapping a `std::shared_ptr<Material>`. Loaded from a YAML file with `type: Material`. Accessor: `material() -> const shared_ptr<Material>&`. |
+| **ShaderProgram** | Abstract base class (`buddd::engine::ShaderProgram`) wrapping a compiled GPU shader program handle. Pure virtual `handle() -> uint32_t`, `is_valid()`, `replace_handle()`, `release_handle()`. Non-copyable. Concrete backends: `ShaderProgramOpenGL` (wraps `GLuint`), `ShaderProgramHeadless` (generation counter). Materials share `shared_ptr<ShaderProgram>` for deduplication. Defined in `src/engine/render/` (CONST-001 compliant — base uses `uint32_t` not `GLuint`). |
+| **ShaderProgramKey** | Key struct for shader program deduplication in `AssetManager`. Pair of `std::string vertex_path` and `std::string fragment_path`. Has custom `std::hash` specialization. |
+| **FileWatcher** | Abstract base class (`buddd::engine::FileWatcher`) for filesystem monitoring. Pure virtual `poll_events()`, `start()`, `stop()`. Linux implementation: `InotifyFileWatcher` (inotify, dedicated thread). Non-Linux/headless: `NullFileWatcher` (no-op). |
+| **NullFileWatcher** | No-op `FileWatcher` subclass used on non-Linux platforms and in headless mode. `poll_events()` always returns empty vector. |
+| **FileEvent** | Struct (`buddd::engine::FileEvent`) with `std::string path` and `FileEventType type` (`Created`, `Modified`, `Deleted`). Produced by `FileWatcher` and consumed by `AssetManager::poll_file_events()`. |
+| **DependencyMap** | Internal class (`buddd::engine::DependencyMap`) for bidirectional asset↔source file tracking. Tracks `asset_id → [source_paths]` (forward) and `source_path → [asset_ids]` (reverse). Used by `AssetManager` for hot-reload: when a source file changes, all dependent assets are identified and reloaded. |
+| **Asset ID** | The relative path from the `assets/` directory, without the `.yaml` extension. E.g., `"textures/brick"` maps to `assets/textures/brick.yaml`. Asset IDs are unique per asset and serve as the cache key in `AssetManager`. |
+| **YAML asset metadata** | Declarative YAML files under `assets/` defining asset properties. Two schemas in V1: `Texture` (type, version, source, settings) and `Material` (type, version, shaders, textures, constants). Parsed by yaml-cpp with exception-to-`Result<T>` conversion. |
+| **yaml-cpp** | Third-party YAML parsing library (jbeder/yaml-cpp v0.8.0) fetched via `FetchContent`. Linked as a PRIVATE dependency of `buddd_engine`. No yaml-cpp types appear in public headers. See ADR-016. |
+
 ## Reference
 
 - Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Assumptions A-05 through A-09

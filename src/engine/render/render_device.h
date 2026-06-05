@@ -16,6 +16,7 @@ class Image;
 class Shader;
 class Material;
 class Texture;
+class ShaderProgram;
 class VertexBuffer;
 class IndexBuffer;
 enum class ShaderType;
@@ -42,11 +43,17 @@ public:
 
     // -- Resource factories --
     [[nodiscard]] virtual auto create_shader(ShaderType type, std::string_view source) -> Result<std::unique_ptr<Shader>> = 0;
+    [[nodiscard]] virtual auto create_shader_program(
+        std::unique_ptr<Shader> vertex_shader,
+        std::unique_ptr<Shader> fragment_shader
+    ) -> Result<std::unique_ptr<ShaderProgram>> = 0;
     [[nodiscard]] virtual auto create_material(
         std::unique_ptr<Shader> vertex_shader,
         std::unique_ptr<Shader> fragment_shader,
         std::span<const std::string> known_uniforms = {}
     ) -> Result<std::unique_ptr<Material>> = 0;
+    [[nodiscard]] virtual auto create_material(std::shared_ptr<ShaderProgram> program)
+        -> Result<std::unique_ptr<Material>> = 0;
     [[nodiscard]] virtual auto create_vertex_buffer(
         const VertexFormat& format,
         std::span<const std::byte> data

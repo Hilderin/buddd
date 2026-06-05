@@ -2,6 +2,7 @@
 #include "platform/platform.h"
 #include "window/window.h"
 #include "render/render_device.h"
+#include "asset/asset_manager.h"
 
 namespace buddd::engine {
 
@@ -32,8 +33,18 @@ auto EngineService::create(Backend backend, const WindowConfig& config)
         return std::unexpected(device.error());
     }
 
-    return std::unique_ptr<EngineService>(
+    auto engine = std::unique_ptr<EngineService>(
         new EngineService(std::move(*platform), std::move(*window), std::move(*device)));
+
+    // Create AssetManager after engine is constructed (asset_manager_ must be
+    // declared after device_ for correct destruction order).
+    auto asset_mgr = AssetManager::create(engine->device(), "assets");
+    if (!asset_mgr) {
+        return std::unexpected(asset_mgr.error());
+    }
+    engine->asset_manager_ = std::move(*asset_mgr);
+
+    return engine;
 }
 
 auto EngineService::platform() noexcept -> Platform& {
@@ -46,6 +57,10 @@ auto EngineService::window() noexcept -> Window& {
 
 auto EngineService::device() noexcept -> RenderDevice& {
     return *device_;
+}
+
+auto EngineService::assets() noexcept -> AssetManager& {
+    return *asset_manager_;
 }
 
 } // namespace buddd::engine

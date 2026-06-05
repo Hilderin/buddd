@@ -9,25 +9,46 @@ namespace buddd::engine {
 MaterialOpenGL::MaterialOpenGL(GLuint program)
     : program_(program) {}
 
+MaterialOpenGL::MaterialOpenGL(std::shared_ptr<ShaderProgram> program)
+    : program_(program ? static_cast<GLuint>(program->handle()) : 0)
+    , shader_program_(std::move(program)) {}
+
 MaterialOpenGL::~MaterialOpenGL() {
-    glDeleteProgram(program_);
+    if (!shader_program_) {
+        glDeleteProgram(program_);
+    }
+    // If shader_program_ is set, the ShaderProgram owns the GL handle
 }
 
 auto MaterialOpenGL::program() const noexcept -> GLuint {
+    if (shader_program_) {
+        return static_cast<GLuint>(shader_program_->handle());
+    }
     return program_;
 }
 
+auto MaterialOpenGL::active_program() const noexcept -> GLuint {
+    return program();
+}
+
 auto MaterialOpenGL::get_uniform_location(std::string_view name) -> Result<GLint> {
-    auto it = location_cache_.find(std::string(name));
-    if (it != location_cache_.end()) {
-        if (it->second == -1) {
+    GLuint prog = active_program();
+    if (prog == 0) {
+        return make_error(Error::Category::InvalidArgument,
+            "No active shader program");
+    }
+
+    // Check cache first
+    auto cache_it = location_cache_.find(std::string(name));
+    if (cache_it != location_cache_.end()) {
+        if (cache_it->second == -1) {
             return make_error(Error::Category::UniformNotFound,
                 "Uniform '" + std::string(name) + "' not found");
         }
-        return it->second;
+        return cache_it->second;
     }
 
-    GLint location = glGetUniformLocation(program_, name.data());
+    GLint location = glGetUniformLocation(prog, name.data());
     location_cache_[std::string(name)] = location;
 
     if (location == -1) {
@@ -106,7 +127,9 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Mat4& value)
 // ============================================================================
 
 auto MaterialOpenGL::has_uniform(std::string_view name) const -> bool {
-    GLint location = glGetUniformLocation(program_, name.data());
+    GLuint prog = active_program();
+    if (prog == 0) return false;
+    GLint location = glGetUniformLocation(prog, name.data());
     return location != -1;
 }
 
@@ -131,7 +154,9 @@ auto MaterialOpenGL::set_texture(std::string_view name, std::shared_ptr<Texture>
 }
 
 auto MaterialOpenGL::has_texture(std::string_view name) const -> bool {
-    GLint location = glGetUniformLocation(program_, name.data());
+    GLuint prog = active_program();
+    if (prog == 0) return false;
+    GLint location = glGetUniformLocation(prog, name.data());
     return location != -1;
 }
 
@@ -141,14 +166,16 @@ auto MaterialOpenGL::has_texture(std::string_view name) const -> bool {
 
 auto MaterialOpenGL::bind() const -> void {
     // 1. Activate the shader program
-    glUseProgram(program_);
+    GLuint prog = active_program();
+    if (prog == 0) return;
+    glUseProgram(prog);
 #ifndef NDEBUG
-    std::cerr << "Material bind: program " << program_ << "\n";
+    std::cerr << "Material bind: program " << prog << "\n";
 #endif
 
     // 2. Apply cached uniforms
     for (const auto& [name, value] : uniform_cache_) {
-        GLint loc = glGetUniformLocation(program_, name.c_str());
+        GLint loc = glGetUniformLocation(prog, name.c_str());
         if (loc == -1) continue;  // uniform was removed or program changed — skip
         std::visit([loc](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -167,7 +194,7 @@ auto MaterialOpenGL::bind() const -> void {
         glActiveTexture(GL_TEXTURE0 + unit);
         auto* gl_tex = static_cast<TextureOpenGL*>(texture.get());
         glBindTexture(GL_TEXTURE_2D, gl_tex->handle());
-        GLint loc = glGetUniformLocation(program_, name.c_str());
+        GLint loc = glGetUniformLocation(prog, name.c_str());
         if (loc != -1) {
             glUniform1i(loc, unit);
         }

@@ -32,6 +32,7 @@ For `run`, the scene dispatch is:
 ├── argv[2] == "textured-cube"             → TexturedCubeApp
 ├── argv[2] == "free-camera"               → FreeCameraApp
 ├── argv[2] == "phong"                     → PhongApp
+├── argv[2] == "asset-demo"               → AssetDemoApp
 └── Unknown scene                          → fprintf(stderr, "Unknown scene: ..."), exit 1
 ```
 
@@ -41,6 +42,7 @@ Output:
 |---|---|---|
 | `buddd` / `buddd run` | — | `"Window opened: 1024x768"`, then `"Window closed, shutting down."` (via `std::cerr`) |
 | `buddd run <scene>` | — | Scene-specific messages: frame-limited scenes print `"Scene started: <name> (N frames)"` + `"Scene complete: <name> (N frames rendered)"`. Interactive scenes print `"Scene started: <name> (interactive)"` and `"Scene complete: <name> (interactive)"` on Escape. On window close: `"Scene aborted by user (frame N)"`. If unknown scene: `"Unknown scene: '<name>'"` + usage. |
+| `buddd run asset-demo` | — | `"Scene started: asset-demo (120 frames)"`, `"Scene complete: asset-demo (120 frames rendered)"` (via `std::cerr`) |
 | `buddd run <scene> --capture N:path` | `"Captured: <path>"` | Capture messages merged into scene output |
 | `buddd version` | `"buddd 0.1.0"` | — |
 | `buddd help` | Usage text (3 commands: `run`, `version`, `help`) | — |
@@ -214,9 +216,94 @@ The key design decisions in this flow:
 - **Automatic texture unit management**: `MaterialOpenGL::bind()` assigns texture units sequentially (`GL_TEXTURE0`, `GL_TEXTURE1`, ...) per draw call, starting at 0 each time `bind()` is called.
 - **`create_texture(const Image&)`**: accepts an `Image` (loaded PNG with row-flipping already applied via `Image::load` / `Image::create`). The image data is expected to be RGBA (4 channels). Returns `Result<std::unique_ptr<Texture>>`.
 
+### Asset loading data flow (SPEC-019)
+
+The Asset Manager provides ID-based lazy loading of assets from YAML metadata files. The flow for `AssetManager::create<T>(id)`:
+
+```
+User code:
+    asset_manager.create<TextureAsset>("textures/brick")
+                              │
+                              ▼
+    1. Compute path: base_path_ + "/" + id + ".yaml"
+    2. Check cache_ — return cached if found (type-validated via dynamic_cast)
+    3. Parse YAML with yaml-cpp (exceptions caught, converted to Result<T>)
+    4. Validate `type` field matches T ("Texture" or "Material")
+    5. Validate `version` field (must be 1)
+    6. Load asset:
+       ├── TextureAsset: read `source` path → Image::load() → device.create_texture()
+       └── MaterialAsset:
+           ├── Load vertex/fragment shader source from disk
+           ├── Deduplicate ShaderProgram by (vert_path, frag_path):
+           │   ├── If already compiled → reuse shared_ptr<ShaderProgram>
+           │   └── Else → device.create_shader() + ShaderProgram::create() → cache
+           ├── device.create_material(shared_ptr<ShaderProgram>)  ← new overload
+           ├── Resolve texture refs (recursive create<TextureAsset>())
+           ├── Apply constant overrides (set_uniform from YAML constants)
+    7. Record dependencies in DependencyMap (YAML + all source files)
+    8. Store in cache_, return shared_ptr<T>
+```
+
+Shader program deduplication flow:
+
+```
+Two materials with same (vert, frag) paths:
+    Material A                    Material B
+         │                             │
+         ▼                             ▼
+    both look up ShaderProgramKey{vert_path, frag_path}
+         │                             │
+         └──────────┬──────────────────┘
+                    ▼
+    shader_programs_[key] → shared_ptr<ShaderProgram>
+                    │
+         ┌──────────┴──────────┐
+         ▼                     ▼
+    Material A (own          Material B (own
+    uniforms/textures)       uniforms/textures)
+         │                     │
+         └──────────┬──────────┘
+                    ▼
+    Both share same GL program handle (ShaderProgram)
+    Each has independent Material object
+```
+
+Hot-reload flow (via explicit `poll_file_events()`):
+
+```
+FileWatcher thread (inotify):          Main thread:
+    │                                       │
+    ├── detects file change                 │
+    ├── pushes FileEvent                    │
+    │   to thread-safe queue                │
+    │                                       ├── poll_file_events() called
+    │                                       │   per frame by user code
+    │                                       │
+    │                                       ├── drains queue
+    │                                       │   ├── YAML change:
+    │                                       │   │   → reload asset metadata
+    │                                       │   │   → re-resolve dependencies
+    │                                       │   │   → update cache
+    │                                       │   ├── Image file change:
+    │                                       │   │   → reload Image
+    │                                       │   │   → create new GPU texture
+    │                                       │   │   → swap GL handle in-place
+    │                                       │   │     (replace_gl_handle)
+    │                                       │   └── Shader file change:
+    │                                       │       → recompile shaders
+    │                                       │       → new ShaderProgram
+    │                                       │       → move-assign into
+    │                                       │         existing shared_ptr
+    │                                       │
+    │                                       └── (Materials auto-see new
+    │                                            handle at bind() time)
+```
+
+The FileWatcher is Linux-only (inotify). On non-Linux or headless mode, a `NullFileWatcher` is used — `poll_file_events()` returns immediately with no events.
+
 ### Error propagation
 
-All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`, `create_texture`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
+All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`, `create_texture`, `AssetManager::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
 - `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `TextureCreationFailed`, `IoFailed`, `Unsupported`, `InputInitFailed`, `Unknown`
 - `code`: backend-specific numeric error code (defaults to 0)
 - `message`: human-readable description

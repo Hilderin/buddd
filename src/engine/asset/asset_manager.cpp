@@ -1,0 +1,496 @@
+#include "asset/asset_manager.h"
+#include "render/render_device.h"
+#include "image/image.h"
+
+#include <yaml-cpp/yaml.h>
+
+#include <algorithm>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <utility>
+
+namespace buddd::engine {
+
+// ============================================================================
+// Construction / Destruction
+// ============================================================================
+
+AssetManager::AssetManager(RenderDevice& device, std::string base_path)
+    : device_(device)
+    , base_path_(std::move(base_path))
+{
+}
+
+AssetManager::~AssetManager() = default;
+
+auto AssetManager::create(RenderDevice& device, std::string_view base_path)
+    -> Result<std::unique_ptr<AssetManager>>
+{
+    if (base_path.empty()) {
+        return make_error(Error::Category::InvalidArgument,
+            "AssetManager base path must not be empty");
+    }
+
+    auto mgr = std::unique_ptr<AssetManager>(
+        new AssetManager(device, std::string(base_path)));
+
+    // Create and start FileWatcher
+#ifdef __linux__
+    if (auto watcher = FileWatcher::create(mgr->base_path_)) {
+        mgr->file_watcher_ = std::move(*watcher);
+        mgr->file_watcher_->start();
+    } else {
+        std::cerr << "[FileWatcher] Failed to create: "
+                  << watcher.error().message << " \u2014 falling back to NullFileWatcher\n";
+        mgr->file_watcher_ = std::make_unique<NullFileWatcher>();
+    }
+#else
+    mgr->file_watcher_ = std::make_unique<NullFileWatcher>();
+#endif
+
+    return mgr;
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+auto AssetManager::create_texture(std::string_view id) -> Result<std::shared_ptr<TextureAsset>> {
+    return create<TextureAsset>(id);
+}
+
+auto AssetManager::create_material(std::string_view id) -> Result<std::shared_ptr<MaterialAsset>> {
+    return create<MaterialAsset>(id);
+}
+
+auto AssetManager::clear() -> void {
+    size_t count = cache_.size();
+    cache_.clear();
+    shader_programs_.clear();
+    dependency_map_.clear();
+#ifndef NDEBUG
+    std::cerr << "[Asset] Cache cleared (" << count << " assets)\n";
+#endif
+}
+
+auto AssetManager::base_path() const noexcept -> std::string_view {
+    return base_path_;
+}
+
+auto AssetManager::poll_file_events() -> void {
+    if (!file_watcher_ || !file_watcher_enabled_) return;
+
+    auto events = file_watcher_->poll_events();
+    for (const auto& event : events) {
+        auto dependents = dependency_map_.get_dependents(event.path);
+        if (dependents.empty()) continue;
+
+        // Collect asset IDs into a vector (avoid iterator invalidation)
+        std::vector<std::string> asset_ids(dependents.begin(), dependents.end());
+
+        for (const auto& asset_id : asset_ids) {
+            if (event.path.size() >= 5 &&
+                event.path.substr(event.path.size() - 5) == ".yaml") {
+                handle_yaml_change(asset_id);
+            } else {
+                handle_source_change(asset_id);
+            }
+        }
+    }
+}
+
+auto AssetManager::set_file_watcher_enabled(bool enabled) -> void {
+    file_watcher_enabled_ = enabled;
+}
+
+// ============================================================================
+// Test-only accessors
+// ============================================================================
+
+#ifdef BUDDD_TESTING
+auto AssetManager::get_dependency_map() const -> const DependencyMap& {
+    return dependency_map_;
+}
+
+auto AssetManager::testing_shader_programs() const noexcept
+    -> const std::unordered_map<ShaderProgramKey, std::shared_ptr<ShaderProgram>>&
+{
+    return shader_programs_;
+}
+
+void AssetManager::testing_inject_file_event(const FileEvent& event) {
+    auto dependents = dependency_map_.get_dependents(event.path);
+    if (dependents.empty()) return;
+
+    std::vector<std::string> asset_ids(dependents.begin(), dependents.end());
+
+    for (const auto& asset_id : asset_ids) {
+        if (event.path.size() >= 5 &&
+            event.path.substr(event.path.size() - 5) == ".yaml") {
+            handle_yaml_change(asset_id);
+        } else {
+            handle_source_change(asset_id);
+        }
+    }
+}
+#endif
+
+// ============================================================================
+// Path resolution and file I/O
+// ============================================================================
+
+auto AssetManager::resolve_path(std::string_view path) -> std::string {
+    if (path.empty()) return std::string(path);
+    if (path.front() == '/') return std::string(path);
+    return std::string(path);
+}
+
+auto AssetManager::read_file(const std::string& path) -> Result<std::string> {
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    if (!file) {
+        return make_error(Error::Category::IoFailed,
+            "Failed to open: " + path + " (" + std::strerror(errno) + ")");
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+
+    if (file.bad()) {
+        return make_error(Error::Category::IoFailed,
+            "Failed to read: " + path);
+    }
+
+    return buffer.str();
+}
+
+// ============================================================================
+// YAML parsing helper
+// ============================================================================
+
+namespace {
+
+auto parse_yaml_file(const std::string& yaml_path) -> Result<YAML::Node> {
+    try {
+        return YAML::LoadFile(yaml_path);
+    } catch (const YAML::Exception& e) {
+        return make_error(Error::Category::IoFailed,
+            "YAML parse error in " + yaml_path + ": " + e.what());
+    } catch (const std::exception& e) {
+        return make_error(Error::Category::IoFailed,
+            "Unexpected error parsing " + yaml_path + ": " + e.what());
+    }
+}
+
+auto get_yaml_type(const YAML::Node& yaml) -> std::string {
+    try {
+        return yaml["type"].as<std::string>("");
+    } catch (...) {
+        return "";
+    }
+}
+
+auto get_yaml_version(const YAML::Node& yaml) -> int {
+    try {
+        return yaml["version"].as<int>(1);
+    } catch (...) {
+        return 1;
+    }
+}
+
+} // anonymous namespace
+
+// ============================================================================
+// load_texture
+// ============================================================================
+
+auto AssetManager::load_texture(const std::string& id, const std::string& yaml_path)
+    -> Result<std::shared_ptr<TextureAsset>>
+{
+    // 1. Parse YAML
+    auto yaml_result = parse_yaml_file(yaml_path);
+    if (!yaml_result) {
+#ifndef NDEBUG
+        std::cerr << "[Asset] YAML error: " << yaml_path << " - "
+                  << yaml_result.error().message << "\n";
+#endif
+        return std::unexpected(yaml_result.error());
+    }
+    auto yaml = std::move(*yaml_result);
+
+    // 2. Validate type
+    auto type = get_yaml_type(yaml);
+    if (type != "Texture") {
+        auto err = make_error(Error::Category::InvalidArgument,
+            "Expected type 'Texture', got '" + type + "'");
+#ifndef NDEBUG
+        std::cerr << "[Asset] Type mismatch: " << id << " (expected Texture, got " << type << ")\n";
+#endif
+        return std::unexpected(err);
+    }
+
+    // 3. Validate version
+    auto version = get_yaml_version(yaml);
+    if (version != 1) {
+        return make_error(Error::Category::Unsupported,
+            "Unsupported Texture version: " + std::to_string(version));
+    }
+
+    // 4. Parse source image path
+    std::string source;
+    try {
+        source = yaml["source"].as<std::string>("");
+    } catch (...) {}
+    if (source.empty()) {
+        return make_error(Error::Category::InvalidArgument,
+            "Texture 'source' field is required");
+    }
+    auto source_path = resolve_path(source);
+
+    // 5. Load image and create texture
+    auto image = Image::load(source_path);
+    if (!image) {
+        return std::unexpected(image.error());
+    }
+
+    auto texture = device_.create_texture(*image);
+    if (!texture) {
+        return std::unexpected(texture.error());
+    }
+
+    std::shared_ptr<Texture> shared_tex(std::move(*texture));
+
+    // 6. Texture settings from YAML — parsed but NOT applied (V1)
+    //    Fields: wrap_s, wrap_t, min_filter, mag_filter, generate_mipmaps
+    try {
+        auto settings = yaml["settings"];
+        if (settings) {
+            auto parse_filter = [](const std::string&) {
+                // Validated but not applied
+            };
+            parse_filter(settings["wrap_s"].as<std::string>(""));
+            parse_filter(settings["wrap_t"].as<std::string>(""));
+            parse_filter(settings["min_filter"].as<std::string>(""));
+            parse_filter(settings["mag_filter"].as<std::string>(""));
+            // generate_mipmaps: parsed but not applied
+            settings["generate_mipmaps"].as<bool>(false);
+        }
+    } catch (...) {
+        // Parsing settings is best-effort; ignore parse errors
+    }
+
+    // 7. Create asset wrapper
+    auto asset = std::make_shared<TextureAsset>(std::move(shared_tex));
+
+    // 8. Cache and track dependencies
+    cache_[id] = asset;
+    dependency_map_.add_dependency(id, yaml_path);
+    dependency_map_.add_dependency(id, source_path);
+
+#ifndef NDEBUG
+    std::cerr << "[Asset] Texture created: " << id << " ("
+              << image->width() << "x" << image->height() << ", "
+              << image->channels() << "ch)\n";
+#endif
+
+    return asset;
+}
+
+// ============================================================================
+// load_material
+// ============================================================================
+
+auto AssetManager::load_material(const std::string& id, const std::string& yaml_path)
+    -> Result<std::shared_ptr<MaterialAsset>>
+{
+    // 1. Parse YAML
+    auto yaml_result = parse_yaml_file(yaml_path);
+    if (!yaml_result) {
+        return std::unexpected(yaml_result.error());
+    }
+    auto yaml = std::move(*yaml_result);
+
+    // 2. Validate type
+    auto type = get_yaml_type(yaml);
+    if (type != "Material") {
+        auto err = make_error(Error::Category::InvalidArgument,
+            "Expected type 'Material', got '" + type + "'");
+#ifndef NDEBUG
+        std::cerr << "[Asset] Type mismatch: " << id << " (expected Material, got " << type << ")\n";
+#endif
+        return std::unexpected(err);
+    }
+
+    // 3. Validate version
+    auto version = get_yaml_version(yaml);
+    if (version != 1) {
+        return make_error(Error::Category::Unsupported,
+            "Unsupported Material version: " + std::to_string(version));
+    }
+
+    // 4. Read shader paths
+    std::string vert_path_str, frag_path_str;
+    try {
+        auto shaders_node = yaml["shaders"];
+        if (!shaders_node) {
+            return make_error(Error::Category::InvalidArgument,
+                "Material 'shaders' field is required");
+        }
+        vert_path_str = shaders_node["vertex"].as<std::string>("");
+        frag_path_str = shaders_node["fragment"].as<std::string>("");
+    } catch (const YAML::Exception&) {
+        return make_error(Error::Category::InvalidArgument,
+            "Material 'shaders' field is required");
+    }
+
+    if (vert_path_str.empty() || frag_path_str.empty()) {
+        return make_error(Error::Category::InvalidArgument,
+            "Material shaders 'vertex' and 'fragment' are required");
+    }
+
+    auto vert_path = resolve_path(vert_path_str);
+    auto frag_path = resolve_path(frag_path_str);
+
+    // 5. Load shader source files
+    auto vert_source = read_file(vert_path);
+    if (!vert_source) return std::unexpected(vert_source.error());
+
+    auto frag_source = read_file(frag_path);
+    if (!frag_source) return std::unexpected(frag_source.error());
+
+    // 6. Deduplicate shader program by (vert_path, frag_path)
+    ShaderProgramKey program_key{vert_path, frag_path};
+    std::shared_ptr<ShaderProgram> shader_program;
+
+    auto program_iter = shader_programs_.find(program_key);
+    if (program_iter != shader_programs_.end()) {
+        shader_program = program_iter->second;
+#ifndef NDEBUG
+        std::cerr << "[Asset] Shader program cache hit: (" << vert_path << ", " << frag_path << ")\n";
+#endif
+    } else {
+        // Compile new shader program
+        auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
+        if (!vs) return std::unexpected(vs.error());
+
+        auto fs = device_.create_shader(ShaderType::Fragment, *frag_source);
+        if (!fs) return std::unexpected(fs.error());
+
+        auto program = device_.create_shader_program(std::move(*vs), std::move(*fs));
+        if (!program) return std::unexpected(program.error());
+
+        shader_program = std::move(*program);
+        shader_programs_[program_key] = shader_program;
+
+#ifndef NDEBUG
+        std::cerr << "[Asset] Shader program compiled: (" << vert_path << ", " << frag_path << ")\n";
+#endif
+    }
+
+    // 7. Create a fresh Material for THIS asset
+    auto material = device_.create_material(shader_program);
+    if (!material) return std::unexpected(material.error());
+    auto shared_material = std::shared_ptr<Material>(std::move(*material));
+
+    // 8. Resolve texture references
+    try {
+        auto textures_node = yaml["textures"];
+        if (textures_node) {
+            for (auto it = textures_node.begin(); it != textures_node.end(); ++it) {
+                auto tex_name = it->first.as<std::string>();
+                auto tex_id = it->second.as<std::string>();
+
+                auto tex_asset = create<TextureAsset>(tex_id);
+                if (!tex_asset) {
+                    return std::unexpected(tex_asset.error());
+                }
+
+                auto set_tex_result = shared_material->set_texture(tex_name, (*tex_asset)->texture());
+                if (!set_tex_result) {
+#ifndef NDEBUG
+                    std::cerr << "[Asset] Warning: could not set texture '" << tex_name
+                              << "' on material " << id << "\n";
+#endif
+                }
+            }
+        }
+    } catch (const YAML::Exception&) {
+        // If texture parsing fails, skip textures (material still valid)
+    }
+
+    // 9. Apply constant overrides
+    try {
+        auto constants_node = yaml["constants"];
+        if (constants_node) {
+            for (auto it = constants_node.begin(); it != constants_node.end(); ++it) {
+                auto name = it->first.as<std::string>();
+                auto value = it->second;
+                if (value.IsScalar()) {
+                    try {
+                        float float_val = value.as<float>();
+                        auto set_result = shared_material->set_uniform(name, float_val);
+                        if (!set_result) {
+#ifndef NDEBUG
+                            std::cerr << "[Asset] Constant '" << name << "' not found in material "
+                                      << id << "\n";
+#endif
+                        }
+                    } catch (const YAML::TypedBadConversion<float>&) {
+#ifndef NDEBUG
+                        std::cerr << "[Asset] Warning: constant '" << name
+                                  << "' is not a valid float, skipping\n";
+#endif
+                    }
+                }
+            }
+        }
+    } catch (const YAML::Exception&) {
+        // If constants parsing fails, skip constants
+    }
+
+    // 10. Create asset wrapper
+    auto asset = std::make_shared<MaterialAsset>(std::move(shared_material));
+
+    // 11. Cache and track dependencies
+    cache_[id] = asset;
+    dependency_map_.add_dependency(id, yaml_path);
+    dependency_map_.add_dependency(id, vert_path);
+    dependency_map_.add_dependency(id, frag_path);
+
+#ifndef NDEBUG
+    std::cerr << "[Asset] Material created: " << id << " (" << vert_path << ", " << frag_path << ")\n";
+#endif
+
+    return asset;
+}
+
+// ============================================================================
+// Hot-reload handlers
+// ============================================================================
+
+auto AssetManager::handle_yaml_change(const std::string& /*asset_id*/) -> void {
+    // Full YAML reload: re-run the loader for the given asset.
+    // The actual dispatching is done in poll_file_events which calls us
+    // with the asset_id from the dependency chain.
+    // (Stub for V1 — full reload is WIP)
+}
+
+auto AssetManager::handle_source_change(const std::string& /*changed_path*/) -> void {
+    // Source file change: recompile shaders or reload textures.
+    // The actual dispatching is done in poll_file_events which calls us
+    // with the asset_id from the dependency chain.
+    // (Stub for V1 — full hot-reload is WIP)
+}
+
+// ============================================================================
+// Explicit instantiations
+// ============================================================================
+
+template auto AssetManager::create<TextureAsset>(std::string_view id) -> Result<std::shared_ptr<TextureAsset>>;
+template auto AssetManager::create<MaterialAsset>(std::string_view id) -> Result<std::shared_ptr<MaterialAsset>>;
+
+} // namespace buddd::engine

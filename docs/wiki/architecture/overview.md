@@ -24,6 +24,7 @@ buddd2/
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
 │   │   ├── image/           # Image I/O (ImageBuffer, Image, stb_image)
 │   │   ├── input/           # Input system (KeyCode, MouseButton, InputSystem)
+│   │   ├── asset/           # Asset manager (Asset, TextureAsset, MaterialAsset, FileWatcher, DependencyMap)
 │   │   └── render/          # Render device abstraction (RenderDevice)
 │   ├── cmd/                 # CLI binary (links engine)
 │   └── editor/              # Editor placeholder (INTERFACE lib)
@@ -101,6 +102,18 @@ src/engine/
 │   ├── input_system.cpp     # Factory: InputSystem::create(Backend)
 │   ├── input_system_sdl3.h/cpp  # SDL3 backend (InputSystemSDL3)
 │   └── input_system_headless.h/cpp # Headless backend (InputSystemHeadless)
+├── asset/                    # Asset manager system
+│   ├── asset.h              # Abstract Asset base class
+│   ├── asset_id.h           # Asset ID utilities
+│   ├── asset_manager.h      # AssetManager — core class: cache, create<T>(), poll_file_events()
+│   ├── asset_manager.tpp    # create<T>() template implementation
+│   ├── asset_manager.cpp    # Non-template implementation (load_texture, load_material, hot-reload)
+│   ├── texture_asset.h/.cpp # TextureAsset — wraps shared_ptr<Texture>
+│   ├── material_asset.h/.cpp # MaterialAsset — wraps shared_ptr<Material>
+│   ├── dependency_map.h/.cpp # DependencyMap — bidirectional asset↔source tracking
+│   ├── file_watcher.h       # FileWatcher abstract base + NullFileWatcher + FileEvent
+│   ├── file_watcher.cpp     # FileWatcher::create() factory
+│   ├── file_watcher_inotify.h/.cpp # InotifyFileWatcher (Linux inotify, thread + queue)
 └── render/
     ├── primitive_topology.h        # PrimitiveTopology enum
     ├── vertex_format.h             # VertexAttributeType, VertexAttribute, VertexFormat
@@ -118,6 +131,10 @@ src/engine/
     ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides + in-memory create_texture; uses glsl_util for uniform discovery)
     ├── shader_opengl.h/cpp         # OpenGL shader backend (ShaderOpenGL)
     ├── shader_headless.h/cpp       # Headless shader backend (ShaderHeadless)
+    ├── shader_program.h            # Abstract ShaderProgram base class (uint32_t handle, CONST-001)
+    ├── shader_program.cpp          # ShaderProgram vtable + default implementations
+    ├── shader_program_opengl.h/cpp # ShaderProgramOpenGL — GLuint wrapper, glLinkProgram
+    ├── shader_program_headless.h/cpp # ShaderProgramHeadless — generation counter, simulated linking
     ├── material_opengl.h/cpp       # OpenGL material backend (MaterialOpenGL) — deferred uniform caching + texture unit management in bind()
     ├── material_headless.h/cpp     # Headless material backend (MaterialHeadless) — now with Vec3/Vec4/float/int diagnostic getters + array subscript normalization
     ├── texture_opengl.h/cpp        # OpenGL texture backend (TextureOpenGL) — DSA-based GPU upload via glCreateTextures/glTextureStorage2D/glTextureSubImage2D
@@ -146,6 +163,7 @@ src/engine/
 - `./build/debug/src/cmd/buddd run textured-cube` — opens a window (1024×768), renders a rotating UV-mapped cube with a brick texture loaded from `assets/brick.png` for 120 frames at ~60 FPS using the scene graph (World + Entity + MeshRenderer + RenderSystem), then exits.
 - `./build/debug/src/cmd/buddd run free-camera` — opens a window (1024×768), renders a cube from a controllable camera (WASD for forward/back/strafe, mouse for look, Space/Control for up/down). Right-click to capture mouse (relative mode, cursor hidden); camera movement/rotation only while captured (Godot editor pattern). Runs interactively until Escape is pressed. Uses `device.window().platform().delta_time()` for frame-rate-independent movement.
 - `./build/debug/src/cmd/buddd run phong` — opens a window (1024×768), renders a textured cube with Phong lighting from an orbiting PointLightComponent and a static DirectionalLightComponent fill. Interactive free-camera (WASD + mouse). The cube uses PhongMaterial with embedded GLSL shaders, a diffuse texture, and material properties (ambient, specular, shininess). Runs interactively until Escape is pressed.
+- `./build/debug/src/cmd/buddd run asset-demo` — opens a window (1024×768), renders a textured cube loaded via the Asset Manager from YAML metadata (`assets/materials/demo_cube.yaml` references `assets/textures/demo_brick.yaml` and `assets/shaders/demo.vert`/`demo.frag`). Runs for 120 frames at ~60 FPS, then exits. Demonstrates the full asset pipeline: YAML parsing, shader program deduplication, texture loading, and material creation via the `AssetManager` API.
 - `./build/debug/src/cmd/buddd run cube --capture 120:/tmp/out.png` — renders 120 frames of the cube and captures frame 120 to `/tmp/out.png`. The `--capture` flag can be repeated for multiple captures.
 - `./build/debug/src/cmd/buddd run cube --frame 60` — runs exactly 60 frames of the cube, then exits automatically.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`

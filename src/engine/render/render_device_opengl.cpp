@@ -8,6 +8,8 @@
 
 #include "image/image.h"
 #include "render/glsl_util.h"
+#include "render/shader_program.h"
+#include "render/shader_program_opengl.h"
 
 #include <SDL3/SDL_opengl.h>
 
@@ -167,6 +169,14 @@ auto RenderDeviceOpenGL::create_shader(ShaderType type, std::string_view source)
     return std::unique_ptr<Shader>(new ShaderOpenGL(shader_id, type));
 }
 
+auto RenderDeviceOpenGL::create_shader_program(
+    std::unique_ptr<Shader> vertex_shader,
+    std::unique_ptr<Shader> fragment_shader
+) -> Result<std::unique_ptr<ShaderProgram>>
+{
+    return ShaderProgramOpenGL::create(std::move(vertex_shader), std::move(fragment_shader));
+}
+
 auto RenderDeviceOpenGL::create_material(
     std::unique_ptr<Shader> vertex_shader,
     std::unique_ptr<Shader> fragment_shader,
@@ -213,6 +223,16 @@ auto RenderDeviceOpenGL::create_material(
 
     std::cerr << "Material created\n";
     return std::unique_ptr<Material>(new MaterialOpenGL(program));
+}
+
+auto RenderDeviceOpenGL::create_material(std::shared_ptr<ShaderProgram> program)
+    -> Result<std::unique_ptr<Material>>
+{
+    if (!program || !program->is_valid()) {
+        return make_error(Error::Category::InvalidArgument, "Invalid ShaderProgram");
+    }
+    std::cerr << "Material created (from ShaderProgram)\n";
+    return std::unique_ptr<Material>(new MaterialOpenGL(std::move(program)));
 }
 
 auto RenderDeviceOpenGL::create_vertex_buffer(

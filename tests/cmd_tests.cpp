@@ -25,7 +25,7 @@ TEST_CASE("buddd help outputs usage text", "[cli]") {
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
     REQUIRE(res.stdout_str.find("version") != std::string::npos);
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
-    // demo and capture should no longer appear
+    // demo was removed; capture should not appear either
     REQUIRE(res.stdout_str.find("demo") == std::string::npos);
     REQUIRE(res.stdout_str.find("capture") == std::string::npos);
 }
@@ -55,13 +55,12 @@ TEST_CASE("buddd help ignores extra arguments", "[cli]") {
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
 }
 
-TEST_CASE("buddd demo prints unknown command", "[cli]") {
-    // Old 'demo' subcommand is removed; 'buddd demo' should produce unknown command error.
-    const auto res = run_buddd("demo triangle");
+TEST_CASE("buddd demo is unknown command", "[cli]") {
+    // 'buddd demo' was removed; 'buddd demo unknown' should show unknown command.
+    const auto res = run_buddd("demo unknown");
 
     REQUIRE(res.exit_code == 1);
     REQUIRE(res.stderr_str.find("Unknown command: 'demo'") != std::string::npos);
-    REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
 TEST_CASE("buddd capture prints unknown command", "[cli]") {

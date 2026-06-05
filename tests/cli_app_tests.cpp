@@ -35,7 +35,8 @@ TEST_CASE("buddd run unknownscene prints error and exits 1", "[cli][app]") {
     REQUIRE(res.stderr_str.find("Unknown scene: 'unknownscene'") != std::string::npos);
 }
 
-TEST_CASE("buddd demo triangle is unknown command", "[cli][app]") {
+TEST_CASE("buddd demo is now unknown command", "[cli][app]") {
+    // The 'demo' command was removed; 'buddd demo' should show unknown command.
     const auto res = run_buddd("demo triangle");
 
     REQUIRE(res.exit_code == 1);
@@ -56,13 +57,13 @@ TEST_CASE("buddd version prints version", "[cli][app]") {
     REQUIRE(res.stdout_str == "buddd 0.1.0\n");
 }
 
-TEST_CASE("buddd help shows updated usage without demo/capture", "[cli][app]") {
+TEST_CASE("buddd help shows updated usage", "[cli][app]") {
     const auto res = run_buddd("help");
 
     REQUIRE(res.exit_code == 0);
     // New help text should have 'run' with updated description
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
-    // Should NOT have 'demo' or 'capture' as commands
+    // 'demo' was removed, should NOT appear in help text
     REQUIRE(res.stdout_str.find("demo") == std::string::npos);
     REQUIRE(res.stdout_str.find("capture") == std::string::npos);
 }

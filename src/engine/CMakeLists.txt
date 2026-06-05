@@ -24,6 +24,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stb)
 
+# ----- yaml-cpp (YAML parsing for asset metadata) -----
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # yaml-cpp 0.8.0 requires CMake >= 3.5
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG 0.8.0
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+              -DYAML_CPP_BUILD_TESTS=OFF
+              -DYAML_CPP_BUILD_TOOLS=OFF
+              -DYAML_CPP_INSTALL=OFF
+)
+FetchContent_MakeAvailable(yaml-cpp)
+
 find_package(OpenGL REQUIRED)
 
 # Collect all engine source files automatically using GLOB.
@@ -35,14 +49,29 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 
 add_library(buddd_engine STATIC ${ENGINE_SOURCES})
 
+# Enable test-only accessors (BUDDD_TESTING guards)
+target_compile_definitions(buddd_engine PRIVATE BUDDD_TESTING)
+
+# Propagate display backend flag so the engine library uses the right ShaderProgram code path
+if(BUDDD_HAS_DISPLAY)
+    target_compile_definitions(buddd_engine PRIVATE BUDDD_HAS_DISPLAY)
+endif()
+
 target_include_directories(buddd_engine PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_include_directories(buddd_engine PRIVATE ${stb_SOURCE_DIR})
+target_include_directories(buddd_engine PRIVATE
+    ${stb_SOURCE_DIR}
+    ${yaml-cpp_SOURCE_DIR}/include
+)
 
 target_link_libraries(buddd_engine PUBLIC
     SDL3::SDL3
     OpenGL::GL
     glm::glm
+)
+
+target_link_libraries(buddd_engine PRIVATE
+    yaml-cpp
 )

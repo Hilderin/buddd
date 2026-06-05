@@ -18,6 +18,9 @@ if(BUDDD_HAS_DISPLAY)
     target_compile_definitions(buddd_tests PRIVATE BUDDD_HAS_DISPLAY)
 endif()
 
+# Enable BUDDD_TESTING for test-only accessors
+target_compile_definitions(buddd_tests PRIVATE BUDDD_TESTING)
+
 target_link_libraries(buddd_tests PRIVATE
     buddd_engine
     Catch2::Catch2WithMain

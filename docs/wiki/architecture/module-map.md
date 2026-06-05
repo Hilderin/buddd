@@ -12,8 +12,8 @@ The engine library is the core of the project. It provides a version API, a math
 
 | File | Role |
 |---|---|
-| `engine_service.h` | Public header: `EngineService` class — owns the `Platform` → `Window` → `RenderDevice` chain via `unique_ptr`. Factory: `EngineService::create(Backend, WindowConfig) -> Result<unique_ptr<EngineService>>`. Accessors: `platform() -> Platform&`, `window() -> Window&`, `device() -> RenderDevice&`. Member declaration order (`platform_`, `window_`, `device_`) guarantees correct destruction ordering. |
-| `engine_service.cpp` | Factory implementation: creates `Platform`, then `Window` (via `platform->create_window()`), then `RenderDevice` (via `RenderDevice::create()`), wrapping them in an `EngineService`. |
+| `engine_service.h` | Public header: `EngineService` class — owns the `Platform` → `Window` → `RenderDevice` → `AssetManager` chain via `unique_ptr`. Factory: `EngineService::create(Backend, WindowConfig) -> Result<unique_ptr<EngineService>>`. Accessors: `platform() -> Platform&`, `window() -> Window&`, `device() -> RenderDevice&`, `assets() -> AssetManager&`. Member declaration order (`platform_`, `window_`, `device_`, `asset_manager_`) guarantees correct destruction ordering. |
+| `engine_service.cpp` | Factory implementation: creates `Platform`, then `Window` (via `platform->create_window()`), then `RenderDevice` (via `RenderDevice::create()`), wrapping them in an `EngineService`. Then creates `AssetManager` via `AssetManager::create(engine_service.device(), "assets")` and stores it in `asset_manager_`. |
 
 See [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) for the architectural rationale.
 
@@ -120,6 +120,28 @@ All types in namespace `buddd::engine`. Provides a frame-based input abstraction
 | `input_system_headless.h` | Private header: `InputSystemHeadless` concrete class (final). All queries return false/zero defaults. |
 | `input_system_headless.cpp` | Headless backend: `begin_frame()` is a no-op, all query methods return zero/false |
 
+### Asset submodule (`asset/`)
+
+All types in namespace `buddd::engine`. Provides a centralised ID-based asset loading, caching, and hot-reload system. Assets are defined by YAML metadata files in the `assets/` directory tree, loaded lazily on first access. Depends on `render/` for GPU resource creation, `image/` for texture loading, and yaml-cpp (PRIVATE dependency) for YAML parsing. See SPEC-019 and ADR-016.
+
+| File | Role |
+|---|---|
+| `asset.h` | Abstract `Asset` base class — virtual destructor, non-copyable, non-movable, protected default constructor. |
+| `asset_id.h` | (Optional) Asset ID utilities and path resolution helpers. |
+| `asset_manager.h` | `AssetManager` class — core asset system. Factory `create(RenderDevice&, string_view) -> Result<unique_ptr>`. Template `create<T>(id) -> Result<shared_ptr<T>>` for loading assets. Convenience `create_texture(id)` and `create_material(id)`. `clear()`, `base_path()`, `poll_file_events()`, `set_file_watcher_enabled(bool)`. Owns cache, shader deduplication map, dependency map, and file watcher. |
+| `asset_manager.tpp` | Template implementation of `create<T>()` — included at bottom of `asset_manager.h`. |
+| `asset_manager.cpp` | Non-template implementation: `load_texture()`, `load_material()`, `poll_file_events()`, hot-reload handlers (`handle_yaml_change`, `handle_source_change`), explicit template instantiations. |
+| `texture_asset.h` | `TextureAsset` final class — wraps `std::shared_ptr<Texture>`. Accessor: `texture() -> const shared_ptr<Texture>&`. |
+| `texture_asset.cpp` | TextureAsset implementation. |
+| `material_asset.h` | `MaterialAsset` final class — wraps `std::shared_ptr<Material>`. Accessor: `material() -> const shared_ptr<Material>&`. |
+| `material_asset.cpp` | MaterialAsset implementation. |
+| `dependency_map.h` | `DependencyMap` class — bidirectional asset↔source file tracking. `add_dependency()`, `get_dependencies()`, `get_dependents()`, `remove_asset()`, `clear()`. |
+| `dependency_map.cpp` | DependencyMap implementation (internal `unordered_map<string, vector<string>>` for forward and reverse directions). |
+| `file_watcher.h` | Abstract `FileWatcher` base class. `FileEventType` enum (`Created`, `Modified`, `Deleted`). `FileEvent` struct (`path`, `type`). `NullFileWatcher` no-op final class. Factory `create(string_view) -> Result<unique_ptr>`. |
+| `file_watcher.cpp` | `FileWatcher::create()` factory — on Linux attempts `InotifyFileWatcher`, on other platforms returns `Unsupported` (caller falls back to `NullFileWatcher`). `~FileWatcher()` destructor (vtable emission). |
+| `file_watcher_inotify.h` | `InotifyFileWatcher` concrete class (Linux only, `#ifdef __linux__`). Monitors a directory via inotify, runs a dedicated thread, pushes events to a thread-safe queue. |
+| `file_watcher_inotify.cpp` | Inotify implementation: `inotify_init1`, `inotify_add_watch`, blocking read loop, mutex-protected queue. |
+
 ### Render submodule (`render/`)
 
 The render submodule now provides a full pipeline abstraction: shader compilation, material linking, vertex/index buffer management, draw calls, and an ECS integration layer bridging the scene graph to the GPU. All abstract types are backend-agnostic; concrete implementations exist for OpenGL 4.5 Core and Headless.
@@ -138,7 +160,7 @@ The render submodule depends on the `scene/` submodule: `MeshRenderer` inherits 
 | `material.h` | Public header: abstract `Material` class with 6 `set_uniform` overloads (`float`, `int32_t`, `bool`, `math::Vec3`, `math::Vec4`, `math::Mat4`), `has_uniform()`, `set_texture(name, shared_ptr<Texture>)`, `has_texture(name)`, and `bind()` (deferred state application: program activation + uniforms + textures). Non-copyable, non-movable. |
 | `vertex_buffer.h` | Public header: abstract `VertexBuffer` class with `format()` pure virtual. Non-copyable, non-movable. |
 | `index_buffer.h` | Public header: `IndexType` enum (`Uint16`, `Uint32`), abstract `IndexBuffer` class with `type()` pure virtual. Non-copyable, non-movable. |
-| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_vertex_buffer`, `create_index_buffer`, `create_texture(const Image&)`, `read_pixels()`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. `create_texture` returns `Result<std::unique_ptr<Texture>>`. **New**: pure virtual `window() -> Window&` enables navigation to `Window` and via it to `Platform`/`InputSystem`. **New**: virtual diagnostic accessors `frame_begin_count()`, `frame_end_count()`, `draw_call_count()` with default `0` implementations (overridden by headless backend). See ADR-012. |
+| `render_device.h` | Public header: abstract `RenderDevice` class with `create(Window&)` static factory, `begin_frame()`, `end_frame()`, `size()`, resource factory methods (`create_shader`, `create_material`, `create_material(shared_ptr<ShaderProgram>)`, `create_vertex_buffer`, `create_index_buffer`, `create_texture(const Image&)`, `read_pixels()`), and draw methods (`draw`, `draw_indexed`). Draw methods return `void` — deliberate exception to ADR-001. `create_texture` returns `Result<std::unique_ptr<Texture>>`. **New**: pure virtual `window() -> Window&` enables navigation to `Window` and via it to `Platform`/`InputSystem`. **New**: virtual diagnostic accessors `frame_begin_count()`, `frame_end_count()`, `draw_call_count()` with default `0` implementations (overridden by headless backend). See ADR-012. The `create_material(shared_ptr<ShaderProgram>)` overload enables shader program deduplication — materials share the compiled GL program but retain independent uniform/texture state. |
 | `render_device.cpp` | Factory implementation: dispatches to OpenGL or Headless backend based on `native_handle()` value. Passes `Window&` to both backend constructors. |
 | `render_device_opengl.h` | Private header: `RenderDeviceOpenGL` concrete class. Stores `Window& window_` (for the `window()` accessor) and `SDL_Window* sdl_window_` for internal SDL calls, plus `SDL_GLContext`. |
 | `render_device_opengl.cpp` | OpenGL 4.5 Core implementation: GLSL compilation via `glCreateShader`/`glCompileShader`, program linking via `glCreateProgram`/`glLinkProgram`, VAO/VBO/IBO management via DSA APIs (`glCreateVertexArrays`, `glNamedBufferStorage`, etc.), texture creation via DSA (`glCreateTextures`/`glTextureStorage2D`/`glTextureSubImage2D`), and draw dispatch via `glDrawArrays`/`glDrawElements`. `draw()`/`draw_indexed()` call `material.bind()` before draw to apply deferred state. |
@@ -148,6 +170,12 @@ The render submodule depends on the `scene/` submodule: `MeshRenderer` inherits 
 | `shader_opengl.cpp` | OpenGL shader backend: resource lifetime managed via `glCreateShader`/`glDeleteShader` |
 | `shader_headless.h` | Private header: `ShaderHeadless` concrete class storing type and GLSL source string |
 | `shader_headless.cpp` | Headless shader backend: stores source for linking-error simulation and uniform discovery |
+| `shader_program.h` | Abstract `ShaderProgram` base class — wraps a compiled shader program handle (`uint32_t`). Pure virtual `handle()`, `is_valid()`, `replace_handle()`, `release_handle()`. Non-copyable, non-movable. CONST-001 compliant (uses `uint32_t` not `GLuint` in the base). |
+| `shader_program.cpp` | Vtable emission + default virtual implementations (`testing_handle()`, `vs_source()`, `fs_source()`). |
+| `shader_program_opengl.h` | `ShaderProgramOpenGL` concrete class — wraps a `GLuint` program handle. `replace_handle` calls `glDeleteProgram` before assigning. `release_handle()` extracts the handle to prevent double-deletion. |
+| `shader_program_opengl.cpp` | OpenGL implementation: `glCreateProgram`, `glAttachShader`, `glLinkProgram`, `glDeleteProgram`. |
+| `shader_program_headless.h` | `ShaderProgramHeadless` concrete class — stores generation counter and source strings. `handle()` always returns 0. `replace_handle` is no-op. |
+| `shader_program_headless.cpp` | Headless implementation: simulated linking via vertex/fragment I/O matching, generation counter for `testing_handle()`. |
 | `material_opengl.h` | Private header: `MaterialOpenGL` concrete class with deferred uniform caching (`std::unordered_map<std::string, std::variant<...>> uniform_cache_`), texture map (`std::unordered_map<std::string, std::shared_ptr<Texture>> texture_map_`), `glGetUniformLocation`-based location caching, and a mutable texture unit counter (`mutable int next_unit_{0}`) for automatic unit assignment during `bind()`. |
 | `material_opengl.cpp` | OpenGL material backend: `set_uniform` caches values in `uniform_cache_` (no immediate GL calls). `set_texture` stores the shared texture pointer by name. `bind()` applies deferred state: calls `glUseProgram`, then flushes all cached uniforms via `glUniform1f`/`glUniform1i`/`glUniform3fv`/`glUniform4fv`/`glUniformMatrix4fv`, then binds textures to sequential units via `glActiveTexture`/`glBindTexture` and sets `glUniform1i` for each sampler uniform. Program destruction via `glDeleteProgram`. |
 | `material_headless.h` | Private header: `MaterialHeadless` concrete class with `std::unordered_set` of known uniform names, `std::variant`-based uniform value storage, and diagnostic accessors: `get_uniform_mat4(name)`, `get_uniform_vec3(name)`, `get_uniform_vec4(name)`, `get_uniform_float(name)`, `get_uniform_int(name)`. Stores texture map (`std::unordered_map<std::string, std::shared_ptr<Texture>>`) for `set_texture`/`has_texture`. |

@@ -1,0 +1,9 @@
+type: Material
+version: 1
+shaders:
+  vertex: tests/assets/shaders/test.vert
+  fragment: tests/assets/shaders/test.frag
+textures:
+  albedo: textures/test_texture
+constants:
+  roughness: 0.5

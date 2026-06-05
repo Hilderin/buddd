@@ -4,6 +4,8 @@
 
 #include <SDL3/SDL_opengl.h>
 
+#include <cstdint>
+
 namespace buddd::engine {
 
 class TextureOpenGL final : public Texture {
@@ -16,6 +18,11 @@ public:
     auto channels() const noexcept -> int override { return channels_; }
 
     auto handle() const noexcept -> GLuint { return texture_; }
+
+    // Hot-reload overrides
+    auto replace_gl_handle(uint32_t new_handle) -> void override;
+    auto gl_handle() const noexcept -> uint32_t override;
+    auto release_gl_handle() noexcept -> uint32_t override;
 
     TextureOpenGL(const TextureOpenGL&) = delete;
     auto operator=(const TextureOpenGL&) -> TextureOpenGL& = delete;

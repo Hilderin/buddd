@@ -193,6 +193,8 @@ orchestrator
   ↓
 clarification with human, challenges request, decisions and assumptions
   ↓
+grill me
+  ↓
 **CREATE** coordination.md from template (all sections filled with "pending")
   ↓
 spec-author → writes spec.md → updates coordination.md
@@ -283,6 +285,17 @@ After clarification, create coordination.md:
    - **Initial instructions**: the human's feature request / intent
    - **Notes**: (orchestrator's initial notes)
 4. Fill all sub-agent sections with **Status**: pending, empty summaries/artifacts, and "none" for questions, warnings, and blocking issues.
+
+
+### 1b. Grill me
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+Update the coordination.md based on the updated intent.
+
 
 ### Delegation invariant
 
