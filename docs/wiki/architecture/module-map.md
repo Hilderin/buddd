@@ -186,60 +186,62 @@ The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` 
 
 The command-line binary. Links `buddd_engine` as PRIVATE.
 
-Uses a Command pattern: each subcommand is extracted into its own `.h`/`.cpp` pair under `src/cmd/commands/`, and `main.cpp` is a thin dispatcher (single if/else-if chain). Per-demo files live under `src/cmd/demo/` with shared helper code for demos.
+Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) defines `config()` / `setup()` / `render()` / `shutdown()`, and a centralised `run_app()` free function owns the render loop. Scene implementations are `App` subclasses in `src/cmd/apps/`. The CLI dispatches only three commands (`run`, `version`, `help`) — see [ADR-014](/docs/adr/014-cli-app-system.md) for the architectural rationale.
 
 ### Build system
 
-`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering `src/cmd/*.cpp` (for `main.cpp`), `src/cmd/commands/*.cpp` (for command files), and `src/cmd/demo/*.cpp` (for per-demo files). New commands can be added by creating files in `src/cmd/commands/` and wiring them into the dispatch — no CMakeLists.txt change needed. New demos can be added by creating files in `src/cmd/demo/` and adding a dispatch branch in `DemoCommand`.
+`src/cmd/CMakeLists.txt` uses `file(GLOB_RECURSE CONFIGURE_DEPENDS ...)` covering `src/cmd/*.cpp` (for `main.cpp` and app files), `src/cmd/commands/*.cpp` (for command files), `src/cmd/demo/*.cpp` (for demo helpers), and `src/cmd/apps/*.cpp` (for App subclasses). New scenes can be added by creating files in `src/cmd/apps/` and adding a dispatch branch in `main.cpp` — no CMakeLists.txt change needed.
 
 ### File structure
 
 | File | Role |
 |---|---|
-| `main.cpp` | Thin dispatcher: parse first positional argument, dispatch to the matching command via if/else-if chain, return its exit code. No static helper functions, no engine header includes. |
+| `main.cpp` | Dispatcher: parse first positional argument, dispatch to matching handler. If no arg or arg is `run`: parse `<scene>`, create the appropriate `App` subclass, call `run_app()`. Also handles `version` and `help` commands. No engine header includes beyond those needed for forward declarations. |
+| `app.h` | Declares `AppConfig` struct (title, width, height), `App` base class with virtual lifecycle (`config()`, `setup()`, `render()`, `shutdown()`), and `run_app()` free function. |
+| `app.cpp` | Implementation of `run_app()`: creates `Platform` / `Window` / `RenderDevice`, calls `app.setup()`, runs the central render loop (with frame limiting via `--frame` and capture injection via `--capture`), then calls `app.shutdown()`. |
+| `app_config.h` | Declares `CaptureSpec` struct (frame number + path) and `RunningArgs` struct (frame limit + capture specs), plus `parse_running_args()` to parse `--frame N` and `--capture N:path` from argv. |
+| `app_config.cpp` | Implementation of `parse_running_args()`. |
 
 ### Command files (`src/cmd/commands/`)
 
 | File | Role |
 |---|---|
 | `version_command.h` / `version_command.cpp` | `buddd::cmd::VersionCommand` — prints `buddd <version>` from `be::version()` to stdout and exits 0. Extra args silently ignored. |
-| `demo_command.h` / `demo_command.cpp` | `buddd::cmd::DemoCommand` — parses a demo name from `argv[2]`, opens 800×600 window titled "Buddd Engine — Demo: \<name\>", dispatches to the matching per-demo function. Prints usage if no name is given or if the demo name is unknown. Warns on stderr if extra args follow the demo name. |
-| `run_command.h` / `run_command.cpp` | `buddd::cmd::RunCommand` — opens 1024×768 window titled "Buddd Engine", clears the framebuffer each frame (no draw calls), interactive until user closes the window. Extra args silently ignored. |
-| `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Updated to include `capture` in command list. Extra args silently ignored. |
-| `capture_command.h` / `capture_command.cpp` | `buddd::cmd::CaptureCommand` — parses scenario and optional output path, creates SDL3 platform, window, and render device, delegates to a scenario function, saves the resulting PNG. Registered via `else if (cmd == "capture")` in `main.cpp`. |
+| `help_command.h` / `help_command.cpp` | `buddd::cmd::HelpCommand` — prints usage text to stdout and exits 0. Also defines `k_usage_text` constant used by the unknown-command handler in `main.cpp`. Extra args silently ignored. |
 
-### Demo files (`src/cmd/demo/`)
+### App subclasses (`src/cmd/apps/`)
 
-Each demo is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::demo` namespace. The per-demo function receives a `RenderDevice&` (no separate `Platform&` parameter) and `argc`/`argv` (where `argv[0]` is the demo name). Platform access is via the navigable object graph: `device.window().platform()`. See ADR-012 and SPEC-016.
+Each scene is an `App` subclass whose `render()` method contains **only** the per-frame rendering logic (no `begin_frame()` / `end_frame()` — these are owned by `run_app()`). The `config()` method returns the window configuration; `setup()` performs one-time initialisation; `shutdown()` handles cleanup. Scene state (cameras, render systems, animation timers) lives as member variables.
 
 | File | Role |
 |---|---|
-| `demo_helpers.h` / `demo_helpers.cpp` | **Moved** from `src/cmd/`. Header declaring `buddd::cmd::demo::setup_triangle()` — shared helper for rendering a coloured triangle (used by `triangle_demo`). Also declares `CubeResources` struct and `setup_cube()` — shared helper for creating a unit cube (24 vertices, 36 indices, per-face colours) with material, used by `cube_demo`. Both helpers now use the standard `Vertex` struct (72B stride, `k_standard_vertex_format`) — position+color filled, other fields zero. |
-| `triangle_demo.h` / `triangle_demo.cpp` | Declares `buddd::cmd::demo::run_triangle_demo()` — 120-frame render loop with a coloured triangle (extracted from the old `test_command.cpp`). |
-| `cube_demo.h` / `cube_demo.cpp` | Declares `buddd::cmd::demo::run_cube_demo()` — 120-frame render loop with a rotating per-face-coloured cube using Camera + MVP. Header exposes no backend types (only forward declarations). |
-| `cube_scene_demo.h` / `cube_scene_demo.cpp` | Declares `buddd::cmd::demo::run_cube_scene_demo()` — 120-frame render loop using `World` + `RenderSystem` (ECS approach) instead of manual camera/MVP/draw calls. Creates entities with `CameraComponent` and `MeshRenderer`. Not yet wired into `demo_command.cpp` dispatch. |
-| `free_camera_demo.h` / `free_camera_demo.cpp` | Declares `buddd::cmd::demo::run_free_camera_demo()` — interactive fly-through camera demo with WASD movement, mouse look, and Space/Control vertical movement. Uses `Platform::delta_time()` for frame-rate-independent movement. Exit via Escape key. |
-| `textured_cube_demo.h` / `textured_cube_demo.cpp` | Declares `buddd::cmd::demo::run_textured_cube_demo()` — 120-frame render loop with a rotating UV-mapped cube using a brick texture loaded from `assets/brick.png`. Uses the scene graph (World + Entity + CameraComponent + MeshRenderer + RenderSystem). |
-| `phong_demo.h` / `phong_demo.cpp` | Declares `buddd::cmd::demo::run_phong_demo()` — interactive Phong lighting demo. Scene: textured cube with `PhongMaterial`, orbiting `PointLightComponent` (time-driven orbit), static `DirectionalLightComponent` fill. Interactive free-camera (WASD + mouse, right-click to capture). Runs until Escape. Uses ECS: World + RenderSystem + light components + MeshRenderer + PhongMaterial. |
+| `run_app.h` / `run_app.cpp` | `RunApp` — empty window, clears framebuffer each frame (no draw calls), runs interactively until window close. |
+| `triangle_app.h` / `triangle_app.cpp` | `TriangleApp` — 120-frame coloured triangle demo using `setup_triangle()`. |
+| `cube_app.h` / `cube_app.cpp` | `CubeApp` — 120-frame rotating per-face-coloured cube (Camera + MVP). Uses `setup_cube()` from demo helpers. |
+| `cube_scene_app.h` / `cube_scene_app.cpp` | `CubeSceneApp` — 120-frame rotating cube using `World` + `RenderSystem` (ECS approach). |
+| `textured_cube_app.h` / `textured_cube_app.cpp` | `TexturedCubeApp` — 120-frame rotating UV-mapped cube with brick texture using scene graph. |
+| `free_camera_app.h` / `free_camera_app.cpp` | `FreeCameraApp` — interactive fly-through camera (WASD + mouse look + Space/Control). Uses `Platform::delta_time()` for frame-rate-independent movement. Exit via Escape key. Uses `PhongMaterial` with orbiting point light + directional fill. |
+| `phong_app.h` / `phong_app.cpp` | `PhongApp` — interactive Phong lighting demo. Textured cubes with `PhongMaterial`, orbiting `PointLightComponent`, static `DirectionalLightComponent` fill. Interactive free-camera (WASD + mouse, right-click to capture). Runs until Escape. Uses ECS: World + RenderSystem + light components + MeshRenderer + PhongMaterial. |
 
-### Capture files (`src/cmd/capture/`)
+### Demo helpers (`src/cmd/demo/`)
 
-Each capture scenario is a `.h`/`.cpp` pair exposing a single free function in the `buddd::cmd::capture` namespace.
+Only `demo_helpers.*` remain in `src/cmd/demo/`. All old per-demo files (triangle_demo, cube_demo, etc.) have been replaced by App subclasses and deleted.
 
 | File | Role |
 |---|---|
-| `cube_capture.h` / `cube_capture.cpp` | Declares `buddd::cmd::capture::capture_cube_scene()` — renders N frames of the cube (reusing `setup_cube()`) from camera position (0,0,3) (front-facing reference view). When N > 1, the cube rotates 0.5 rad/s around Y (matching the cube demo timing). Calls `read_pixels()` on the last frame and returns the raw `ImageBuffer`. Default N=1. Applies an internal minimum of 2 frames to work around a driver quirk where `glReadPixels(GL_BACK)` returns the clear colour instead of rendered content on the very first frame after window creation. |
+| `demo_helpers.h` / `demo_helpers.cpp` | Declares `buddd::cmd::demo::setup_triangle()` — shared helper for rendering a coloured triangle. Also declares `CubeResources` struct and `setup_cube()` — shared helper for creating a unit cube (24 vertices, 36 indices, per-face colours) with material. Both use the standard `Vertex` struct (72B stride, `k_standard_vertex_format`) — position+color filled, other fields zero. |
 
 ### Subcommand behavior
 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
-- `buddd demo <name>` → opens 800×600 window titled "Buddd Engine — Demo: \<name\>", runs the named demo, then exits. Currently available: `triangle` (120 frames), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), `textured-cube` (120 frames, UV-mapped cube with brick texture), `free-camera` (interactive, WASD + mouse look + Space/Control), and `phong` (interactive, textured cube with orbiting point light + directional fill). If no name is given, prints usage to stderr and exits 1. If the name is unknown, prints error to stderr and exits 1.
+- `buddd run <scene> [--frame N] [--capture N:path]...` → runs the named scene. Available scenes: `triangle` (120 frames, coloured triangle), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), `textured-cube` (120 frames, UV-mapped cube with brick texture), `free-camera` (interactive, WASD + mouse look + Space/Control), `phong` (interactive, Phong lighting with orbiting point light + directional fill). `--frame N` limits rendering to N frames. `--capture N:path` captures frame N to a PNG file (repeatable for multiple captures). If no scene is given, defaults to `RunApp` (empty window). If scene is unknown, prints error to stderr and exits 1. Extra unexpected positional arguments print a warning on stderr.
 - `buddd version` → prints `buddd 0.1.0` to stdout
-- `buddd capture <scenario> [--frame N] [output_path]` → opens 800×600 window titled "Buddd Engine — Capture: \<scenario\>", renders N frames (default: 1), captures the Nth frame as PNG, saves to `output_path` (or `/tmp/buddd_capture_<scenario>_<timestamp>.png`), prints `"Captured: <path>"`. With `--frame N` where N > 1, the cube rotates 0.5 rad/s around Y. Currently available: `cube`. If no scenario is given, prints usage to stderr and exits 1. If scenario is unknown, prints error to stderr and exits 1.
-- `buddd help` → prints usage information listing all five commands (`run`, `demo`, `capture`, `version`, `help`)
-- Unknown command → prints `"Unknown command: '<cmd>'"` followed by updated usage to stderr, exits with code 1
-- `buddd test` is **removed** — it produces an unknown command error (use `buddd demo triangle` instead)
-- Old `--test` and `--version` flags are **dropped** — they produce an unknown command error
+- `buddd help` → prints usage information listing three commands (`run`, `version`, `help`)
+- Unknown command → prints `"Unknown command: '<cmd>'"` followed by usage to stderr, exits with code 1
+- `buddd test` is **removed** — produces an unknown command error
+- Old `--test` and `--version` flags are **dropped** — produce an unknown command error
+
+**Note**: Old `demo` and `capture` subcommands are permanently removed per [ADR-014](/docs/adr/014-cli-app-system.md). Use `buddd run <scene>` with `--capture` instead.
 
 ## `buddd_editor` — INTERFACE library placeholder (`src/editor/`)
 
@@ -303,4 +305,7 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)
 - Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration)
 - Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph (RenderDevice → Window → Platform → InputSystem)
+- Spec: [SPEC-008](/docs/specs/cli-app-system/spec.md) — CLI App System (centralised render loop, App lifecycle, unified CLI, capture)
+- Implementation contract: [IMPL-008](/docs/specs/cli-app-system/implementation-contract.md) — CLI App System implementation contract
 - ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
+- ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)

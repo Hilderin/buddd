@@ -21,11 +21,14 @@ RenderSystem::RenderSystem(RenderDevice& device, World& world)
 
 auto RenderSystem::render() -> void {
     device_->begin_frame();
+    render_scene();
+    device_->end_frame();
+}
 
+auto RenderSystem::render_scene() -> void {
     auto cam_opt = world_->active_camera();
     if (!cam_opt.has_value()) {
         std::cerr << "RenderSystem: no active camera — rendering skipped\n";
-        device_->end_frame();
         return;
     }
     auto& cam_comp = *cam_opt;
@@ -151,8 +154,6 @@ auto RenderSystem::render() -> void {
         mr.model().draw(*device_);
         return true;
     });
-
-    device_->end_frame();
 }
 
 } // namespace buddd::engine

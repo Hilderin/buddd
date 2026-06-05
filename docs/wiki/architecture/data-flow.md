@@ -2,7 +2,7 @@
 
 ## CLI data flow
 
-At the bootstrap stage, the CLI binary uses a Command pattern dispatch:
+At the bootstrap stage, the CLI binary uses a simple dispatch to three commands (`run`, `version`, `help`). The `run` command creates an `App` subclass and delegates to `run_app()`:
 
 ```
 User invocation
@@ -11,11 +11,9 @@ User invocation
 main(int argc, char* argv[])
       │
       ├── argc < 2 or argv[1] == nullptr ?
-      │       └── YES ──► RunCommand.run(argc, argv) ← default
+      │       └── YES ──► RunApp → run_app()  ← default (empty window)
       │
-      ├── argv[1] == "run"     ──► RunCommand.run(argc, argv)
-      ├── argv[1] == "demo"    ──► DemoCommand.run(argc, argv)
-      ├── argv[1] == "capture" ──► CaptureCommand.run(argc, argv)
+      ├── argv[1] == "run"     ──► parse <scene>, create App subclass → run_app()
       ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
       ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
       │
@@ -24,16 +22,29 @@ main(int argc, char* argv[])
                               return EXIT_FAILURE
 ```
 
-Each command produces its own output:
+For `run`, the scene dispatch is:
 
-| Command | stdout | stderr |
+```
+├── argv[2] == nullptr or starts with '-'  → RunApp (empty window)
+├── argv[2] == "triangle"                  → TriangleApp
+├── argv[2] == "cube"                      → CubeApp
+├── argv[2] == "cube-scene"                → CubeSceneApp
+├── argv[2] == "textured-cube"             → TexturedCubeApp
+├── argv[2] == "free-camera"               → FreeCameraApp
+├── argv[2] == "phong"                     → PhongApp
+└── Unknown scene                          → fprintf(stderr, "Unknown scene: ..."), exit 1
+```
+
+Output:
+
+| Invocation | stdout | stderr |
 |---|---|---|
-| `run` / (default) | `"Window opened: 1024x768"` then `"Window closed, shutting down."` | — |
-| `demo <name>` | — | `"Demo started: <name> (N frames)"` then `"Demo complete: <name> (N frames rendered)"` (or abort: `"Demo aborted by user (frame N)"`). Interactive demos (`free-camera`) print `"Demo started: free-camera (interactive)"`. On Escape, they exit with `"Demo complete: free-camera (interactive)"` via `std::cerr`. On window close, they exit with `"Demo aborted by user"` via `std::cerr`. If no name: demo usage text. If unknown name: `"Unknown demo: '<name>'"` + usage. |
-| `version` | `"buddd 0.1.0"` | — |
-| `help` | Usage text (5 commands: `run`, `demo`, `capture`, `version`, `help`) | — |
-| `capture <scenario> [--frame N] [path]` | `"Captured: <path>"` | `"Capturing: <scenario> (N frame(s))"` then error or success. If no scenario: `"Usage: buddd capture <scenario>"` + scenario list. If unknown scenario: `"Unknown capture scenario: '<name>'"` + usage. If extra args: `"Warning: unexpected arguments..."`. |
-| Unknown (including `test`) | — | `"Unknown command: '<cmd>'"` + usage text |
+| `buddd` / `buddd run` | — | `"Window opened: 1024x768"`, then `"Window closed, shutting down."` (via `std::cerr`) |
+| `buddd run <scene>` | — | Scene-specific messages: frame-limited scenes print `"Scene started: <name> (N frames)"` + `"Scene complete: <name> (N frames rendered)"`. Interactive scenes print `"Scene started: <name> (interactive)"` and `"Scene complete: <name> (interactive)"` on Escape. On window close: `"Scene aborted by user (frame N)"`. If unknown scene: `"Unknown scene: '<name>'"` + usage. |
+| `buddd run <scene> --capture N:path` | `"Captured: <path>"` | Capture messages merged into scene output |
+| `buddd version` | `"buddd 0.1.0"` | — |
+| `buddd help` | Usage text (3 commands: `run`, `version`, `help`) | — |
+| Unknown (including `demo`, `capture`, `test`) | — | `"Unknown command: '<cmd>'"` + usage text |
 
 The old `--test` and `--version` flags are removed — they are caught by the unknown-command handler.
 
@@ -117,7 +128,7 @@ EngineService::create(Backend, WindowConfig)
 
 ### Legacy manual lifecycle (pre-SPEC-016, pre-EngineService)
 
-Before EngineService was introduced, the chain was constructed manually in `demo_command.cpp` and `CaptureCommand`. EngineService now formalises this pattern.
+Before EngineService was introduced, the chain was constructed manually in `DemoCommand` and `CaptureCommand` (both now removed). EngineService now formalises this pattern, and `run_app()` uses it exclusively.
 
 ### Navigable object graph access
 
@@ -342,14 +353,12 @@ material.set_uniform("u_light_colours[1]", ld2.colour);
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior
 - Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: dispatch rules, command behaviors, output contracts
 - Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — Dispatch logic, output format correctness, edge cases
-- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
-- Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Demo dispatch, RunCommand simplification, output text changes
-- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo
-- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Cube demo dispatch integration, output messages
-- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
-- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
+- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run (historical — superseded by SPEC-008 CLI App System)
+- Spec: [SPEC-008](/docs/specs/cli-app-system/spec.md) — CLI App System (centralised render loop, App lifecycle, unified `run` command, capture support)
+- Implementation contract: [IMPL-008](/docs/specs/cli-app-system/implementation-contract.md) — CLI App System implementation
+- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario) (historical — capture now integrated into `run_app()`)
 - Spec: [SPEC-012](/docs/specs/depth-handling/spec.md) — Depth Buffer Support (24-bit depth allocation, GL_DEPTH_TEST, per-frame depth clear)
-- Implementation contract: [IMPL-012](/docs/specs/depth-handling/implementation-contract.md)
 - Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, frame-based state model, Platform integration)
 - Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
 - ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
+- ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)

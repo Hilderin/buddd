@@ -23,9 +23,11 @@ TEST_CASE("buddd help outputs usage text", "[cli]") {
     REQUIRE(res.exit_code == 0);
     REQUIRE(res.stdout_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
-    REQUIRE(res.stdout_str.find("demo") != std::string::npos);
     REQUIRE(res.stdout_str.find("version") != std::string::npos);
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
+    // demo and capture should no longer appear
+    REQUIRE(res.stdout_str.find("demo") == std::string::npos);
+    REQUIRE(res.stdout_str.find("capture") == std::string::npos);
 }
 
 TEST_CASE("buddd unknowncommand exits with code 1", "[cli]") {
@@ -49,26 +51,34 @@ TEST_CASE("buddd help ignores extra arguments", "[cli]") {
     REQUIRE(res.exit_code == 0);
     REQUIRE(res.stdout_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
-    REQUIRE(res.stdout_str.find("demo") != std::string::npos);
     REQUIRE(res.stdout_str.find("version") != std::string::npos);
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
 }
 
-TEST_CASE("buddd demo with no name prints usage and exits 1", "[cli]") {
-    const auto res = run_buddd("demo");
+TEST_CASE("buddd demo prints unknown command", "[cli]") {
+    // Old 'demo' subcommand is removed; 'buddd demo' should produce unknown command error.
+    const auto res = run_buddd("demo triangle");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Usage: buddd demo <demo>") != std::string::npos);
-    REQUIRE(res.stderr_str.find("triangle") != std::string::npos);
-    REQUIRE(res.stderr_str.find("Demo names are case-sensitive.") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Unknown command: 'demo'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
-TEST_CASE("buddd demo unknownname prints error and exits 1", "[cli]") {
-    const auto res = run_buddd("demo unknownname");
+TEST_CASE("buddd capture prints unknown command", "[cli]") {
+    // Old 'capture' subcommand is removed; 'buddd capture' should produce unknown command error.
+    const auto res = run_buddd("capture cube");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown demo: 'unknownname'") != std::string::npos);
-    REQUIRE(res.stderr_str.find("Usage: buddd demo <demo>") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Unknown command: 'capture'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
+}
+
+TEST_CASE("buddd run unknownscene prints error", "[cli]") {
+    const auto res = run_buddd("run unknownscene");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("Unknown scene: 'unknownscene'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("Usage: buddd run") != std::string::npos);
 }
 
 TEST_CASE("buddd test is unknown command", "[cli]") {
@@ -77,33 +87,6 @@ TEST_CASE("buddd test is unknown command", "[cli]") {
     REQUIRE(res.exit_code == 1);
     REQUIRE(res.stderr_str.find("Unknown command: 'test'") != std::string::npos);
     REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
-}
-
-// ---------------------------------------------------------------------------
-// Capture command tests (tagged [cli])
-// ---------------------------------------------------------------------------
-
-TEST_CASE("buddd capture with no args prints usage and exits 1", "[cli]") {
-    const auto res = run_buddd("capture");
-
-    REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Usage: buddd capture <scenario>") != std::string::npos);
-}
-
-TEST_CASE("buddd capture unknown_scenario prints error and exits 1", "[cli]") {
-    const auto res = run_buddd("capture unknown_scenario");
-
-    REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown capture scenario: 'unknown_scenario'") != std::string::npos);
-    REQUIRE(res.stderr_str.find("Available scenarios:") != std::string::npos);
-    REQUIRE(res.stderr_str.find("cube") != std::string::npos);
-}
-
-TEST_CASE("buddd help output includes capture", "[cli]") {
-    const auto res = run_buddd("help");
-
-    REQUIRE(res.exit_code == 0);
-    REQUIRE(res.stdout_str.find("capture") != std::string::npos);
 }
 
 TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {

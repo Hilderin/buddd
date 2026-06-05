@@ -10,11 +10,11 @@ inline constexpr std::string_view k_usage_text =
     "Usage: buddd <command> [<args>]\n"
     "\n"
     "Commands:\n"
-    "  run       Run the engine in interactive mode (empty window)\n"
-    "  demo      Run a demo by name (try 'buddd demo triangle')\n"
-    "  capture   Capture a rendered scene to a PNG file\n"
+    "  run       Run a scene or the interactive window (default)\n"
     "  version   Print version information\n"
-    "  help      Show this help message\n";
+    "  help      Show this help message\n"
+    "\n"
+    "For scene usage: buddd run --help\n";
 
 class HelpCommand {
 public:

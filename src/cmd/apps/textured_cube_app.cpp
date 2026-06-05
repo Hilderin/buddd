@@ -1,38 +1,39 @@
-#include "demo/textured_cube_demo.h"
+#include "apps/textured_cube_app.h"
 
-#include "platform/platform.h"
-#include "window/window.h"
+#include "image/image.h"
+#include "math/camera.h"
+#include "math/math.h"
+#include "math/vec3.h"
+#include "math/quat.h"
 #include "render/render_device.h"
 #include "render/render_system.h"
 #include "render/mesh_renderer.h"
 #include "render/texture.h"
 #include "scene/world.h"
 #include "scene/camera_component.h"
-#include "image/image.h"
-
-#include "math/camera.h"
-#include "math/math.h"
-#include "math/vec3.h"
-#include "math/quat.h"
+#include "scene/entity.h"
 
 #include <chrono>
-#include <cstdlib>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include <memory>
-#include <thread>
+#include <span>
+#include <string_view>
+#include <utility>
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::demo::run_textured_cube_demo(
-    be::RenderDevice& device,
-    [[maybe_unused]] int argc, [[maybe_unused]] const char* const* argv) -> int
+auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
+    -> be::Result<void>
 {
     // 1. Load texture
     auto image_result = be::Image::load("assets/brick.png");
     if (!image_result) {
         std::cerr << "FATAL: could not load assets/brick.png: "
                   << be::to_string(image_result.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(image_result.error());
     }
 
     // 2. Create texture
@@ -40,15 +41,13 @@ auto buddd::cmd::demo::run_textured_cube_demo(
     if (!texture_result) {
         std::cerr << "FATAL: could not create texture: "
                   << be::to_string(texture_result.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(texture_result.error());
     }
-
-    // 3. Wrap in shared_ptr
     std::shared_ptr<be::Texture> texture(std::move(*texture_result));
 
-    // 4. Create World, Entity, Camera
-    be::World world;
-    auto entity = be::Entity::create(world);
+    // 3. Create World, Entity, Camera
+    world_ = std::make_unique<be::World>();
+    auto entity = be::Entity::create(*world_);
 
     be::math::Camera camera;
     camera.look_at(
@@ -58,14 +57,13 @@ auto buddd::cmd::demo::run_textured_cube_demo(
     );
     camera.set_perspective(
         be::math::radians(60.0f),
-        800.0f / 600.0f,
+        static_cast<float>(config().width) / static_cast<float>(config().height),
         0.1f,
         100.0f
     );
     entity.add_component<be::CameraComponent>(camera);
 
-    // 5. Create vertex buffer with texture coordinates
-    // Vertex format: position (Float3, loc 0) + texcoord (Float2, loc 1), stride = 20 bytes
+    // 4. Create vertex buffer with texture coordinates
     struct TexturedCubeVertex {
         float px, py, pz;
         float tx, ty;
@@ -105,17 +103,11 @@ auto buddd::cmd::demo::run_textured_cube_demo(
     };
 
     const uint16_t indices[] = {
-        // +X face
          0,  1,  2,   0,  2,  3,
-        // -X face
          4,  5,  6,   4,  6,  7,
-        // +Y face
          8,  9, 10,   8, 10, 11,
-        // -Y face
         12, 13, 14,  12, 14, 15,
-        // +Z face
         16, 17, 18,  16, 18, 19,
-        // -Z face
         20, 21, 22,  20, 22, 23,
     };
 
@@ -127,7 +119,7 @@ auto buddd::cmd::demo::run_textured_cube_demo(
             static_cast<uint32_t>(offsetof(TexturedCubeVertex, tx)), false},
     };
 
-    // 6. Create shaders
+    // 5. Create shaders
     constexpr std::string_view k_vertex_source = R"(
         #version 450 core
         layout(location = 0) in vec3 a_position;
@@ -153,34 +145,32 @@ auto buddd::cmd::demo::run_textured_cube_demo(
     auto vs = device.create_shader(be::ShaderType::Vertex, k_vertex_source);
     if (!vs) {
         std::cerr << "FATAL: " << be::to_string(vs.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(vs.error());
     }
 
     auto fs = device.create_shader(be::ShaderType::Fragment, k_fragment_source);
     if (!fs) {
         std::cerr << "FATAL: " << be::to_string(fs.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(fs.error());
     }
 
-    // 7. Create material
+    // 6. Create material
     auto mat = device.create_material(std::move(*vs), std::move(*fs));
     if (!mat) {
         std::cerr << "FATAL: " << be::to_string(mat.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(mat.error());
     }
-
-    // Convert to shared_ptr
     std::shared_ptr<be::Material> shared_mat(std::move(*mat));
 
-    // 8. Set texture on material
+    // 7. Set texture on material
     auto tex_result = shared_mat->set_texture("u_tex", texture);
     if (!tex_result) {
         std::cerr << "FATAL: set_texture failed: "
                   << be::to_string(tex_result.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(tex_result.error());
     }
 
-    // 9. Create model
+    // 8. Create model
     auto model = be::Model::create_indexed(
         device, format,
         std::as_bytes(std::span(vertices)),
@@ -190,48 +180,29 @@ auto buddd::cmd::demo::run_textured_cube_demo(
     if (!model) {
         std::cerr << "FATAL: Failed to create textured cube model: "
                   << be::to_string(model.error()) << "\n";
-        return EXIT_FAILURE;
+        return std::unexpected(model.error());
     }
 
-    // 10. Attach to entity via MeshRenderer
+    // 9. Attach to entity via MeshRenderer
     entity.add_component<be::MeshRenderer>(
         std::make_shared<be::Model>(std::move(*model)));
 
-    // 11. Create RenderSystem
-    be::RenderSystem render_system(device, world);
+    // 10. Create RenderSystem
+    render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
 
-    // 12. Render loop: 120 frames at ~60 FPS
-    constexpr int target_frames = 120;
-    constexpr auto frame_duration = std::chrono::milliseconds(16);
-    auto demo_start = std::chrono::steady_clock::now();
+    entity_ = std::make_unique<be::Entity>(std::move(entity));
+    start_time_ = std::chrono::steady_clock::now();
 
-    std::cerr << "Demo started: textured-cube (" << target_frames << " frames)\n";
+    return {};
+}
 
-    for (int frame = 0; frame < target_frames; ++frame) {
-        auto frame_start = std::chrono::steady_clock::now();
+auto buddd::cmd::app::TexturedCubeApp::render(be::RenderDevice&, int) -> void {
+    auto elapsed = std::chrono::steady_clock::now() - start_time_;
+    float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
+    float angle = elapsed_seconds * 0.5f;
 
-        if (!device.window().platform().poll_events()) {
-            std::cerr << "Demo aborted by user (frame " << frame << ")\n";
-            return EXIT_SUCCESS;
-        }
+    entity_->transform().rotation =
+        be::math::Quat::angle_axis(angle, be::math::Vec3::unit_y());
 
-        // Rotate entity around Y axis
-        auto elapsed = std::chrono::steady_clock::now() - demo_start;
-        float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
-        float angle = elapsed_seconds * 0.5f;
-        entity.transform().rotation =
-            be::math::Quat::angle_axis(angle, be::math::Vec3::unit_y());
-
-        render_system.render();
-
-        // Frame rate limiting
-        auto frame_elapsed = std::chrono::steady_clock::now() - frame_start;
-        if (frame_elapsed < frame_duration) {
-            std::this_thread::sleep_for(frame_duration - frame_elapsed);
-        }
-    }
-
-    std::cerr << "Demo complete: textured-cube ("
-              << target_frames << " frames rendered)\n";
-    return EXIT_SUCCESS;
+    render_system_->render_scene();
 }

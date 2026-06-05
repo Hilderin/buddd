@@ -33,20 +33,22 @@ The project includes CLI integration tests tagged `[cli]` that invoke the `buddd
 
 | Test case | Verification |
 |---|---|
-| `buddd help outputs usage text` | stdout contains `"demo"` as a listed command |
-| `buddd help ignores extra arguments` | stdout contains updated usage text |
+| `buddd help outputs usage text` | stdout contains `"run"` as a listed command |
+| `buddd help does not list old commands` | stdout does NOT contain `"demo"` or `"capture"` |
+| `buddd help ignores extra arguments` | stdout contains usage text |
 | `buddd version outputs correct version string` | stdout contains `"buddd 0.1.0"` |
 | `buddd version ignores extra arguments` | stdout contains `"buddd 0.1.0"` (extra args ignored) |
-| `buddd with no arguments defaults to run command` | stdout contains `"Window opened: 1024x768"` |
+| `buddd with no arguments defaults to run command` | stderr contains `"Window opened: 1024x768"` |
 | `buddd unknowncommand exits with code 1` | stderr contains `"Unknown command: 'unknowncommand'"` + usage; exit code 1 |
-| `buddd demo with no name prints usage and exits 1` | stderr contains `"Usage: buddd demo <demo>"`; exit code 1 |
-| `buddd demo unknownname prints error and exits 1` | stderr contains `"Unknown demo: 'unknownname'"`; exit code 1 |
+| `buddd run with no scene defaults to empty window` | stderr contains `"Window opened: 1024x768"` |
+| `buddd run unknownscene prints error and exits 1` | stderr contains `"Unknown scene: 'unknownscene'"`; exit code 1 |
+| `buddd demo is unknown command` | stderr contains `"Unknown command: 'demo'"`; exit code 1 |
+| `buddd capture is unknown command` | stderr contains `"Unknown command: 'capture'"`; exit code 1 |
 | `buddd test is unknown command` | stderr contains `"Unknown command: 'test'"`; exit code 1 |
-| `buddd demo triangle runs and completes` | stderr contains `"Demo complete: triangle (120 frames rendered)"` or an engine init error |
-| `buddd demo cube runs and completes` | stderr contains `"Demo complete: cube (120 frames rendered)"` or an engine init error |
-| `buddd capture with no args prints usage and exits 1` | stderr contains `"Usage: buddd capture <scenario>"`; exit code 1 |
-| `buddd capture unknown_scenario prints error and exits 1` | stderr contains `"Unknown capture scenario: 'unknown_scenario'"`; exit code 1 |
-| `buddd help output includes capture` | stdout contains `"capture"` in command list |
+| `buddd run triangle runs and completes` | stderr contains `"Scene complete: triangle (120 frames rendered)"` or an engine init error |
+| `buddd run cube runs and completes` | stderr contains `"Scene complete: cube (120 frames rendered)"` or an engine init error |
+| `buddd run triangle --frame 10` | stderr contains `"Scene complete: triangle (10 frames rendered)"` or engine init error |
+| `buddd run cube --capture 60:/tmp/test.png` | stderr contains capture messages, stdout contains `"Captured:"` |
 
 ### Headless platform abstraction tests
 

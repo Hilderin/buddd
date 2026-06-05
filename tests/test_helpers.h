@@ -57,13 +57,15 @@ inline auto temp_filename(const char* prefix) -> std::string {
 }
 
 /// Run buddd with the given arguments, capturing stdout/stderr/exit code.
+/// Uses the offscreen SDL driver to prevent windows from popping up.
 inline auto run_buddd(const std::string& args) -> CommandResult {
     const auto binary = buddd_binary_path();
 
     const auto out_file = temp_filename("buddd_out");
     const auto err_file = temp_filename("buddd_err");
 
-    const std::string shell_cmd = "\"" + binary + "\" " + args
+    const std::string shell_cmd = "SDL_VIDEO_DRIVER=offscreen \""
+                                  + binary + "\" " + args
                                   + " > \"" + out_file + "\" 2> \"" + err_file + "\"";
 
     const int ret = std::system(shell_cmd.c_str());

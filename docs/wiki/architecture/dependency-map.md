@@ -70,7 +70,7 @@ RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
 
 ## EngineService
 
-`EngineService` (in `src/engine/engine_service.h/.cpp`) is the lifecycle owner of the component chain. Created via the factory method `EngineService::create(Backend, WindowConfig)`, it owns `Platform` → `Window` → `RenderDevice` via `std::unique_ptr`. Used by both tests and production code (`demo_command.cpp`). Member declaration order (`platform_`, `window_`, `device_`) guarantees correct destruction ordering (RenderDevice first, then Window, then Platform).
+`EngineService` (in `src/engine/engine_service.h/.cpp`) is the lifecycle owner of the component chain. Created via the factory method `EngineService::create(Backend, WindowConfig)`, it owns `Platform` → `Window` → `RenderDevice` via `std::unique_ptr`. Used by both tests and production code (`run_app()`). Member declaration order (`platform_`, `window_`, `device_`) guarantees correct destruction ordering (RenderDevice first, then Window, then Platform).
 
 ## Texture data dependency
 
