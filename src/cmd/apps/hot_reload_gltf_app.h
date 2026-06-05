@@ -3,6 +3,7 @@
 #include "app.h"
 
 #include <memory>
+#include <vector>
 
 namespace buddd::engine {
 class AssetManager;
@@ -10,15 +11,17 @@ class World;
 class RenderSystem;
 class Entity;
 class RenderDevice;
+class ModelNode;
 } // namespace buddd::engine
 
 namespace buddd::cmd::app {
 
-/// Hot-reload test app for glTF models.
+/// Hot-reload demo for glTF models.
 ///
-/// Loads a model from YAML. At frame 30, copies a different model file over
-/// the source, triggers poll_file_events(), and verifies the model updates.
-/// Renders for 60+ frames.
+/// Starts by rendering BoxTextured. At frame 30, the YAML source is rewritten
+/// to point to DamagedHelmet (a visually distinct PBR model). At frame 70,
+/// it swaps back to BoxTextured. The hot-reload is triggered via the
+/// FileWatcher + poll_file_events mechanism.
 class HotReloadGltfApp final : public App {
 public:
     HotReloadGltfApp();
@@ -35,12 +38,18 @@ public:
     auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
 
 private:
+    /// Reloads the model from the live YAML and creates corresponding entities.
+    /// Destroys any existing model entities first.
+    auto reload_model() -> void;
+
+    /// Recursively creates entities for mesh nodes in the model tree.
+    auto create_entities(buddd::engine::ModelNode& node) -> void;
+
     std::unique_ptr<buddd::engine::AssetManager> asset_manager_;
     std::unique_ptr<buddd::engine::World> world_;
     std::unique_ptr<buddd::engine::RenderSystem> render_system_;
-    std::unique_ptr<buddd::engine::Entity> entity_;
+    std::vector<buddd::engine::Entity> model_entities_;
     int frame_count_ = 0;
-    bool reload_triggered_ = false;
 };
 
 } // namespace buddd::cmd::app

@@ -19,6 +19,8 @@
 
 **Loop 5 (hot_reload_gltf_app fix)**: Model rendered all (5,5,13) — camera was looking in wrong direction (yaw=180° without look_at). Fixed camera to use look_at(0,0,0) with orbit animation. Also fixed double `make_full_path` in `handle_source_change` for ModelAsset (was causing YAML parse error → hot-reload failure).
 
+**Loop 6 (hot_reload_gltf_app rewrite)**: Rewrote hot_reload_gltf_app to swap YAML settings.scale (1.0 → 2.0 → 0.5) instead of loading heavy DamagedHelmet model (10s load). App now demonstrates hot-reload by changing box size at frames 30 and 70, with entity lifecycle management (destroy/recreate).
+
 ### Decision Log
 
 | # | Decision | Choice | Rationale |
