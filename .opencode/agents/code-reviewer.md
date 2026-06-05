@@ -20,7 +20,10 @@ Your job is to review implementation work and produce a persistent review artifa
 
 You may write **one** file:
 
-- `docs/specs/<feature>/code-review.md`
+- `SPEC_DIR/code-review.md`
+
+Where `SPEC_DIR` is provided by the orchestrator in the task description.
+SPEC_DIR points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 
 Use the template at `docs/templates/review-report-template.md` as the starting structure.
 
@@ -52,8 +55,8 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 ## Review process
 
 1. Load the template at `docs/templates/review-report-template.md`.
-2. Read the spec file at `docs/specs/<feature>/spec.md`.
-3. Read the implementation contract at `docs/specs/<feature>/implementation-contract.md`.
+2. Read the spec file at `SPEC_DIR/spec.md`.
+3. Read the implementation contract at `SPEC_DIR/implementation-contract.md`.
 4. **Search the wiki** — Use wiki search tools to find relevant context before performing the review.
 5. **Examine the git context:**
    - Run `git diff` to see all uncommitted changes (the current work to review).
@@ -71,7 +74,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
     - Use the `vision_analyze_image` tool to check the captured image against spec expectations.
     - Document whether the visual output matches the spec's expectations (camera position, colors, scene content, dimensions, etc.).
 8. Perform the review checks against the full diff and any prior related commits.
-9. Write the review to `docs/specs/<feature>/code-review.md` using the template.
+9. Write the review to `SPEC_DIR/code-review.md` using the template.
 10. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
@@ -98,11 +101,11 @@ When updating an existing review file (second or later review cycle):
 
 After writing the review artifact and before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## code-reviewer` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## code-reviewer` section (exact heading match).
 2. Update the following fields in `## code-reviewer`:
    - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
    - `**Summary**`: 2–5 lines describing review outcome.
-   - `**Artifacts**`: `- docs/specs/<feature>/code-review.md`
+   - `**Artifacts**`: `- SPEC_DIR/code-review.md`
    - `**Questions for human**`: list any questions, or "none".
    - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
    - `**Blocking issues**`: copy the blocking issues checklist from code-review.md `## Blocking issues`. If none, write "none".

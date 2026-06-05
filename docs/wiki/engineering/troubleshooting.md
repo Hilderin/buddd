@@ -56,10 +56,10 @@
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Edge cases and Error cases sections
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — Edge cases section
-- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Error cases, Edge cases sections
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Edge cases section
-- Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md) — Error cases, Constraints
-- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — Edge cases
-- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (Error cases, Edge cases, Permissions and security)
+- Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — Edge cases and Error cases sections
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — Edge cases section
+- Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — Error cases, Edge cases sections
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — Edge cases section
+- Spec: [SPEC-003](/.specs/sprint-2026-05/sdl3-backend-tests/spec.md) — Error cases, Constraints
+- Implementation contract: [IMPL-003](/.specs/sprint-2026-05/sdl3-backend-tests/implementation-contract.md) — Edge cases
+- Spec: [SPEC-013](/.specs/sprint-2026-05/input-system/spec.md) — Input System (Error cases, Edge cases, Permissions and security)

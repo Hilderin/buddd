@@ -140,11 +140,11 @@ The CI Docker image is automatically published to `ghcr.io/hilderin/buddd-ci` vi
 
 ## Reference
 
-- Spec: [SPEC-001 Project Setup Bootstrap](/docs/specs/project-setup/spec.md) — Acceptance criteria AC-001 through AC-004 (build), AC-011 through AC-015 (formatting and IDE)
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — Done criteria and verification commands
-- Spec: [SPEC-002 Platform Abstraction](/docs/specs/platform-abstraction/spec.md) — Build system integration, SDL3/OpenGL dependencies
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt modifications, FetchContent SDL3, find_package OpenGL
-- Spec: [SPEC-003 SDL3 Backend Tests](/docs/specs/sdl3-backend-tests/spec.md) — BUDDD_HAS_DISPLAY option
-- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — Build system changes, CI integration
-- Spec: [SPEC-004 Math Foundations](/docs/specs/math-foundations/spec.md) — GLM FetchContent dependency, math module build integration
-- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — CMakeLists.txt GLM FetchContent block, link configuration
+- Spec: [SPEC-001 Project Setup Bootstrap](/.specs/sprint-2026-05/project-setup/spec.md) — Acceptance criteria AC-001 through AC-004 (build), AC-011 through AC-015 (formatting and IDE)
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — Done criteria and verification commands
+- Spec: [SPEC-002 Platform Abstraction](/.specs/sprint-2026-05/platform-abstraction/spec.md) — Build system integration, SDL3/OpenGL dependencies
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — CMakeLists.txt modifications, FetchContent SDL3, find_package OpenGL
+- Spec: [SPEC-003 SDL3 Backend Tests](/.specs/sprint-2026-05/sdl3-backend-tests/spec.md) — BUDDD_HAS_DISPLAY option
+- Implementation contract: [IMPL-003](/.specs/sprint-2026-05/sdl3-backend-tests/implementation-contract.md) — Build system changes, CI integration
+- Spec: [SPEC-004 Math Foundations](/.specs/sprint-2026-05/math-foundations/spec.md) — GLM FetchContent dependency, math module build integration
+- Implementation contract: [IMPL-004](/.specs/sprint-2026-05/math-foundations/implementation-contract.md) — CMakeLists.txt GLM FetchContent block, link configuration

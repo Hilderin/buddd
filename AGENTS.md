@@ -5,9 +5,9 @@ These rules apply to every agent working in this repository.
 ## Authority order
 
 1. `docs/constitution/**`
-2. `docs/specs/**`
+2. `docs/wiki/**`
 3. `docs/adr/**`
-4. `docs/wiki/**`
+4. `.specs/**`
 5. Existing code conventions
 
 ## Non-negotiable rules
@@ -25,10 +25,10 @@ These rules apply to every agent working in this repository.
 ## Document roles
 
 - Constitution: mandatory project rules.
+- Wiki: current operational understanding and active conventions (source of truth for current state).
 - ADRs: historical decisions and rationale.
-- Wiki: current operational understanding.
-- Specs: product and behavior intent.
-- Implementation contracts: constrained implementation instructions.
+- Specs: historical snapshots of feature intent at time of implementation (read-only after workflow completes).
+- Implementation contracts: constrained implementation instructions (active during workflow, then archived).
 
 ## Escalation
 

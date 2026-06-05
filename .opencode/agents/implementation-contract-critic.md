@@ -19,7 +19,10 @@ Your job is to reject contracts that still allow random implementation choices a
 
 You may write **one** file:
 
-- `docs/specs/<feature>/implementation-contract-critic.md`
+- `SPEC_DIR/implementation-contract-critic.md`
+
+Where `SPEC_DIR` is provided by the orchestrator in the task description.
+SPEC_DIR points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 
 Use the template at `docs/templates/review-report-template.md` as the starting structure.
 
@@ -43,11 +46,11 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 ## Review process
 
 1. Load the template at `docs/templates/review-report-template.md`.
-2. Read the contract file at `docs/specs/<feature>/implementation-contract.md`.
-3. Read the referenced accepted spec at `docs/specs/<feature>/spec.md`.
+2. Read the contract file at `SPEC_DIR/implementation-contract.md`.
+3. Read the referenced accepted spec at `SPEC_DIR/spec.md`.
 4. Search the wiki for relevant context using wiki search tools.
 5. Perform the review checks.
-6. Write the review to `docs/specs/<feature>/implementation-contract-critic.md` using the template.
+6. Write the review to `SPEC_DIR/implementation-contract-critic.md` using the template.
 7. The contract's status is tracked in coordination.md. Do NOT modify the contract file's status field.
 8. List every issue as a `- [ ]` checklist item under the appropriate section.
 
@@ -76,11 +79,11 @@ When updating an existing review file (second or later review cycle):
 
 After writing the review artifact and before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## implementation-contract-critic` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## implementation-contract-critic` section (exact heading match).
 2. Update the following fields in `## implementation-contract-critic`:
    - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
    - `**Summary**`: 2–5 lines describing review outcome.
-   - `**Artifacts**`: `- docs/specs/<feature>/implementation-contract-critic.md`
+   - `**Artifacts**`: `- SPEC_DIR/implementation-contract-critic.md`
    - `**Questions for human**`: list any questions, or "none".
    - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
    - `**Blocking issues**`: copy the blocking issues checklist from the review artifact's `## Blocking issues` section. If none, write "none".

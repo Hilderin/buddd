@@ -226,19 +226,19 @@ Tags used: `[lighting]`, `[lighting][vertex]`, `[lighting][component]`, `[lighti
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — AC-007 (version sanity test), AC-008 (FetchContent), AC-010 (ctest passes)
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 9 and 10 (test structure)
-- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Acceptance criteria, User stories (headless testing)
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required tests (T-01 through T-12)
-- Spec: [SPEC-003](/docs/specs/sdl3-backend-tests/spec.md) — SDL3 backend test specification
-- Implementation contract: [IMPL-003](/docs/specs/sdl3-backend-tests/implementation-contract.md) — SDL3 backend test implementation
-- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Test implications, new CLI test cases
-- Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Required tests (demo no name, demo unknownname, test unknown, demo triangle)
-- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph: Acceptance criteria (AC-001 through AC-032), Edge cases, Test coverage requirements
-- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Required tests (T-01 through T-49), test conventions, pending-destroy contract verification
-- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Acceptance criteria (AC-001 through AC-027), test coverage requirements
-- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Required tests (T-01 through T-24), headless test conventions
-- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
-- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
-- Spec: [SPEC-018](/docs/specs/lighting/spec.md) — Phong Lighting System (Standard Vertex, Light Components, Phong module, RenderSystem extension, Phong demo)
-- Implementation contract: [IMPL-018-002](/docs/specs/lighting/implementation-contract.md) — Phong Lighting System implementation contract
+- Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — AC-007 (version sanity test), AC-008 (FetchContent), AC-010 (ctest passes)
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — sections 9 and 10 (test structure)
+- Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — Acceptance criteria, User stories (headless testing)
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — Required tests (T-01 through T-12)
+- Spec: [SPEC-003](/.specs/sprint-2026-05/sdl3-backend-tests/spec.md) — SDL3 backend test specification
+- Implementation contract: [IMPL-003](/.specs/sprint-2026-05/sdl3-backend-tests/implementation-contract.md) — SDL3 backend test implementation
+- Spec: [SPEC-007](/.specs/sprint-2026-05/cli-command-evolution/spec.md) — CLI Command Evolution: Test implications, new CLI test cases
+- Implementation contract: [IMPL-007](/.specs/sprint-2026-05/cli-command-evolution/implementation-contract.md) — Required tests (demo no name, demo unknownname, test unknown, demo triangle)
+- Spec: [SPEC-008](/.specs/sprint-2026-05/scene-graph/spec.md) — Scene Graph: Acceptance criteria (AC-001 through AC-032), Edge cases, Test coverage requirements
+- Implementation contract: [IMPL-008](/.specs/sprint-2026-05/scene-graph/implementation-contract.md) — Required tests (T-01 through T-49), test conventions, pending-destroy contract verification
+- Spec: [SPEC-009](/.specs/sprint-2026-05/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Acceptance criteria (AC-001 through AC-027), test coverage requirements
+- Implementation contract: [IMPL-009](/.specs/sprint-2026-05/3d-cube-demo/implementation-contract.md) — Required tests (T-01 through T-24), headless test conventions
+- Spec: [SPEC-010](/.specs/sprint-2026-05/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/.specs/sprint-2026-05/capture/implementation-contract.md)
+- Spec: [SPEC-018](/.specs/sprint-2026-05/lighting/spec.md) — Phong Lighting System (Standard Vertex, Light Components, Phong module, RenderSystem extension, Phong demo)
+- Implementation contract: [IMPL-018-002](/.specs/sprint-2026-05/lighting/implementation-contract.md) — Phong Lighting System implementation contract

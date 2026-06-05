@@ -19,20 +19,21 @@ You convert an accepted spec into a precise implementation contract that constra
 
 You may create **one** file per feature:
 
-- `docs/specs/<feature>/implementation-contract.md`
+- `SPEC_DIR/implementation-contract.md`
 
-Where `<feature>` is the feature directory name (e.g. `project-scaffolding`).
+Where `SPEC_DIR` is provided by the orchestrator in the task description.
+SPEC_DIR points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 Create the directory if it doesn't exist.
 The implementation contract follows the template at `docs/templates/implementation-contract-template.md`.
 
 ## Before writing
 
 1. **Load the template** at `docs/templates/implementation-contract-template.md` — it defines the required structure.
-2. **Read the accepted spec** at `docs/specs/<feature>/spec.md` — understand every acceptance criterion, edge case, and user story.
+2. **Read the accepted spec** at `SPEC_DIR/spec.md` — understand every acceptance criterion, edge case, and user story.
 3. **Search the wiki** — Use wiki search tools (`wiki_wiki_search`, `wiki_wiki_search_exact`, `wiki_wiki_read_section`) to find relevant architecture context, dependency maps, module boundaries, data flow, and existing conventions.
 4. **Review existing ADRs** in `docs/adr/` — identify any that constrain the implementation approach.
-5. **Review existing contracts** in `docs/specs/` — avoid contradictions with previously accepted contracts.
-6. **Check the spec-critic review** at `docs/specs/<feature>/spec-critic.md` — confirm the verdict allows proceeding before writing the contract. If it does not, stop and escalate.
+5. **Review existing contracts** in `.specs/` — avoid contradictions with previously accepted contracts.
+6. **Check the spec-critic review** at `SPEC_DIR/spec-critic.md` — confirm the verdict allows proceeding before writing the contract. If it does not, stop and escalate.
 7. **Check existing implementation-contract-critic files** — if an `implementation-contract-critic.md` exists in the feature directory, read it and ensure all blocking issues (`- [ ]` unchecked items) are addressed before editing.
 
 You must not modify source code.
@@ -113,11 +114,11 @@ This preserves unchanged content, maintains revision history, and reduces token 
 
 After completing the implementation contract and passing self-validation:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## implementation-contract-author` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## implementation-contract-author` section (exact heading match).
 2. Update the following fields in `## implementation-contract-author`:
    - `**Status**`: `completed`
    - `**Summary**`: 2–5 lines describing what was done.
-   - `**Artifacts**`: `- docs/specs/<feature>/implementation-contract.md`
+   - `**Artifacts**`: `- SPEC_DIR/implementation-contract.md`
    - `**Questions for human**`: list any questions, or "none".
    - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
    - `**Blocking issues**`: list any blockers, or "none".

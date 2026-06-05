@@ -31,7 +31,7 @@ You may modify only:
 ### 1. Detect
 
 - Use `wiki_wiki_search`, `wiki_wiki_search_exact`, and `wiki_wiki_read_section` to understand the current state of the wiki.
-- Read recent specs in `docs/specs/` to understand what was delivered.
+- Read recent specs in `.specs/` to understand what was delivered.
 - Read recent ADRs in `docs/adr/` for architectural decisions.
 - Check the constitution in `docs/constitution/` for any fundamental rule changes.
 - Check the actual codebase for structural changes (new modules, renamed packages, removed features, etc.).
@@ -74,7 +74,8 @@ Ask yourself: *What in the wiki is now inaccurate, incomplete, or obsolete?*
 
 After completing wiki updates and before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## wiki-agent` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## wiki-agent` section (exact heading match).
+   SPEC_DIR is provided by the orchestrator in the task description.
 2. Update the following fields in `## wiki-agent`:
    - `**Status**`: `completed` (or `blocked` if blocked).
    - `**Summary**`: 2–5 lines describing what was done.

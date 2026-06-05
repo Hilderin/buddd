@@ -115,4 +115,4 @@ The core decision of ADR-008 (use a custom Docker image for CI) remains in full 
 - `.github/workflows/publish.yml` — New workflow for publishing the CI Docker image.
 - `.github/workflows/ci.yml` — Modified CI workflow that pulls the pre-published image.
 - `docker/ci.Dockerfile` — Canonical CI image definition.
-- `docs/specs/ci-docker-publish/spec.md` — Product specification for this feature.
+- `.specs/sprint-2026-06/ci-docker-publish/spec.md` — Product specification for this feature.

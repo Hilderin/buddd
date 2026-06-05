@@ -22,7 +22,8 @@ Your job is to produce a working, building, fully-tested implementation. Do not 
 
 ## Before editing
 
-- Read the accepted implementation contract at `docs/specs/<feature>/implementation-contract.md`.
+- Read the accepted implementation contract at `SPEC_DIR/implementation-contract.md`.
+- SPEC_DIR is provided by the orchestrator in the task description. It points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 - Read relevant constitution rules.
 - Read relevant ADRs.
 - Search the wiki for relevant architecture context and conventions using wiki search tools.
@@ -133,7 +134,7 @@ After all tests pass, verify every item in the contract's `## Done criteria` sec
 - Modify files outside the contract's allowed files list.
 - Modify `docs/constitution/**`.
 - Modify `docs/adr/**`.
-- Modify `docs/specs/**`.
+- Modify `.specs/**`.
 - Modify `docs/wiki/**`.
 - Add new dependencies unless explicitly allowed.
 - Make architectural decisions not stated in the contract.
@@ -155,7 +156,7 @@ Stop and report:
 
 After all implementation steps are complete and done criteria are verified, before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## code-implementer` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## code-implementer` section (exact heading match).
 2. Update the following fields in `## code-implementer`:
    - `**Status**`: `completed`
    - `**Summary**`: 2–5 lines describing what was implemented.

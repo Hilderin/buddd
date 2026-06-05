@@ -9,6 +9,6 @@ The project does not include:
 - Cross-platform deployment scripts
 - Binary distribution tooling
 
-See [SPEC-001 Non-goals](/docs/specs/project-setup/spec.md#non-goals) and [IMPL-001 Non-goals](/docs/specs/project-setup/implementation-contract.md#non-goals) for the rationale.
+See [SPEC-001 Non-goals](/.specs/sprint-2026-05/project-setup/spec.md#non-goals) and [IMPL-001 Non-goals](/.specs/sprint-2026-05/project-setup/implementation-contract.md#non-goals) for the rationale.
 
 Deployment and packaging are expected to be addressed in a future phase once the engine has feature content worth distributing.

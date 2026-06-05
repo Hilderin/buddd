@@ -332,31 +332,31 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Goals, Conventions, Directory structure
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 3-10 (individual target specifications)
-- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Platform, Window, RenderDevice module definitions
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — File directory structure, Existing conventions to follow
-- Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Math type specifications, memory layout, operations, GLM integration
-- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File list, header structure, delegation pattern
-- Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes
-- Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — File directory structure, open questions, draw-methods-as-void exception
-- Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: Command pattern, subcommand structure, file layout
-- Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, CONST-001 compliance
-- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
-- Implementation contract: [IMPL-007](/docs/specs/cli-command-evolution/implementation-contract.md) — Replacement of TestCommand with DemoCommand, per-demo files, RunCommand simplification
-- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
-- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — Files allowed to create/modify, entity node structure, template method inline conventions, noexcept specification table, test requirements (T-01 through T-49)
-- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo (Model class, CubeResources, cube demo)
-- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Files allowed to create/modify, factory method signatures, test requirements (T-01 through T-24), draw-methods-as-void exception extension
-- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
-- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
-- Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
-- Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)
-- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration)
-- Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph (RenderDevice → Window → Platform → InputSystem)
-- Spec: [SPEC-020](/docs/specs/model-multi-material/spec.md) — Multi-material Model (SubMesh, unified create_indexed factory, primitives, fallback material)
-- Implementation contract: [IMPL-020](/docs/specs/model-multi-material/implementation-contract.md) — Multi-Material Model, Primitive Helpers & API Cleanup
-- Spec: [SPEC-NNNN](/docs/specs/gltf-model-loading/spec.md) — glTF Model Loading (ModelAsset, ModelNode, PbrMaterial, PbrMaterialData, ModelLoader)
+- Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — Goals, Conventions, Directory structure
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — sections 3-10 (individual target specifications)
+- Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — Platform, Window, RenderDevice module definitions
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — File directory structure, Existing conventions to follow
+- Spec: [SPEC-004](/.specs/sprint-2026-05/math-foundations/spec.md) — Math type specifications, memory layout, operations, GLM integration
+- Implementation contract: [IMPL-004](/.specs/sprint-2026-05/math-foundations/implementation-contract.md) — File list, header structure, delegation pattern
+- Spec: [SPEC-005](/.specs/sprint-2026-05/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes
+- Implementation contract: [IMPL-005](/.specs/sprint-2026-05/render-pipeline/implementation-contract.md) — File directory structure, open questions, draw-methods-as-void exception
+- Spec: [SPEC-006](/.specs/sprint-2026-05/cli-command-system/spec.md) — CLI Command System: Command pattern, subcommand structure, file layout
+- Implementation contract: [IMPL-006](/.specs/sprint-2026-05/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, CONST-001 compliance
+- Spec: [SPEC-007](/.specs/sprint-2026-05/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
+- Implementation contract: [IMPL-007](/.specs/sprint-2026-05/cli-command-evolution/implementation-contract.md) — Replacement of TestCommand with DemoCommand, per-demo files, RunCommand simplification
+- Spec: [SPEC-008](/.specs/sprint-2026-05/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
+- Implementation contract: [IMPL-008](/.specs/sprint-2026-05/scene-graph/implementation-contract.md) — Files allowed to create/modify, entity node structure, template method inline conventions, noexcept specification table, test requirements (T-01 through T-49)
+- Spec: [SPEC-009](/.specs/sprint-2026-05/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo (Model class, CubeResources, cube demo)
+- Implementation contract: [IMPL-009](/.specs/sprint-2026-05/3d-cube-demo/implementation-contract.md) — Files allowed to create/modify, factory method signatures, test requirements (T-01 through T-24), draw-methods-as-void exception extension
+- Spec: [SPEC-010](/.specs/sprint-2026-05/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/.specs/sprint-2026-05/capture/implementation-contract.md)
+- Spec: [SPEC-011](/.specs/sprint-2026-05/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
+- Implementation contract: [IMPL-011](/.specs/sprint-2026-05/scene-rendering/implementation-contract.md)
+- Spec: [SPEC-013](/.specs/sprint-2026-05/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration)
+- Spec: [SPEC-016](/.specs/sprint-2026-05/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph (RenderDevice → Window → Platform → InputSystem)
+- Spec: [SPEC-020](/.specs/sprint-2026-06/model-multi-material/spec.md) — Multi-material Model (SubMesh, unified create_indexed factory, primitives, fallback material)
+- Implementation contract: [IMPL-020](/.specs/sprint-2026-06/model-multi-material/implementation-contract.md) — Multi-Material Model, Primitive Helpers & API Cleanup
+- Spec: [SPEC-NNNN](/.specs/sprint-2026-06/gltf-model-loading/spec.md) — glTF Model Loading (ModelAsset, ModelNode, PbrMaterial, PbrMaterialData, ModelLoader)
 - ADR: [ADR-018](/docs/adr/018-tinygltf-dependency.md) — tinygltf dependency for glTF 2.0 model loading
 - ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
 - ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)

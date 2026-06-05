@@ -123,21 +123,21 @@ The project uses [Semantic Versioning](https://semver.org/) (major.minor.patch).
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Assumptions A-05 through A-09
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — API compatibility impact section
-- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Conventions, Actors, Assumptions
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — API compatibility impact
-- Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Type specifications, memory layout, operations, GLM integration
-- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — File definitions, delegation patterns
-- Spec: [SPEC-005](/docs/specs/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology definitions
-- Implementation contract: [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) — Implementation behaviour, Error::Category values, draw-methods-as-void exception
-- Spec: [SPEC-008](/docs/specs/scene-graph/spec.md) — Scene Graph types, hierarchy, deferred destruction, component lifecycle, pending-destroy contract
-- Implementation contract: [IMPL-008](/docs/specs/scene-graph/implementation-contract.md) — EntityNode structure, noexcept specification, RTTI requirement, std::optional<T&> compiler support note
-- Spec: [SPEC-009](/docs/specs/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Model class definition, CubeResources, face colour scheme
-- Implementation contract: [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) — Model API details, shared ownership pattern, test specification
-- Spec: [SPEC-011](/docs/specs/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
-- Implementation contract: [IMPL-011](/docs/specs/scene-rendering/implementation-contract.md)
-- Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
-- Spec: [SPEC-NNNN](/docs/specs/gltf-model-loading/spec.md) — glTF Model Loading (ModelAsset, ModelNode, PbrMaterial, PbrMaterialData, ModelLoader)
+- Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — Assumptions A-05 through A-09
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — API compatibility impact section
+- Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — Conventions, Actors, Assumptions
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — API compatibility impact
+- Spec: [SPEC-004](/.specs/sprint-2026-05/math-foundations/spec.md) — Type specifications, memory layout, operations, GLM integration
+- Implementation contract: [IMPL-004](/.specs/sprint-2026-05/math-foundations/implementation-contract.md) — File definitions, delegation patterns
+- Spec: [SPEC-005](/.specs/sprint-2026-05/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology definitions
+- Implementation contract: [IMPL-005](/.specs/sprint-2026-05/render-pipeline/implementation-contract.md) — Implementation behaviour, Error::Category values, draw-methods-as-void exception
+- Spec: [SPEC-008](/.specs/sprint-2026-05/scene-graph/spec.md) — Scene Graph types, hierarchy, deferred destruction, component lifecycle, pending-destroy contract
+- Implementation contract: [IMPL-008](/.specs/sprint-2026-05/scene-graph/implementation-contract.md) — EntityNode structure, noexcept specification, RTTI requirement, std::optional<T&> compiler support note
+- Spec: [SPEC-009](/.specs/sprint-2026-05/3d-cube-demo/spec.md) — Model Utility & 3D Cube Demo: Model class definition, CubeResources, face colour scheme
+- Implementation contract: [IMPL-009](/.specs/sprint-2026-05/3d-cube-demo/implementation-contract.md) — Model API details, shared ownership pattern, test specification
+- Spec: [SPEC-011](/.specs/sprint-2026-05/scene-rendering/spec.md) — Scene Rendering (Component entity awareness, World::each, CameraComponent, MeshRenderer, RenderSystem, cube-scene demo)
+- Implementation contract: [IMPL-011](/.specs/sprint-2026-05/scene-rendering/implementation-contract.md)
+- Spec: [SPEC-016](/.specs/sprint-2026-05/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
+- Spec: [SPEC-NNNN](/.specs/sprint-2026-06/gltf-model-loading/spec.md) — glTF Model Loading (ModelAsset, ModelNode, PbrMaterial, PbrMaterialData, ModelLoader)
 - ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
 - ADR: [ADR-018](/docs/adr/018-tinygltf-dependency.md) — tinygltf dependency for glTF 2.0 model loading

@@ -19,9 +19,10 @@ You transform human intent into a clear, testable functional spec.
 
 You may create **one** file:
 
-- `docs/specs/<feature>/spec.md`
+- `SPEC_DIR/spec.md`
 
-Where `<feature>` is a short kebab-case identifier for the feature (e.g. `project-scaffolding`, `user-auth`).
+Where `SPEC_DIR` is provided by the orchestrator in the task description.
+SPEC_DIR points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 Create the directory if it doesn't exist.
 The spec follows the template at `docs/templates/spec-template.md`.
 
@@ -29,7 +30,7 @@ The spec follows the template at `docs/templates/spec-template.md`.
 
 1. **Load the template** at `docs/templates/spec-template.md` — it defines the required structure.
 2. **Understand the human intent** — clarify with the orchestrator if ambiguous.
-3. **Review existing specs** in `docs/specs/` to avoid contradictions.
+3. **Review existing specs** in `.specs/` to avoid contradictions.
 4. **Search the wiki** — Use wiki search tools (`wiki_wiki_search`, `wiki_wiki_search_exact`, `wiki_wiki_read_section`) to find relevant architecture context, domain definitions, business rules, and existing decisions that bear on the feature.
 5. **Check spec-critic files** — if a `spec-critic.md` exists in the feature directory, read it and ensure all blocking issues (`- [ ]` unchecked items) are addressed before editing.
 
@@ -111,11 +112,11 @@ This preserves unchanged content, maintains revision history, and reduces token 
 
 After completing the spec and passing self-validation:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## spec-author` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## spec-author` section (exact heading match).
 2. Update the following fields in `## spec-author`:
    - `**Status**`: `completed`
    - `**Summary**`: 2–5 lines describing what was done (scope, key sections, key decisions).
-   - `**Artifacts**`: `- docs/specs/<feature>/spec.md`
+   - `**Artifacts**`: `- SPEC_DIR/spec.md`
    - `**Questions for human**`: if any questions arose that cannot be answered from project evidence, list them. If none, write "none".
    - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
    - `**Blocking issues**`: if any issues prevent the workflow from proceeding, use `- [ ]` checklist format. If none, write "none".

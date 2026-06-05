@@ -20,14 +20,14 @@ The current project state was established via:
 
 | Document | Type | Status |
 |---|---|---|
-| [SPEC-001](/docs/specs/project-setup/spec.md) | Product specification | Accepted |
-| [IMPL-001](/docs/specs/project-setup/implementation-contract.md) | Implementation contract | Accepted |
-| [SPEC-002](/docs/specs/platform-abstraction/spec.md) | Product specification | Accepted |
-| [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) | Implementation contract | Accepted |
-| [SPEC-005](/docs/specs/render-pipeline/spec.md) | Product specification | Accepted |
-| [IMPL-005](/docs/specs/render-pipeline/implementation-contract.md) | Implementation contract | Accepted |
-| [SPEC-009](/docs/specs/3d-cube-demo/spec.md) | Product specification | Accepted |
-| [IMPL-009](/docs/specs/3d-cube-demo/implementation-contract.md) | Implementation contract | Accepted |
+| [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) | Product specification | Accepted |
+| [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) | Implementation contract | Accepted |
+| [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) | Product specification | Accepted |
+| [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) | Implementation contract | Accepted |
+| [SPEC-005](/.specs/sprint-2026-05/render-pipeline/spec.md) | Product specification | Accepted |
+| [IMPL-005](/.specs/sprint-2026-05/render-pipeline/implementation-contract.md) | Implementation contract | Accepted |
+| [SPEC-009](/.specs/sprint-2026-05/3d-cube-demo/spec.md) | Product specification | Accepted |
+| [IMPL-009](/.specs/sprint-2026-05/3d-cube-demo/implementation-contract.md) | Implementation contract | Accepted |
 
 The following design decisions established by SPEC-002 are recorded as accepted specifications (not ADRs — they remain within the spec/contract framework):
 

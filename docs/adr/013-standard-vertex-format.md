@@ -133,8 +133,8 @@ Simpler custom vertex formats are **permitted** for:
 
 ## Related documents
 
-- SPEC-018 (`docs/specs/lighting/spec.md`): The Phong lighting specification that introduced the standard Vertex struct.
-- IMPL-018-002 (`docs/specs/lighting/implementation-contract.md`): Implementation contract for the standard Vertex struct (lines 138–182).
+- SPEC-018 (`.specs/sprint-2026-05/lighting/spec.md`): The Phong lighting specification that introduced the standard Vertex struct.
+- IMPL-018-002 (`.specs/sprint-2026-05/lighting/implementation-contract.md`): Implementation contract for the standard Vertex struct (lines 138–182).
 - `src/engine/render/vertex.h`: Canonical implementation of the Vertex struct and `k_standard_vertex_format`.
 - `src/engine/render/vertex_format.h`: The `VertexFormat`, `VertexAttribute`, and `VertexAttributeType` definitions that `k_standard_vertex_format` uses.
 - ADR-003 (`docs/adr/003-render-pipeline-architecture.md`): Render pipeline architecture — establishes the interface-backend pattern within which `Vertex` lives.

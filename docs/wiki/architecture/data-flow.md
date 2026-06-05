@@ -438,18 +438,18 @@ material.set_uniform("u_light_colours[1]", ld2.colour);
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — User-visible behavior, User stories 1-3
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — section 7 (`main.cpp` behavior)
-- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — User stories 1-5, Edge cases, Error cases
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior
-- Spec: [SPEC-006](/docs/specs/cli-command-system/spec.md) — CLI Command System: dispatch rules, command behaviors, output contracts
-- Implementation contract: [IMPL-006](/docs/specs/cli-command-system/implementation-contract.md) — Dispatch logic, output format correctness, edge cases
-- Spec: [SPEC-007](/docs/specs/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run (historical — superseded by SPEC-008 CLI App System)
-- Spec: [SPEC-008](/docs/specs/cli-app-system/spec.md) — CLI App System (centralised render loop, App lifecycle, unified `run` command, capture support)
-- Implementation contract: [IMPL-008](/docs/specs/cli-app-system/implementation-contract.md) — CLI App System implementation
-- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario) (historical — capture now integrated into `run_app()`)
-- Spec: [SPEC-012](/docs/specs/depth-handling/spec.md) — Depth Buffer Support (24-bit depth allocation, GL_DEPTH_TEST, per-frame depth clear)
-- Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, frame-based state model, Platform integration)
-- Spec: [SPEC-016](/docs/specs/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
+- Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — User-visible behavior, User stories 1-3
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — section 7 (`main.cpp` behavior)
+- Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — User stories 1-5, Edge cases, Error cases
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — Required implementation behavior
+- Spec: [SPEC-006](/.specs/sprint-2026-05/cli-command-system/spec.md) — CLI Command System: dispatch rules, command behaviors, output contracts
+- Implementation contract: [IMPL-006](/.specs/sprint-2026-05/cli-command-system/implementation-contract.md) — Dispatch logic, output format correctness, edge cases
+- Spec: [SPEC-007](/.specs/sprint-2026-05/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run (historical — superseded by SPEC-008 CLI App System)
+- Spec: [SPEC-008](/.specs/sprint-2026-06/cli-app-system/spec.md) — CLI App System (centralised render loop, App lifecycle, unified `run` command, capture support)
+- Implementation contract: [IMPL-008](/.specs/sprint-2026-06/cli-app-system/implementation-contract.md) — CLI App System implementation
+- Spec: [SPEC-010](/.specs/sprint-2026-05/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario) (historical — capture now integrated into `run_app()`)
+- Spec: [SPEC-012](/.specs/sprint-2026-05/depth-handling/spec.md) — Depth Buffer Support (24-bit depth allocation, GL_DEPTH_TEST, per-frame depth clear)
+- Spec: [SPEC-013](/.specs/sprint-2026-05/input-system/spec.md) — Input System (KeyCode, InputSystem, frame-based state model, Platform integration)
+- Spec: [SPEC-016](/.specs/sprint-2026-05/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
 - ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
 - ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)

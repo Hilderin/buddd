@@ -19,7 +19,10 @@ Your job is to validate coherence across the whole workflow and produce a persis
 
 You may write **one** file:
 
-- `docs/specs/<feature>/governance-review.md`
+- `SPEC_DIR/governance-review.md`
+
+Where `SPEC_DIR` is provided by the orchestrator in the task description.
+SPEC_DIR points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 
 Use the template at `docs/templates/governance-review-template.md` as the starting structure.
 
@@ -38,16 +41,16 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 ## Review process
 
 1. Load the template at `docs/templates/governance-review-template.md`.
-2. Read the spec file at `docs/specs/<feature>/spec.md`.
-3. Read the implementation contract at `docs/specs/<feature>/implementation-contract.md`.
-4. Read the spec-critic review at `docs/specs/<feature>/spec-critic.md`.
-5. Read the implementation-contract-critic review at `docs/specs/<feature>/implementation-contract-critic.md`.
-6. Read the code review at `docs/specs/<feature>/code-review.md`.
+2. Read the spec file at `SPEC_DIR/spec.md`.
+3. Read the implementation contract at `SPEC_DIR/implementation-contract.md`.
+4. Read the spec-critic review at `SPEC_DIR/spec-critic.md`.
+5. Read the implementation-contract-critic review at `SPEC_DIR/implementation-contract-critic.md`.
+6. Read the code review at `SPEC_DIR/code-review.md`.
 7. Read the constitution at `docs/constitution/**`.
 8. Read relevant ADRs at `docs/adr/**`.
 9. Search the wiki using wiki search tools, then read relevant sections at `docs/wiki/**`.
 10. Perform the governance checks.
-11. Write the review to `docs/specs/<feature>/governance-review.md` using the template.
+11. Write the review to `SPEC_DIR/governance-review.md` using the template.
 12. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
@@ -74,11 +77,11 @@ When updating an existing review file (second or later review cycle):
 
 After writing the governance review and before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## governance-reviewer` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## governance-reviewer` section (exact heading match).
 2. Update the following fields in `## governance-reviewer`:
    - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
    - `**Summary**`: 2–5 lines describing review outcome.
-   - `**Artifacts**`: `- docs/specs/<feature>/governance-review.md`
+   - `**Artifacts**`: `- SPEC_DIR/governance-review.md`
    - `**Questions for human**`: list any questions, or "none".
    - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
    - `**Blocking issues**`: copy the blocking issues checklist from governance-review.md `## Blocking issues`. If none, write "none".

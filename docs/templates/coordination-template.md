@@ -14,7 +14,7 @@
 **Summary**:
 <2–5 lines describing what was done or what is needed>
 **Artifacts**:
-- `docs/specs/<feature>/spec.md`
+- `.specs/{{SPRINT}}/<feature>/spec.md`
 **Questions for human**:
 <none, or a bullet list of questions>
 **Warnings**:
@@ -28,7 +28,7 @@
 **Summary**:
 <2–5 lines describing review outcome>
 **Artifacts**:
-- `docs/specs/<feature>/spec-critic.md`
+- `.specs/{{SPRINT}}/<feature>/spec-critic.md`
 **Questions for human**:
 <none, or a bullet list of questions>
 **Warnings**:
@@ -42,7 +42,7 @@
 **Summary**:
 <2–5 lines>
 **Artifacts**:
-- `docs/specs/<feature>/implementation-contract.md`
+- `.specs/{{SPRINT}}/<feature>/implementation-contract.md`
 **Questions for human**:
 <none, or a bullet list of questions>
 **Warnings**:
@@ -56,7 +56,7 @@
 **Summary**:
 <2–5 lines>
 **Artifacts**:
-- `docs/specs/<feature>/implementation-contract-critic.md`
+- `.specs/{{SPRINT}}/<feature>/implementation-contract-critic.md`
 **Questions for human**:
 <none, or a bullet list of questions>
 **Warnings**:
@@ -93,7 +93,7 @@
 **Summary**:
 <2–5 lines describing review outcome>
 **Artifacts**:
-- `docs/specs/<feature>/code-review.md`
+- `.specs/{{SPRINT}}/<feature>/code-review.md`
 **Questions for human**:
 <none, or a bullet list of questions>
 **Warnings**:
@@ -155,7 +155,7 @@
 **Summary**:
 <2–5 lines>
 **Artifacts**:
-- `docs/specs/<feature>/governance-review.md`
+- `.specs/{{SPRINT}}/<feature>/governance-review.md`
 **Questions for human**:
 <none, or a bullet list of questions>
 **Warnings**:
@@ -173,4 +173,5 @@
 - The `## Human Validation` section must appear between `## implementation-contract-critic` and `## code-implementer`.
 - The `## adr-agent` and `## constitution-agent` sections must include their extra fields (`**Decisions needed**` and `**Changes needed**` respectively).
 - The `## wiki-agent` section must include `**Changes made**` instead of `**Decisions needed**`.
+- **`{{SPRINT}}` must be replaced** with the actual sprint folder (e.g. `sprint-2026-06`) when the orchestrator creates coordination.md from this template.
 - **Exception**: during loop-backs, the orchestrator may temporarily reset a sub-agent's `**Status**` to "in-progress" to re-invoke them. This overrides the general principle that sub-agents self-manage their own status and is the only case where the orchestrator writes to a sub-agent's status field.

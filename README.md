@@ -66,7 +66,7 @@ Each step is performed by a specialised OpenCode agent defined in `.opencode/age
 This workflow enforces a strict **authority order** for all project decisions:
 
 1. `docs/constitution/` — mandatory project rules
-2. `docs/specs/` — functional specs (proposed + accepted)
+2. `.specs/` — historical feature specs (snapshots, not live docs)
 3. `docs/adr/` — architectural decision records
 4. `docs/wiki/` — operational knowledge
 5. Existing code conventions

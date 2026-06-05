@@ -131,7 +131,7 @@ This wrapper pattern establishes a template for any future dependency wrapping i
 
 - SPEC-004 (Math Foundations): Authoritative specification for the wrapper types' API and behaviour.
 - IMPL-004 (Math Foundations Implementation Contract): Detailed pseudo-code for all wrapper headers.
-- Code review `docs/specs/math-foundations/code-review.md`: Verifies the implementation matches the spec.
+- Code review `.specs/sprint-2026-05/math-foundations/code-review.md`: Verifies the implementation matches the spec.
 - ADR-001 (`docs/adr/001-result-error-pattern.md`): Establishes `Result<T>` for error propagation; this ADR documents that math operations do NOT use `Result<T>` (pure computation, no error paths).
 - CONST-001 (`docs/constitution/architecture-boundaries.md`): Mandates the architecture boundary that this wrapper pattern enforces.
 - Wiki `architecture/overview.md`: Operational description of the math module and the GLM boundary.

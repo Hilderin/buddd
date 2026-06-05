@@ -19,7 +19,10 @@ Your job is to reject weak specs and produce a persistent review artifact.
 
 You may write **one** file:
 
-- `docs/specs/<feature>/spec-critic.md`
+- `SPEC_DIR/spec-critic.md`
+
+Where `SPEC_DIR` is provided by the orchestrator in the task description.
+SPEC_DIR points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
 
 Use the template at `docs/templates/review-report-template.md` as the starting structure.
 
@@ -39,11 +42,11 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 ## Review process
 
 1. Load the template at `docs/templates/review-report-template.md`.
-2. Read the spec file at `docs/specs/<feature>/spec.md`.
+2. Read the spec file at `SPEC_DIR/spec.md`.
 3. Search the wiki for relevant context using wiki search tools.
 4. **Load the Definition of Ready** — Search the wiki for `definition-of-ready` (the file is at `docs/wiki/engineering/definition-of-ready.md`). Check every criterion listed there. Any unsatisfied criterion is a blocking issue.
 5. Perform the review checks.
-6. Write the review to `docs/specs/<feature>/spec-critic.md` using the template.
+6. Write the review to `SPEC_DIR/spec-critic.md` using the template.
 6. Write the review verdict into the file's content (the verdict is expressed in the summary and blocking issues, not in a separate status field).
 7. The spec's status is tracked in coordination.md. Do NOT modify the spec file's status field.
 8. List every issue as a `- [ ]` checklist item under the appropriate section.
@@ -74,11 +77,11 @@ When updating an existing review file (second or later review cycle):
 
 After writing the review artifact and before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## spec-critic` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## spec-critic` section (exact heading match).
 2. Update the following fields in `## spec-critic`:
    - `**Status**`: `completed` if accepted, `rejected` if rejected, `blocked` if blocked.
    - `**Summary**`: 2–5 lines describing review outcome.
-   - `**Artifacts**`: `- docs/specs/<feature>/spec-critic.md`
+   - `**Artifacts**`: `- SPEC_DIR/spec-critic.md`
    - `**Questions for human**`: list any questions, or "none".
    - `**Warnings**`: non-blocking concerns, suggestions, or minor issues that do NOT block the workflow. If none, write "none".
    - `**Blocking issues**`: copy the blocking issues checklist from spec-critic.md `## Blocking issues` section (the `- [ ]` items). If none, write "none".

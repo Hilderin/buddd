@@ -48,7 +48,8 @@ You may create files only under:
 
 After completing ADR work and before reporting completion:
 
-1. **Write coordination.md update** — Open `docs/specs/<feature>/coordination.md` and locate the `## adr-agent` section (exact heading match).
+1. **Write coordination.md update** — Open `SPEC_DIR/coordination.md` and locate the `## adr-agent` section (exact heading match).
+   SPEC_DIR is provided by the orchestrator in the task description.
 2. Update the following fields in `## adr-agent`:
    - `**Status**`: `completed` (or `blocked` if blocked).
    - `**Summary**`: 2–5 lines describing what was done.

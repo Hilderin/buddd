@@ -274,17 +274,23 @@ If project context is needed, call the scout with a bounded request.
 
 Do not let the workflow continue if the feature is too vague to specify.
 
-After clarification, create coordination.md:
+After clarification, determine the current sprint and create coordination.md:
 
-1. Ensure `docs/specs/<feature>/` directory exists (create if not).
-2. Create `docs/specs/<feature>/coordination.md` using `docs/templates/coordination-template.md` as the structure.
-3. Fill `## Orchestrator` section with:
+1. **Determine the sprint folder**:
+   - Use `date +%Y-%m` to compute the sprint folder name (e.g. `date +%Y-%m` → `sprint-2026-06`).
+   - Format: `sprint-YYYY-MM`.
+2. **Set SPEC_DIR**: `SPEC_DIR=".specs/sprint-YYYY-MM/<feature>"` where `sprint-YYYY-MM` is from step 1 and `<feature>` is the kebab-case feature name.
+3. Ensure `SPEC_DIR` directory exists (create if not).
+4. **Create coordination.md**: Read `docs/templates/coordination-template.md`, replace `{{SPRINT}}` with the sprint folder from step 1 (e.g. `sprint-2026-06`), and write to `SPEC_DIR/coordination.md`.
+5. Fill `## Orchestrator` section with:
    - **Feature**: `<kebab-case feature name>`
    - **Status**: in-progress
    - **Current step**: clarification-complete
    - **Initial instructions**: the human's feature request / intent
    - **Notes**: (orchestrator's initial notes)
-4. Fill all sub-agent sections with **Status**: pending, empty summaries/artifacts, and "none" for questions, warnings, and blocking issues.
+6. Fill all sub-agent sections with **Status**: pending, empty summaries/artifacts, and "none" for questions, warnings, and blocking issues.
+
+When delegating to sub-agents, ALWAYS pass the SPEC_DIR path explicitly in your instructions so they know where to read/write their artifacts.
 
 
 ### 1b. Grill me
@@ -301,17 +307,19 @@ Update the coordination.md based on the updated intent.
 
 ### Delegation invariant
 
-When delegating to any sub-agent, the orchestrator MUST include in its instructions: "After completing your work, read coordination.md, find your section (`## <agent-name>`), and update it with your status, summary, artifacts, questions, warnings, and blocking issues."
+When delegating to any sub-agent:
+
+1. **Pass SPEC_DIR** — Include the full SPEC_DIR path (e.g. `.specs/sprint-2026-06/<feature>/`) in your delegation so the agent knows where to read/write artifacts.
+2. Always include: "After completing your work, read coordination.md, find your section (`## <agent-name>`), and update it with your status, summary, artifacts, questions, warnings, and blocking issues."
+3. Always add instruction to agent to keep the last message as small as possible to keep your context small.
 
 **Note:** `**Warnings**` are non-blocking and do NOT affect gate decisions — they are informational only. Gates check only `**Status**`, `**Blocking issues**`, and `**Questions for human**`.
-
-Also add instruction to agent to keep the last message as small as possible to keep your context small.
 
 **Important — respect the File update protocol:** Do NOT ask an agent to "write" or "rewrite" its artifact, even when looping back. Sub-agents have their own `## File update protocol` that tells them when to use `write` (first creation) vs `edit` (targeted updates). Trust that protocol. If you need changes, say "update" or "re-review" — let the agent decide the mechanism.
 
 ### 2. Spec author
 
-Ask `spec-author` to draft (or update) a spec at `docs/specs/<feature>/spec.md`.
+Ask `spec-author` to draft (or update) a spec. Pass `SPEC_DIR` so the agent knows the target path.
 
 Give the spec-author:
 - human intent
@@ -328,7 +336,7 @@ Gate (after spec-author reports completion):
 
 ### 3. Spec critic
 
-Ask `spec-critic` to review and create/update `docs/specs/<feature>/spec-critic.md`.
+Ask `spec-critic` to review and create/update the spec-critic.md. Pass `SPEC_DIR` so the agent knows the target path.
 
 The spec-critic checks against the Definition of Ready (`docs/wiki/engineering/definition-of-ready.md`). Any unsatisfied criterion is a blocking issue.
 
@@ -344,7 +352,7 @@ Gate (after spec-critic reports completion):
 
 ### 4. Implementation contract author
 
-Ask `implementation-contract-author` to create or update `docs/specs/<feature>/implementation-contract.md`.
+Ask `implementation-contract-author` to create or update the implementation contract. Pass `SPEC_DIR` so the agent knows the target path.
 
 Give the contract author:
 - accepted spec
@@ -360,7 +368,7 @@ Gate (same pattern as spec-author):
 
 ### 5. Implementation contract critic
 
-Ask `implementation-contract-critic` to review and create/update `docs/specs/<feature>/implementation-contract-critic.md`.
+Ask `implementation-contract-critic` to review and create/update the implementation-contract-critic.md. Pass `SPEC_DIR` so the agent knows the target path.
 
 Gate:
 - Read coordination.md `## implementation-contract-critic` section ONLY.
@@ -412,7 +420,7 @@ Gate (after code-implementer reports completion):
 
 ### 8. Code review
 
-Ask `code-reviewer` to review and create/update `docs/specs/<feature>/code-review.md`.
+Ask `code-reviewer` to review and create/update the code-review.md. Pass `SPEC_DIR` so the agent knows the target path.
 
 Gate:
 - Read coordination.md `## code-reviewer` section ONLY.
@@ -472,12 +480,7 @@ Include:
 - ADR/wiki/constitution updates, if any
 - remaining non-blocking notes, if any
 
-All artifacts stay in:
-```
-docs/specs/<feature>/
-```
-
-No file moving is needed.
+All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No file moving is needed — the sprint folder IS the archive.
 
 ## Hard rules
 

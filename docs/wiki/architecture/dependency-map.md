@@ -101,11 +101,11 @@ The GLM boundary specifically:
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Assumptions A-05 through A-10
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 3-10 (target definitions)
-- Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — Architecture boundary, Goals, Assumptions
-- Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — CMakeLists.txt requirements, Done criteria
-- Spec: [SPEC-004](/docs/specs/math-foundations/spec.md) — Architecture boundary (no GLM outside `src/engine/math/`), GLM integration
-- Implementation contract: [IMPL-004](/docs/specs/math-foundations/implementation-contract.md) — Files allowed to change, Architecture boundary enforcement
-- Spec: [SPEC-010](/docs/specs/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
-- Implementation contract: [IMPL-010](/docs/specs/capture/implementation-contract.md)
+- Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — Assumptions A-05 through A-10
+- Implementation contract: [IMPL-001](/.specs/sprint-2026-05/project-setup/implementation-contract.md) — sections 3-10 (target definitions)
+- Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — Architecture boundary, Goals, Assumptions
+- Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — CMakeLists.txt requirements, Done criteria
+- Spec: [SPEC-004](/.specs/sprint-2026-05/math-foundations/spec.md) — Architecture boundary (no GLM outside `src/engine/math/`), GLM integration
+- Implementation contract: [IMPL-004](/.specs/sprint-2026-05/math-foundations/implementation-contract.md) — Files allowed to change, Architecture boundary enforcement
+- Spec: [SPEC-010](/.specs/sprint-2026-05/capture/spec.md) — Framebuffer Capture (ImageBuffer, Image, read_pixels, capture command, cube capture scenario)
+- Implementation contract: [IMPL-010](/.specs/sprint-2026-05/capture/implementation-contract.md)

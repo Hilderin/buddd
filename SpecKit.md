@@ -57,9 +57,9 @@ Human intent
 ## Authority order
 
 1. `docs/constitution/**`
-2. `docs/specs/**`
+2. `docs/wiki/**`
 3. `docs/adr/**`
-4. `docs/wiki/**`
+4. `.specs/**`
 5. Existing code conventions
 
 ## Documents (`docs/`)
