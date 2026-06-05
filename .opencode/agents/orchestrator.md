@@ -197,22 +197,22 @@ grill me
   ↓
 **CREATE** coordination.md from template (all sections filled with "pending")
   ↓
-spec-author → writes spec.md → updates coordination.md
+spec-author → creates/updates spec.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the spec-author with the answers.
   ↓
-spec-critic → writes spec-critic.md → updates coordination.md
+spec-critic → creates/updates spec-critic.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the spec-critic with the answers.
   ↓  (gate: check coordination.md ## spec-critic)
   ↓  Status == rejected? → loop to spec-author
   ↓  Blocking issues unchecked? → loop to spec-author
   ↓
-implementation-contract-author → writes implementation-contract.md → updates coordination.md
+implementation-contract-author → creates/updates implementation-contract.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the implementation-contract-author with the answers.
   ↓
-implementation-contract-critic → writes implementation-contract-critic.md → updates coordination.md
+implementation-contract-critic → creates/updates implementation-contract-critic.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the implementation-contract-critic with the answers.
   ↓  (gate: check coordination.md ## implementation-contract-critic)
@@ -226,7 +226,7 @@ code-implementer → implements code → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the code-implementer with the answers.
   ↓
-code-reviewer → writes code-review.md → updates coordination.md
+code-reviewer → creates/updates code-review.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the code-reviewer with the answers.
   ↓  (gate: check coordination.md ## code-reviewer)
@@ -242,7 +242,7 @@ wiki-agent → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the wiki-agent with the answers.
   ↓
-governance-reviewer → writes governance-review.md → updates coordination.md
+governance-reviewer → creates/updates governance-review.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the governance-reviewer with the answers.
   ↓  (gate: check coordination.md ## governance-reviewer)
@@ -307,9 +307,11 @@ When delegating to any sub-agent, the orchestrator MUST include in its instructi
 
 Also add instruction to agent to keep the last message as small as possible to keep your context small.
 
+**Important — respect the File update protocol:** Do NOT ask an agent to "write" or "rewrite" its artifact, even when looping back. Sub-agents have their own `## File update protocol` that tells them when to use `write` (first creation) vs `edit` (targeted updates). Trust that protocol. If you need changes, say "update" or "re-review" — let the agent decide the mechanism.
+
 ### 2. Spec author
 
-Ask `spec-author` to draft a spec into `docs/specs/<feature>/spec.md`.
+Ask `spec-author` to draft (or update) a spec at `docs/specs/<feature>/spec.md`.
 
 Give the spec-author:
 - human intent
@@ -326,7 +328,7 @@ Gate (after spec-author reports completion):
 
 ### 3. Spec critic
 
-Ask `spec-critic` to review and write `docs/specs/<feature>/spec-critic.md`.
+Ask `spec-critic` to review and create/update `docs/specs/<feature>/spec-critic.md`.
 
 The spec-critic checks against the Definition of Ready (`docs/wiki/engineering/definition-of-ready.md`). Any unsatisfied criterion is a blocking issue.
 
@@ -342,7 +344,7 @@ Gate (after spec-critic reports completion):
 
 ### 4. Implementation contract author
 
-Ask `implementation-contract-author` to create `docs/specs/<feature>/implementation-contract.md`.
+Ask `implementation-contract-author` to create or update `docs/specs/<feature>/implementation-contract.md`.
 
 Give the contract author:
 - accepted spec
@@ -358,7 +360,7 @@ Gate (same pattern as spec-author):
 
 ### 5. Implementation contract critic
 
-Ask `implementation-contract-critic` to review and write `docs/specs/<feature>/implementation-contract-critic.md`.
+Ask `implementation-contract-critic` to review and create/update `docs/specs/<feature>/implementation-contract-critic.md`.
 
 Gate:
 - Read coordination.md `## implementation-contract-critic` section ONLY.
@@ -410,7 +412,7 @@ Gate (after code-implementer reports completion):
 
 ### 8. Code review
 
-Ask `code-reviewer` to review and write `docs/specs/<feature>/code-review.md`.
+Ask `code-reviewer` to review and create/update `docs/specs/<feature>/code-review.md`.
 
 Gate:
 - Read coordination.md `## code-reviewer` section ONLY.

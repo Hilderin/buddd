@@ -195,11 +195,18 @@ Added an explicit `## File update protocol` section to all 6 agents, with two di
 - This was previously listed as an untested hypothesis (see Improvement Hypotheses below). Implementing it was straightforward since all agents already had a similar instruction structure.
 - The `edit` tool requires exact string matching, which can fail on whitespace differences. The protocol adds: "If edit fails, retry with more surrounding context."
 - This change is low-risk — it only modifies agent instructions, not the workflow logic or templates.
+- **Orchestrator contradiction caught during review:** The orchestrator itself uses "writes" everywhere in its instructions — the workflow diagram (`spec-author → writes spec.md`), delegation sections ("Ask spec-critic to review and write..."), and loop-back patterns. This directly undermines the File update protocol since the orchestrator primes agents with "write" language. Fixed by:
+  - Replacing all `writes` with `creates/updates` in the workflow diagram (6 occurrences)
+  - Replacing all `write`/`create` with `create/update` in delegation instructions (6 occurrences)
+  - Adding a dedicated paragraph in `Delegation invariant`: "Do NOT ask an agent to 'write' or 'rewrite' its artifact. Say 'update' or 're-review' instead."
+- **Human caught it, not the LLM:** This contradiction was pointed out by a human after the initial implementation. The LLM didn't notice that its own orchestrator instructions conflicted with the File update protocol it had just written for the sub-agents — a blind spot worth noting.
+- **Systemic pattern:** This isn't an isolated case. The orchestrator has a tendency to give instructions that conflict with sub-agent prompts (e.g., "writes spec.md" vs the sub-agent's "use edit for updates"). It suggests the orchestrator doesn't fully internalize what it delegates — it describes actions from its own perspective (what it wants done) rather than the sub-agent's perspective (how it should do it).
 
 **Still open:**
 - Need to verify in practice that agents actually follow the `edit`-first rule rather than falling back to `write` habit.
 - The 50% threshold for authors is a judgement call — might need adjustment based on real usage.
 - This doesn't address the related hypothesis about skipping template re-reads when updating existing files.
+- The orchestrator's tendency to give conflicting instructions is a broader pattern worth monitoring. Other areas where it might contradict sub-agent prompts? (e.g., telling code-implementer to change files vs. telling governance agents not to modify code)
 
 ---
 
