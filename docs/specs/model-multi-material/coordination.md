@@ -3,8 +3,8 @@
 ## Orchestrator
 
 **Feature**: `model-multi-material`
-**Status**: in-progress
-**Current step**: critics-re-review-complete
+**Status**: completed
+**Current step**: completed
 **Initial instructions**: Rendre le Model capable de gérer plusieurs matériaux via une décomposition en SubMesh. Chaque SubMesh contient une plage d'indices et un Material. Garder la rétrocompatibilité avec l'API mono-matériau existante. Ajouter un material magenta de fallback sur RenderDevice.
 
 **Notes**:
@@ -79,7 +79,7 @@ none
 
 **Status**: completed
 **Summary**:
-Re-review (v3, loop-back resolution) completed. No new blocking issues found. Contract is complete, consistent with SPEC-010, and follows all conventions (ADR-001, ADR-010, ADR-003, CONST-001, CONST-002). All 24 ACs covered. Spec-critic v4 declared spec ready; contract is aligned. All 5 previous warnings (W-001 through W-005) remain valid and carried forward. No spec-level changes required.
+Re-review (v3, loop-back resolution) completed. No new blocking issues found. Contract is complete, consistent with SPEC-020, and follows all conventions (ADR-001, ADR-010, ADR-003, CONST-001, CONST-002). All 24 ACs covered. Spec-critic v4 declared spec ready; contract is aligned. All 5 previous warnings (W-001 through W-005) remain valid and carried forward. No spec-level changes required.
 **Artifacts**:
 - `docs/specs/model-multi-material/implementation-contract-critic.md`
 **Questions for human**:
@@ -95,102 +95,130 @@ none
 
 ## Human Validation
 
-**Status**: pending
-**Approver**: <git user name>
-**Date**: <date and time>
+**Status**: approved
+**Approver**: Hilderin
+**Date**: Fri Jun  5 10:20:36 AM EDT 2026
 **Warnings**:
 <none>
-**Notes**: <any human feedback or conditions>
+**Notes**: Human approved implementation after both critics re-reviews passed without blocking issues.
 
 ## code-implementer
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Implemented the complete multi-material Model redesign: new SubMesh struct with material_index, unified Model::create_indexed factory (single-path, takes vector<SubMesh> + vector<shared_ptr<Material>>), removed Model::create()/material()/has_indices(), engine primitive helpers (create_cube/create_triangle/create_quad), RenderDevice::fallback_material() (magenta shader, lazy-created in both OpenGL and Headless backends), full migration of all 11 existing apps, new multi-material demo app, and comprehensive test suite (317 tests, all passing). demo_helpers cleaned of old CubeResources/setup_cube/setup_triangle.
 **Artifacts**:
-- <list of files created or modified>
+- Created: `src/engine/render/primitives.h`, `src/engine/render/primitives.cpp`, `src/cmd/apps/multi_material_app.h`, `src/cmd/apps/multi_material_app.cpp`
+- Modified: `src/engine/render/model.h`, `src/engine/render/model.cpp`, `src/engine/render/render_device.h`, `src/engine/render/render_device_opengl.h`, `src/engine/render/render_device_opengl.cpp`, `src/engine/render/render_device_headless.h`, `src/engine/render/render_device_headless.cpp`, `src/engine/render/render_system.cpp`, `src/cmd/main.cpp`, `src/cmd/demo/demo_helpers.h`, `src/cmd/demo/demo_helpers.cpp`, `src/cmd/apps/cube_app.h`, `src/cmd/apps/cube_app.cpp`, `src/cmd/apps/triangle_app.h`, `src/cmd/apps/triangle_app.cpp`, `src/cmd/apps/cube_scene_app.cpp`, `src/cmd/apps/phong_app.cpp`, `src/cmd/apps/free_camera_app.cpp`, `src/cmd/apps/textured_cube_app.cpp`, `src/cmd/apps/asset_demo_app.cpp`, `src/cmd/apps/hot_reload_app.cpp`, `tests/model_tests.cpp`, `tests/lighting_tests.cpp`, `tests/scene_rendering_tests.cpp`
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+- W-001: Fallback material verification in headless tests is limited — cannot verify magenta rendering programmatically in headless mode. AC-007/AC-008/AC-014 verified via null-guard/oob checks not crashing.
+- W-003: triangle_app.h was listed twice in implementation contract; implemented once only.
+- W-004: <span> include was not included in multi_material_app.cpp (avoided as per warning).
 **Blocking issues**:
-<none>
+none
 
 ## code-reviewer
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Implementation accepted. All 24 ACs covered by tests, all 317 tests pass (100%), multi-material demo verified visually (red/green/blue face pairs), existing demos (triangle, cube) work without regression. No blocking issues found. Key warnings: (1) fallback material cannot be programmatically verified as magenta in headless mode (W-001 carried forward), (2) vertices()/indices() accessors dereference null on default-constructed Model (minor), (3) demo_helpers files retained as empty placeholders. Spec, contract, ADR, and constitution compliance confirmed.
 **Artifacts**:
 - `docs/specs/model-multi-material/code-review.md`
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+- W-001 (carried forward): Fallback material verification in headless tests (AC-007/008/014) cannot prove magenta was bound — only verifies no-crash and correct draw call count. Test infrastructure limitation.
+- W-002: vertices()/indices() accessors dereference unique_ptr without null guard. Calling on default-constructed Model is UB.
+- W-003: demo_helpers.h/.cpp retained as empty placeholders with comments. Could delete, but harmless.
 **Blocking issues**:
-<none>
+none
 
 ## adr-agent
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Updated ADR-013 to add an explicit exception for custom vertex formats used by primitive helpers and low-level API callers. The standard 72-byte Vertex format remains required for the engine-managed path (AssetManager, standard shaders), while simpler custom formats are permitted for self-contained code paths (primitives, direct low-level API usage). Also updated the stale reference to setup_triangle()/setup_cube() in the "How existing demos were updated" section to reflect their removal by SPEC-020/ADR-017, and removed the compliance rule requiring them as reference implementations.
 **Artifacts**:
-- <list of ADR files created or modified, or "none">
+- `docs/adr/ADR-017-multi-material-model.md`
+- `docs/adr/013-standard-vertex-format.md` (modified)
 **Decisions needed**:
-<none>
+none
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+none
 **Blocking issues**:
-<none>
+none
 
 ## constitution-agent
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Evaluated model-multi-material feature against all constitution rules (CONST-001 through CONST-004) and engineering principles. No violations found. The feature is entirely within the engine's rendering subsystem, follows established conventions (Result<T>, shared_ptr/unique_ptr ownership, no raw pointers per ADR-010), and was properly governed through the spec → implementation contract → human approval process. No new constitutional rules are warranted — the changes are subsystem-specific patterns, not durable cross-cutting principles.
 **Artifacts**:
-- <list of constitution files, or "none">
+none
 **Changes needed**:
-<none>
+none
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+none
 **Blocking issues**:
-<none>
+none
 
 ## wiki-agent
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Updated the project wiki to reflect the model-multi-material feature implementation. The module map now documents the new Model API (SubMesh struct, unified create_indexed factory, removed create/material/has_indices), new primitives module (create_cube/create_triangle/create_quad), and the fallback_material addition on RenderDevice. The glossary was updated to remove CubeResources/setup_cube and add SubMesh, create_cube, create_triangle, create_quad, and fallback material terms. App descriptions updated to reference engine::create_cube/create_triangle instead of demo helpers. Multi-material app entry added to the app subclasses table.
 **Artifacts**:
-- <list of wiki files created or modified, or "none">
+- `docs/wiki/architecture/module-map.md` (modified)
+- `docs/wiki/domain/glossary.md` (modified)
 **Changes made**:
-<none>
+- module-map.md: Rewrote model.h/model.cpp entries for new API, added primitives.h/.cpp entries, updated app entries (triangle/cube → engine::create_*), added multi_material_app entry, updated demo_helpers to empty placeholder status, added multi-material to scene list, updated render_device.h with fallback_material
+- glossary.md: Rewrote Model term (single factory, SubMesh vector, no material/has_indices), added SubMesh term, removed CubeResources term, added Fallback material/create_cube/create_triangle/create_quad terms, updated RenderDevice with fallback_material
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+none
 **Blocking issues**:
-<none>
+none
+
+**Status**: completed
+**Summary**:
+Cleaned up the Reference section in module-map.md: added missing SPEC-020 entry, removed duplicate SPEC-008/IMPL-008 entries (cli-app-system duplicated scene-graph's number), and reordered all entries in ascending numerical order.
+**Artifacts**:
+- `docs/wiki/architecture/module-map.md` (modified)
+**Changes made**:
+- module-map.md: Replaced Reference section — removed duplicate SPEC-008/IMPL-008 (cli-app-system), added SPEC-020 + IMPL-020 entries for model-multi-material, reordered all entries numerically (SPEC-001 through SPEC-020, then ADRs)
+**Questions for human**:
+none
+**Warnings**:
+none
+**Blocking issues**:
+none
 
 ## governance-reviewer
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Final re-validation completed. All three fixes from the SPEC-010 number conflict resolution verified:
+(1) All cross-references updated from SPEC-010→SPEC-020 and IMPL-010→IMPL-020 across spec.md, implementation-contract.md, spec-critic.md, implementation-contract-critic.md, code-review.md, coordination.md, ADR-017, and module-map.md. No stale references.
+(2) ADR-013 updated with explicit exception for custom vertex formats in primitive helpers (24-byte stride) and low-level API usage, plus cleaned up stale setup_cube()/setup_triangle() references.
+(3) Module-map reference section properly ordered with SPEC-020+IMPL-020 entries, duplicates removed.
+No constitution violations. All cross-document artifacts consistent. Feature is ready for merge.
 **Artifacts**:
 - `docs/specs/model-multi-material/governance-review.md`
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+- W-001 (carried forward): Fallback material verification in headless tests limited — cannot programmatically confirm magenta rendering.
+- W-002 (carried forward): vertices()/indices() accessors have null-dereference potential on default-constructed Model.
+- W-003 (carried forward): demo_helpers retained as empty placeholders.
 **Blocking issues**:
-<none>
+none
 
 ---
 

@@ -75,15 +75,22 @@ namespace {
     }
 
     /// Helper: create a mesh renderer entity with the given material.
-    /// Uses a simple 3-vertex triangle with only position.
+    /// Uses a simple 3-vertex indexed triangle with only position.
     auto make_mesh_entity(World& world, RenderDevice& device,
                           std::shared_ptr<Material> material) -> Entity {
         const float verts[] = {0,0,0, 1,0,0, 0,1,0};
+        const uint16_t idxs[] = {0, 1, 2};
         VertexFormat fmt;
         fmt.stride = 12;
         fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-        auto model = Model::create(device, fmt, std::as_bytes(std::span(verts)), material);
+        auto model = Model::create_indexed(
+            device, fmt,
+            std::as_bytes(std::span(verts)),
+            std::as_bytes(std::span(idxs)),
+            IndexType::Uint16,
+            { SubMesh{0, 3, 0} },
+            { material });
         REQUIRE(model.has_value());
 
         auto entity = Entity::create(world);
@@ -593,11 +600,18 @@ TEST_CASE("Normal matrix computation", "[lighting]") {
     mesh_entity.transform().rotation = math::Quat::from_euler(0, math::radians(45.0f), 0);
 
     const float verts[] = {0,0,0, 1,0,0, 0,1,0};
+    const uint16_t idxs[] = {0, 1, 2};
     VertexFormat fmt;
     fmt.stride = 12;
     fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-    auto model = Model::create(device, fmt, std::as_bytes(std::span(verts)), phong_mat);
+    auto model = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { phong_mat });
     REQUIRE(model.has_value());
     mesh_entity.add_component<MeshRenderer>(std::make_shared<Model>(std::move(*model)));
 
@@ -844,11 +858,18 @@ TEST_CASE("RenderSystem sets u_model", "[lighting]") {
     mesh_entity.transform().position = math::Vec3(3.0f, 0.0f, 0.0f);
 
     const float verts[] = {0,0,0, 1,0,0, 0,1,0};
+    const uint16_t idxs[] = {0, 1, 2};
     VertexFormat fmt;
     fmt.stride = 12;
     fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-    auto model = Model::create(device, fmt, std::as_bytes(std::span(verts)), phong_mat);
+    auto model = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { phong_mat });
     REQUIRE(model.has_value());
     mesh_entity.add_component<MeshRenderer>(std::make_shared<Model>(std::move(*model)));
 

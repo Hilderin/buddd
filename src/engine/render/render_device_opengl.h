@@ -64,6 +64,8 @@ public:
         uint32_t start_index = 0
     ) -> void override;
 
+    auto fallback_material() noexcept -> Material& override;
+
     auto read_pixels() -> Result<ImageBuffer> override;
 
     RenderDeviceOpenGL(const RenderDeviceOpenGL&) = delete;
@@ -75,6 +77,7 @@ private:
     Window& window_;
     SDL_Window* sdl_window_;
     SDL_GLContext context_;
+    std::unique_ptr<Material> fallback_material_;
 };
 
 } // namespace buddd::engine

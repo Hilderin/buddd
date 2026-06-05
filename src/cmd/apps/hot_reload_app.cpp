@@ -131,7 +131,9 @@ auto buddd::cmd::app::HotReloadApp::setup(be::RenderDevice& device)
         device, format,
         std::as_bytes(std::span(vertices)),
         std::as_bytes(std::span(indices)),
-        be::IndexType::Uint16, material
+        be::IndexType::Uint16,
+        { be::SubMesh{0, 36, 0} },
+        { material }
     );
     if (!model) {
         std::fprintf(stderr, "FATAL: could not create cube model\n");

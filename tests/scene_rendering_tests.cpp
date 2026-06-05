@@ -297,10 +297,15 @@ TEST_CASE("MeshRenderer storage and access", "[scene_rendering]") {
     fmt.stride = sizeof(Vert);
     fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-    auto vb = device.create_vertex_buffer(fmt, std::as_bytes(std::span(verts)));
-    REQUIRE(vb.has_value());
+    const uint16_t idxs[] = {0, 1, 2};
 
-    auto model = Model::create(device, fmt, std::as_bytes(std::span(verts)), shared_mat);
+    auto model = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { shared_mat });
     REQUIRE(model.has_value());
 
     auto model_ptr = std::make_shared<Model>(std::move(*model));
@@ -382,11 +387,18 @@ TEST_CASE("RenderSystem draw call count", "[scene_rendering]") {
     std::shared_ptr<Material> shared_mat(std::move(*mat));
 
     const float verts[] = {0,0,0, 1,0,0, 0,1,0};
+    const uint16_t idxs[] = {0, 1, 2};
     VertexFormat fmt;
     fmt.stride = 12; // 3 floats
     fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-    auto model = Model::create(device, fmt, std::as_bytes(std::span(verts)), shared_mat);
+    auto model = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { shared_mat });
     REQUIRE(model.has_value());
     auto model_ptr = std::make_shared<Model>(std::move(*model));
 
@@ -442,11 +454,18 @@ TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
     std::shared_ptr<Material> shared_mat(std::move(*mat));
 
     const float verts[] = {0,0,0, 1,0,0, 0,1,0};
+    const uint16_t idxs[] = {0, 1, 2};
     VertexFormat fmt;
     fmt.stride = 12;
     fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-    auto model = Model::create(device, fmt, std::as_bytes(std::span(verts)), shared_mat);
+    auto model = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { shared_mat });
     REQUIRE(model.has_value());
     auto model_ptr = std::make_shared<Model>(std::move(*model));
 
@@ -589,14 +608,27 @@ TEST_CASE("RenderSystem set_uniform failure skip", "[scene_rendering]") {
 
     // Create models
     const float verts[] = {0,0,0, 1,0,0, 0,1,0};
+    const uint16_t idxs[] = {0, 1, 2};
     VertexFormat fmt;
     fmt.stride = 12;
     fmt.attributes = {{0, VertexAttributeType::Float3, 0, false}};
 
-    auto model_valid = Model::create(device, fmt, std::as_bytes(std::span(verts)), shared_valid);
+    auto model_valid = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { shared_valid });
     REQUIRE(model_valid.has_value());
 
-    auto model_invalid = Model::create(device, fmt, std::as_bytes(std::span(verts)), shared_invalid);
+    auto model_invalid = Model::create_indexed(
+        device, fmt,
+        std::as_bytes(std::span(verts)),
+        std::as_bytes(std::span(idxs)),
+        IndexType::Uint16,
+        { SubMesh{0, 3, 0} },
+        { shared_invalid });
     REQUIRE(model_invalid.has_value());
 
     // Create entities

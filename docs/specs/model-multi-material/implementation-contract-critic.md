@@ -51,7 +51,7 @@ Optional ideas (not required):
 - **Dead dependencies**: None. Contract correctly removes `demo_helpers.h/cpp` dependencies and does not introduce any new external dependencies.
 - **Feasibility**: The approach is sound. All code patterns (move semantics, polymorphic fallback material, submesh iteration during draw) are consistent with existing codebase conventions.
 - **Convention compliance**: `Result<T>` pattern used throughout (ADR-001), no raw pointers in public API (ADR-010), `shared_ptr<Material>` for material ownership, `noexcept` on accessors, `const`-correct. CONST-001 compliance maintained (no backend headers leak into apps). ADR-003 draw() returns `void` exception respected.
-- **Contradictions with spec**: None found. The contract faithfully implements SPEC-010.
+- **Contradictions with spec**: None found. The contract faithfully implements SPEC-020.
 - **Contradictions with constitution/ADRs**: None found.
 - **Previous issues**: All previous blocking issues resolved. All 5 warnings (W-001 through W-005) remain valid — none resolved, none worsened.
 - **Spec-critic alignment**: Spec-critic v4 declared spec ready with no blocking issues. Contract is aligned with the resolved spec (test files explicitly listed, missing edge case added). No new spec-level changes needed.

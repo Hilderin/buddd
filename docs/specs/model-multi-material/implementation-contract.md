@@ -1,8 +1,8 @@
-# IMPL-010 — Multi-Material Model, Primitive Helpers & API Cleanup
+# IMPL-020 — Multi-Material Model, Primitive Helpers & API Cleanup
 
 ## Source spec
 
-`docs/specs/model-multi-material/spec.md` (SPEC-010)
+`docs/specs/model-multi-material/spec.md` (SPEC-020)
 
 ## Goal
 

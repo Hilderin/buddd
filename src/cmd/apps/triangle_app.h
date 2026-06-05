@@ -3,7 +3,7 @@
 #include "app.h"
 
 #include "render/material.h"
-#include "render/vertex_buffer.h"
+#include "render/model.h"
 
 #include <memory>
 
@@ -26,8 +26,8 @@ public:
     auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
 
 private:
-    std::unique_ptr<buddd::engine::Material> material_;
-    std::unique_ptr<buddd::engine::VertexBuffer> vb_;
+    buddd::engine::Model model_;
+    std::shared_ptr<buddd::engine::Material> material_;
 };
 
 } // namespace buddd::cmd::app

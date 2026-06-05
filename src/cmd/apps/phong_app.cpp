@@ -161,7 +161,8 @@ static auto create_phong_cube(be::RenderDevice& device,
         std::as_bytes(std::span(vertices)),
         std::as_bytes(std::span(indices)),
         be::IndexType::Uint16,
-        std::move(material));
+        { be::SubMesh{0, 36, 0} },
+        { std::move(material) });
     if (!model) {
         std::cerr << "FATAL: Failed to create phong cube model: "
                   << be::to_string(model.error()) << "\n";

@@ -11,53 +11,51 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <vector>
 
 namespace buddd::engine {
 
 // Forward declaration — RenderDevice& appears in factory method parameters.
 class RenderDevice;
 
+struct SubMesh {
+    uint32_t index_start;
+    uint32_t index_count;
+    uint32_t material_index;
+};
+
 class Model {
 public:
     // -- Null model (draw is no-op) --
     Model() noexcept = default;
 
-    // -- Factory methods --
-    /// Creates a non-indexed Model.
-    /// On failure, returns an Error describing the failure.
-    /// The material is shared (not owned exclusively) via shared_ptr.
-    [[nodiscard]] static auto create(
-        RenderDevice& device,
-        const VertexFormat& vertex_format,
-        std::span<const std::byte> vertex_data,
-        std::shared_ptr<Material> material,
-        PrimitiveTopology topology = PrimitiveTopology::Triangles
-    ) -> Result<Model>;
-
-    /// Creates an indexed Model.
+    // -- Factory (the only one) --
+    /// Creates an indexed Model with submeshes and materials.
+    /// All geometry and material data is specified upfront.
+    /// Returns InvalidArgument on empty vertex data, empty index data,
+    /// or invalid vertex format.
     [[nodiscard]] static auto create_indexed(
         RenderDevice& device,
         const VertexFormat& vertex_format,
         std::span<const std::byte> vertex_data,
         std::span<const std::byte> index_data,
         IndexType index_type,
-        std::shared_ptr<Material> material,
+        std::vector<SubMesh> submeshes,
+        std::vector<std::shared_ptr<Material>> materials,
         PrimitiveTopology topology = PrimitiveTopology::Triangles
     ) -> Result<Model>;
 
     // -- Drawing --
-    /// Issues one draw call (indexed or non-indexed depending on
-    /// whether an index buffer was provided at creation).
-    /// No-op on a moved-from (null) model.
-    /// Behaviour is undefined if called outside begin_frame()/end_frame().
+    /// Issues one draw_indexed call per SubMesh.
+    /// Each call binds materials_[submesh.material_index] (or fallback if null/out-of-bounds).
+    /// No-op on a moved-from (null) model or if submeshes is empty.
     auto draw(RenderDevice& device) const -> void;
 
     // -- Accessors --
-    auto material() noexcept -> Material&;
-    auto material() const noexcept -> const Material&;
+    auto submeshes() const noexcept -> const std::vector<SubMesh>&;
+    auto materials() const noexcept -> const std::vector<std::shared_ptr<Material>>&;
     auto vertices() const noexcept -> const VertexBuffer&;
     auto indices() const noexcept -> const IndexBuffer&;
-    auto has_indices() const noexcept -> bool;
     auto vertex_count() const noexcept -> uint32_t;
     auto index_count() const noexcept -> uint32_t;
 
@@ -72,7 +70,8 @@ private:
     Model(
         std::unique_ptr<VertexBuffer> vb,
         std::unique_ptr<IndexBuffer> ib,
-        std::shared_ptr<Material> material,
+        std::vector<SubMesh> submeshes,
+        std::vector<std::shared_ptr<Material>> materials,
         PrimitiveTopology topology,
         uint32_t vertex_count,
         uint32_t index_count
@@ -80,7 +79,8 @@ private:
 
     std::unique_ptr<VertexBuffer> vb_;
     std::unique_ptr<IndexBuffer> ib_;
-    std::shared_ptr<Material> material_;
+    std::vector<SubMesh> submeshes_;
+    std::vector<std::shared_ptr<Material>> materials_;
     PrimitiveTopology topology_{PrimitiveTopology::Triangles};
     uint32_t vertex_count_{0};
     uint32_t index_count_{0};

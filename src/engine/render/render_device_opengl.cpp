@@ -435,6 +435,50 @@ auto RenderDeviceOpenGL::draw_indexed(
 }
 
 // ============================================================================
+// Fallback material
+// ============================================================================
+
+auto RenderDeviceOpenGL::fallback_material() noexcept -> Material& {
+    if (!fallback_material_) {
+        constexpr std::string_view vs_src = R"(
+            #version 450 core
+            layout(location = 0) in vec3 a_position;
+            void main() {
+                gl_Position = vec4(a_position, 1.0);
+            }
+        )";
+        constexpr std::string_view fs_src = R"(
+            #version 450 core
+            out vec4 frag_color;
+            void main() {
+                frag_color = vec4(1.0, 0.0, 1.0, 1.0);
+            }
+        )";
+
+        auto vs = create_shader(ShaderType::Vertex, vs_src);
+        if (!vs) {
+            std::cerr << "FATAL: fallback vertex shader creation failed: "
+                      << to_string(vs.error()) << "\n";
+            std::terminate();
+        }
+        auto fs = create_shader(ShaderType::Fragment, fs_src);
+        if (!fs) {
+            std::cerr << "FATAL: fallback fragment shader creation failed: "
+                      << to_string(fs.error()) << "\n";
+            std::terminate();
+        }
+        auto mat = create_material(std::move(*vs), std::move(*fs));
+        if (!mat) {
+            std::cerr << "FATAL: fallback material creation failed: "
+                      << to_string(mat.error()) << "\n";
+            std::terminate();
+        }
+        fallback_material_ = std::move(*mat);
+    }
+    return *fallback_material_;
+}
+
+// ============================================================================
 // read_pixels
 // ============================================================================
 

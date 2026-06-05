@@ -1,4 +1,4 @@
-# SPEC-010 — Multi-Material Model, Primitive Helpers & API Cleanup
+# SPEC-020 — Multi-Material Model, Primitive Helpers & API Cleanup
 
 ## Status
 

@@ -1,4 +1,4 @@
-# Spec Review — model-multi-material (SPEC-010) — Re-review (v4, loop-back resolution)
+# Spec Review — model-multi-material (SPEC-020) — Re-review (v4, loop-back resolution)
 
 This review is a fresh re-review triggered by the human's explicit request to re-run all
 critics before human-validated implementation. The spec-author has resolved BL-001 and BL-002

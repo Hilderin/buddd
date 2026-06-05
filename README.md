@@ -23,7 +23,7 @@ A cross-platform C++26 engine with SDL3 + OpenGL rendering, built with modern C+
 - **OpenGL render pipeline** — shader compilation, material system, vertex/index buffers, texture loading, Phong lighting
 - **Scene graph** — entity-component system with a typed component API, transform hierarchy, and camera registration
 - **Math library** — zero-overhead GLM wrapper types (`Vec3`, `Mat4`, `Quat`, `Camera`) with `reinterpret_cast`-based interop
-- **CLI interface** — commands for running demos (triangle, cube, textured cube, Phong lighting, free camera, scene), capture (screenshot/framebuffer readback), and version info
+- **CLI interface** — `buddd run <scene>` for running demos (triangle, cube, textured cube, Phong lighting, free camera, scene, multi-material) with optional frame limit and screenshot capture; `buddd version` and `buddd help`
 - **Comprehensive test suite** — Catch2 unit tests covering math, rendering, scene graph, input, lighting, platform abstraction, and more
 - **CI-ready** — Docker-based CI pipeline with GCC 16, CMake presets, and headless test execution
 
@@ -134,17 +134,17 @@ docker run --rm -v $(pwd):/workspace -w /workspace buddd-ci:latest
 ## Usage
 
 ```bash
-# Run the default engine demo
+# Run the default engine demo (empty window)
 ./build/debug/src/cmd/buddd
 
-# List available demos
+# List available commands and scenes
 ./build/debug/src/cmd/buddd help
 
-# Run a specific demo
-./build/debug/src/cmd/buddd demo <demo-name>
+# Run a specific scene (triangle, cube, phong, multi-material, etc.)
+./build/debug/src/cmd/buddd run <scene>
 
-# Capture a screenshot
-./build/debug/src/cmd/buddd capture <output.png>
+# Run with frame limit and screenshot capture
+./build/debug/src/cmd/buddd run cube --frame 120 --capture 120:/tmp/out.png
 ```
 
 ---

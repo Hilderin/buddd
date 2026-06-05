@@ -69,6 +69,8 @@ public:
         uint32_t start_index = 0
     ) -> void override;
 
+    auto fallback_material() noexcept -> Material& override;
+
     auto read_pixels() -> Result<ImageBuffer> override;
 
     // -- Diagnostics / counters --
@@ -92,6 +94,8 @@ private:
     int draw_call_count_{0};
     int frame_begin_count_{0};
     int frame_end_count_{0};
+
+    std::unique_ptr<Material> fallback_material_;
 };
 
 } // namespace buddd::engine

@@ -84,6 +84,10 @@ public:
         uint32_t start_index = 0
     ) -> void = 0;
 
+    /// Returns a reference to a shared fallback material that renders
+    /// solid magenta (RGB 1,0,1). Created once, lives as long as the RenderDevice.
+    virtual auto fallback_material() noexcept -> Material& = 0;
+
     /// Reads the current framebuffer contents into an ImageBuffer.
     /// The returned ImageBuffer has bottom-left pixel origin (OpenGL convention).
     /// The caller should use Image::create() to flip rows to top-left origin.

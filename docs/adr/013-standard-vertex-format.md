@@ -61,8 +61,9 @@ Fields not used by a particular shader are left zero-initialised. The GPU safely
 
 ### How existing demos were updated
 
-- `setup_triangle()` and `setup_cube()` in `demo_helpers.cpp` now fill `Vertex` structs with position and colour, leaving normal/texcoord/tangent/texcoord2 as zero. The vertex format descriptor uses only locations 0 and 1.
+- During the Phong lighting implementation (SPEC-018), `setup_triangle()` and `setup_cube()` in `demo_helpers.cpp` were updated to fill `Vertex` structs with position and colour, leaving normal/texcoord/tangent/texcoord2 as zero. The vertex format descriptor used only locations 0 and 1.
 - The Phong demo fills position + normal + texcoord, leaves colour as white default.
+- During the multi-material Model redesign (SPEC-020 / ADR-017), `setup_triangle()` and `setup_cube()` were removed and replaced by engine-level primitive helpers (`engine::create_cube()`, `engine::create_triangle()`, `engine::create_quad()` in `src/engine/render/primitives.h/.cpp`). These helpers use a custom 24-byte vertex format (Float3 position + Float3 colour) for simplicity — see the Compliance exception below.
 - All unlit demos (triangle, cube, cube-scene, textured-cube, free-camera) continue to work identically because the GPU ignores unbound attribute locations.
 
 ## Alternatives considered
@@ -111,10 +112,24 @@ Fields not used by a particular shader are left zero-initialised. The GPU safely
 
 ### Compliance
 
-- All new mesh creation code SHALL use `buddd::engine::Vertex` and `k_standard_vertex_format`.
+- All new mesh creation code SHALL use `buddd::engine::Vertex` and `k_standard_vertex_format`, except where the explicit exception below applies.
 - All new shaders SHALL use the standard attribute locations documented above.
-- Code review SHALL flag any new ad-hoc vertex structs or custom vertex formats.
-- The `setup_triangle()` and `setup_cube()` helpers in `demo_helpers.cpp` SHALL remain as the reference implementations for converting old-style vertex data to the standard format.
+- Code review SHALL flag any new ad-hoc vertex structs or custom vertex formats, except where the explicit exception below applies.
+
+#### Exception: Primitive helpers and low-level API usage
+
+The standard `Vertex` format is **required** for:
+
+- Models loaded via the AssetManager (glTF, OBJ, etc.) — these must use the standard 72-byte format for interoperability with all engine shaders.
+- Meshes rendered with standard engine shaders (unlit, Phong, textured).
+- Any code path that passes through the engine's high-level rendering pipeline where interoperation with multiple shaders is expected.
+
+Simpler custom vertex formats are **permitted** for:
+
+- Primitive helpers in `src/engine/render/primitives.h/.cpp` (`engine::create_cube()`, `engine::create_triangle()`, `engine::create_quad()`), which use a 24-byte Float3 position + Float3 colour format. The simpler format avoids padding 48 unused bytes per vertex for geometry that has no need for normals, texcoords, or tangents.
+- Any code that uses the engine's low-level rendering APIs directly (i.e., bypassing the AssetManager and standard shader pipeline) and provides its own vertex format descriptor and shaders.
+
+**Rationale**: The standard Vertex format exists to guarantee interoperability between the AssetManager, standard shaders, and engine-managed content. Primitive helpers and low-level API callers are self-contained — they create both the geometry and the shader, so they can agree on whatever vertex format they choose without creating interoperability problems. The distinction is between the **engine-managed path** (standard Vertex required) and the **custom path** (custom formats allowed).
 
 ## Related documents
 

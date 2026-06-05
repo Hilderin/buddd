@@ -175,7 +175,9 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
         device, format,
         std::as_bytes(std::span(vertices)),
         std::as_bytes(std::span(indices)),
-        be::IndexType::Uint16, shared_mat
+        be::IndexType::Uint16,
+        { be::SubMesh{0, 36, 0} },
+        { shared_mat }
     );
     if (!model) {
         std::cerr << "FATAL: Failed to create textured cube model: "

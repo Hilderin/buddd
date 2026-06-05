@@ -1,22 +1,54 @@
 #include "apps/triangle_app.h"
-#include "demo/demo_helpers.h"
 
+#include "render/primitives.h"
 #include "render/render_device.h"
-#include "render/primitive_topology.h"
+#include "render/shader.h"
+
+#include <memory>
+#include <string_view>
 
 namespace be = buddd::engine;
 
 auto buddd::cmd::app::TriangleApp::setup(be::RenderDevice& device)
     -> be::Result<void>
 {
-    auto [material, vb] = demo::setup_triangle(device);
-    material_ = std::move(material);
-    vb_ = std::move(vb);
+    // --- Create material ---
+    constexpr std::string_view k_vs = R"(
+        #version 450 core
+        layout(location = 0) in vec3 a_position;
+        layout(location = 1) in vec3 a_color;
+        out vec3 v_color;
+        void main() {
+            gl_Position = vec4(a_position, 1.0);
+            v_color = a_color;
+        }
+    )";
+
+    constexpr std::string_view k_fs = R"(
+        #version 450 core
+        in vec3 v_color;
+        out vec4 frag_color;
+        void main() {
+            frag_color = vec4(v_color, 1.0);
+        }
+    )";
+
+    auto vs = device.create_shader(be::ShaderType::Vertex, k_vs);
+    if (!vs) return std::unexpected(vs.error());
+    auto fs = device.create_shader(be::ShaderType::Fragment, k_fs);
+    if (!fs) return std::unexpected(fs.error());
+    auto mat = device.create_material(std::move(*vs), std::move(*fs));
+    if (!mat) return std::unexpected(mat.error());
+    material_ = std::shared_ptr<be::Material>(std::move(*mat));
+
+    // --- Create triangle model ---
+    auto tri_result = be::create_triangle(device, material_);
+    if (!tri_result) return std::unexpected(tri_result.error());
+    model_ = std::move(*tri_result);
+
     return {};
 }
 
 auto buddd::cmd::app::TriangleApp::render(be::RenderDevice& device, int) -> void {
-    device.draw(
-        be::PrimitiveTopology::Triangles,
-        *vb_, *material_, 3);
+    model_.draw(device);
 }

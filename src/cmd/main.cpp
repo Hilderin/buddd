@@ -9,6 +9,7 @@
 #include "apps/run_app.h"
 #include "apps/textured_cube_app.h"
 #include "apps/triangle_app.h"
+#include "apps/multi_material_app.h"
 
 #include "commands/help_command.h"
 #include "commands/version_command.h"
@@ -75,6 +76,8 @@ auto main(int argc, char* argv[]) -> int {
             app = std::make_unique<bc::app::AssetDemoApp>();
         else if (scene == "hot-reload")
             app = std::make_unique<bc::app::HotReloadApp>();
+        else if (scene == "multi-material")
+            app = std::make_unique<bc::app::MultiMaterialApp>();
         else {
             std::fprintf(stderr, "Unknown scene: '%s'\n\n", argv[2]);
             std::fprintf(stderr,
@@ -90,6 +93,7 @@ auto main(int argc, char* argv[]) -> int {
                 "  phong        Phong lighting demo (interactive, 5 cubes + 5 lights)\n"
                 "  asset-demo   Asset pipeline demo: textured cube loaded via YAML metadata (120 frames)\n"
                 "  hot-reload   Hot-reload test: swaps texture at frame 30, use --capture 30 and 60 to verify\n"
+                "  multi-material  Multi-material cube: 3 submeshes with red, green, blue materials (120 frames)\n"
                 "\n"
                 "Flags:\n"
                 "  --frame N        Render exactly N frames, then exit (default: interactive)\n"

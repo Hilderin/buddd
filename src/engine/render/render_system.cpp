@@ -110,7 +110,9 @@ auto RenderSystem::render_scene() -> void {
     world_->each<MeshRenderer>([&](Entity entity, MeshRenderer& mr) -> bool {
         auto world_mat = entity.world_matrix();
         auto mvp = vp * world_mat;
-        auto& material = mr.model().material();
+        auto& mats = mr.model().materials();
+        if (mats.empty()) return true;
+        auto& material = *mats[0];
 
         // Always set u_mvp (backward compat)
         auto r = material.set_uniform("u_mvp", mvp);

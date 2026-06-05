@@ -2,8 +2,9 @@
 
 #include "app.h"
 
-#include "demo/demo_helpers.h"
 #include "math/camera.h"
+#include "render/material.h"
+#include "render/model.h"
 
 #include <chrono>
 #include <memory>
@@ -27,7 +28,8 @@ public:
     auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
 
 private:
-    std::unique_ptr<demo::CubeResources> cube_;
+    buddd::engine::Model model_;
+    std::shared_ptr<buddd::engine::Material> material_;
     buddd::engine::math::Camera camera_;
     std::chrono::steady_clock::time_point start_time_;
 };
