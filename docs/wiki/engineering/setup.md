@@ -94,6 +94,8 @@ The CI pipeline runs inside a custom Docker image defined in `docker/ci.Dockerfi
 docker build -f docker/ci.Dockerfile -t buddd-ci:latest .
 ```
 
+> In CI, the pre-published image from `ghcr.io/hilderin/buddd-ci:latest` is pulled instead of building locally. The `docker build` command above is only needed for local testing or development of the Dockerfile itself.
+
 ### Run the CI build locally
 
 ```bash
@@ -126,14 +128,15 @@ docker run --rm -v $(pwd):/workspace -w /workspace --user "$(id -u):$(id -g)" \
 
 ### How it works
 
-1. The CI workflow (`.github/workflows/ci.yml`) builds the image from `docker/ci.Dockerfile` using `docker/build-push-action` with GitHub Actions layer caching (`type=gha`).
-2. Each step (configure, build, test) runs in a separate container with the workspace mounted at `/workspace`.
-3. The `--user "$(id -u):$(id -g)"` flag ensures file ownership matches the CI runner user.
-4. The image uses GCC 16 as the default compiler (`CC=gcc-16`, `CXX=g++-16`).
+1. A dedicated publish workflow (`.github/workflows/publish.yml`) builds and pushes the image to `ghcr.io/hilderin/buddd-ci` whenever `docker/ci.Dockerfile` changes on `main`. It also supports manual triggering via `workflow_dispatch`.
+2. The CI workflow (`.github/workflows/ci.yml`) authenticates via `docker/login-action@v3` and pulls `ghcr.io/hilderin/buddd-ci:latest` — no image building or Docker layer caching (`type=gha`) is needed in CI.
+3. Each step (configure, build, test) runs in a separate container with the workspace mounted at `/workspace`.
+4. The `--user "$(id -u):$(id -g)"` flag ensures file ownership matches the CI runner user.
+5. The image uses GCC 16 as the default compiler (`CC=gcc-16`, `CXX=g++-16`).
 
-### Publishing the image (future)
+### Publishing the image
 
-For faster CI, the image should be published to `ghcr.io/<org>/buddd-ci:latest` and rebuilt only when the Dockerfile changes. See [ADR-008](/docs/adr/008-ci-docker-infrastructure.md) for the full rationale.
+The CI Docker image is automatically published to `ghcr.io/hilderin/buddd-ci` via `.github/workflows/publish.yml`. It is tagged with both `:latest` (rolling) and `:<commit-sha>` (permanent traceability). See [ADR-015](/docs/adr/015-ci-docker-image-pre-publishing.md) for the full decision and rationale.
 
 ## Reference
 
