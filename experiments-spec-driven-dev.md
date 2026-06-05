@@ -13,9 +13,10 @@
 3. [Iteration #3: Adding a Wiki for Long-Term Memory](#iteration-3-adding-a-wiki-for-long-term-memory)
 4. [Iteration #4: Vision MCP for Visual Validation](#iteration-4-vision-mcp-for-visual-validation)
 5. [Iteration #5: Coordination File to Reduce Orchestrator Context](#iteration-5-coordination-file-to-reduce-orchestrator-context)
-6. [Cross-Cutting Observations](#cross-cutting-observations)
-7. [Ongoing Concerns](#ongoing-concerns)
-8. [Improvement Hypotheses](#improvement-hypotheses)
+6. [Iteration #6: Grill-Me Step for Deeper Spec Clarification](#iteration-6-grill-me-step-for-deeper-spec-clarification)
+7. [Cross-Cutting Observations](#cross-cutting-observations)
+8. [Ongoing Concerns](#ongoing-concerns)
+9. [Improvement Hypotheses](#improvement-hypotheses)
 
 ---
 
@@ -135,6 +136,21 @@
 
 ---
 
+## Iteration #6: Grill-Me Step for Deeper Spec Clarification
+
+**Hypothesis:** Adding a "grill me" step would dig deeper into spec clarification, reducing the number of spec iterations needed.
+
+**Method:**
+- Added a dedicated prompt and an additional orchestration step in the orchestrator agent
+
+**Observations:**
+- Questions surfaced rapidly and pushed analysis further before the spec was even written
+- The process is slightly slower, but the questions from DeepSeek V4 were insightful and uncovered blind spots in the original intent
+- I asked the agent to write the answers into `coordination.md`, which worked well as a preference
+- However, the agent doesn't preserve *why* I made a given choice — if I need to adjust things later, I won't remember the rationale
+
+---
+
 ## Cross-Cutting Observations
 
 - **Orchestrator + sub-agents is a game-changer.** The process is far more autonomous and engaging. Critics suggest improvements, the orchestrator applies them immediately to specs/contracts, and re-runs the critic loop before moving on. This saves a lot of manual spec adjustment.
@@ -151,6 +167,7 @@
 - **The governor caught a critical regression:** `*_test.cpp` glob didn't match `*_tests.cpp` — 73 test cases silently dropped from the build. This happened because I asked for manual changes without running the full pipeline. This underscores the importance of automated code review integrated with PRs.
 - **Human-in-the-loop is still essential** for catching LLM inconsistencies and nonsensical architectural decisions.
 - **I rarely look at the code anymore.** The implementation contract contains almost everything I need to know.
+- **I've become more interested in optimizing the process and watching how the LLM handles the task than in the code or whether it actually works.** I feel very detached from both the code and the end result. I'm not sure if this is because the project itself is about testing a SDD process, but I wonder if this would carry over to a "normal" project.
 
 ---
 
@@ -162,6 +179,8 @@
 - Reconstructing wiki + ADRs from a large codebase (if needed) would be a challenge
 - **No task decomposition** (unlike GitHub SpecKit) — the Code Implementer does everything at once. Current results are excellent, but the human must use experience and feel to decide what's too small or too big. Backlog management and task splitting are still manual. This approach won't scale to very large features — and I personally think building very large features in one go is a bad idea anyway
 - The orchestrator's context grows fast (often >100k even for small features). Smaller models would hallucinate a lot. I've sometimes had to stop at human approval and start a fresh discussion
+- Documentation and governance agents don't do a great job maintaining project docs. For example, when the `--capture` argument was removed from the CLI, the README was never updated
+- Early specs often don't define how we'll verify the feature actually works end-to-end (e.g., adding a demo/app for real testing). This should be part of the grill-me step or formalized as a definition-of-ready checklist that the spec-critic enforces
 
 ---
 
