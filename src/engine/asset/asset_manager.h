@@ -5,6 +5,7 @@
 #include "asset/dependency_map.h"
 #include "asset/texture_asset.h"
 #include "asset/material_asset.h"
+#include "asset/model_asset.h"
 #include "asset/file_watcher.h"
 #include "render/shader_program.h"
 
@@ -49,6 +50,7 @@ public:
 
     [[nodiscard]] auto create_texture(std::string_view id) -> Result<std::shared_ptr<TextureAsset>>;
     [[nodiscard]] auto create_material(std::string_view id) -> Result<std::shared_ptr<MaterialAsset>>;
+    [[nodiscard]] auto create_model(std::string_view id) -> Result<std::shared_ptr<ModelAsset>>;
 
     auto clear() -> void;
     auto base_path() const noexcept -> std::string_view;
@@ -88,6 +90,9 @@ private:
 
     // Internal: load a MaterialAsset (non-template version).
     auto load_material(const std::string& id, const std::string& yaml_path) -> Result<std::shared_ptr<MaterialAsset>>;
+
+    // Internal: load a ModelAsset (non-template version).
+    auto load_model(const std::string& id, const std::string& yaml_path) -> Result<std::shared_ptr<ModelAsset>>;
 
     // Hot-reload handlers.
     auto handle_yaml_change(const std::string& changed_path, const std::string& asset_id) -> void;

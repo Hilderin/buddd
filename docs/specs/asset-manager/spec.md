@@ -59,7 +59,7 @@ As the engine grows beyond demos, manual asset management becomes a significant 
 - No Windows/macOS FileWatcher support (Linux inotify only for V1).
 - No network-based asset loading (all assets are local filesystem only).
 - No asset streaming, LOD systems, or partial loading.
-- No glTF/glb model loading (models remain programmatic for V1).
+- glTF/glb model loading is handled by `ModelAsset` (see `docs/specs/gltf-model-loading/spec.md`) — this spec covers only TextureAsset and MaterialAsset.
 - No `assets/` directory creation or management — the directory is expected to exist.
 - No validation that referenced source files remain on disk across hot-reload cycles.
 - No shader include directive support (`#include` in GLSL is not processed by the engine).
@@ -1110,7 +1110,7 @@ All observability uses `std::cerr` consistent with the project pattern.
 - Asset streaming, LOD, or partial loading.
 - Network-based asset serving.
 - Asset editing, preview, or management GUI.
-- Model/glTF/glb loading — models remain programmatic for V1.
+- glTF/glb model loading (handled by `ModelAsset` in `docs/specs/gltf-model-loading/`).
 - Windows (ReadDirectoryChangesW) or macOS (FSEvents) FileWatcher — Linux inotify only for V1.
 - Cross-platform FileWatcher abstraction with fallback polling — V1 is Linux-only with NullFileWatcher for others.
 - YAML schema validation beyond basic `type` and `version` checks.
@@ -1188,5 +1188,5 @@ All previously open questions have been resolved. See coordination.md for the fu
 - Async loading.
 - Asset compression or packing.
 - Shader `#include` processing.
-- Model/glTF loading.
+- glTF model loading (now supported via `ModelAsset`, see `docs/specs/gltf-model-loading/`).
 - Editor asset browser.

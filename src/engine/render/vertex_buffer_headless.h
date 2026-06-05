@@ -14,6 +14,9 @@ public:
 
     auto format() const noexcept -> const VertexFormat& override;
 
+    /// Returns a const reference to the stored vertex data.
+    auto data() const noexcept -> const std::vector<std::byte>& { return data_; }
+
     VertexBufferHeadless(const VertexBufferHeadless&) = delete;
     auto operator=(const VertexBufferHeadless&) -> VertexBufferHeadless& = delete;
     VertexBufferHeadless(VertexBufferHeadless&&) = delete;

@@ -2,6 +2,8 @@
 #include "app_config.h"
 #include "apps/asset_demo_app.h"
 #include "apps/hot_reload_app.h"
+#include "apps/hot_reload_gltf_app.h"
+#include "apps/gltf_demo_app.h"
 #include "apps/cube_app.h"
 #include "apps/cube_scene_app.h"
 #include "apps/free_camera_app.h"
@@ -78,6 +80,10 @@ auto main(int argc, char* argv[]) -> int {
             app = std::make_unique<bc::app::HotReloadApp>();
         else if (scene == "multi-material")
             app = std::make_unique<bc::app::MultiMaterialApp>();
+        else if (scene == "gltf")
+            app = std::make_unique<bc::app::GltfDemoApp>();
+        else if (scene == "hot-reload-gltf")
+            app = std::make_unique<bc::app::HotReloadGltfApp>();
         else {
             std::fprintf(stderr, "Unknown scene: '%s'\n\n", argv[2]);
             std::fprintf(stderr,
@@ -93,6 +99,8 @@ auto main(int argc, char* argv[]) -> int {
                 "  phong        Phong lighting demo (interactive, 5 cubes + 5 lights)\n"
                 "  asset-demo   Asset pipeline demo: textured cube loaded via YAML metadata (120 frames)\n"
                 "  hot-reload   Hot-reload test: swaps texture at frame 30, use --capture 30 and 60 to verify\n"
+                "  hot-reload-gltf  Hot-reload test for glTF models\n"
+                "  gltf         glTF model loading demo (Box model with orbit camera)\n"
                 "  multi-material  Multi-material cube: 3 submeshes with red, green, blue materials (120 frames)\n"
                 "\n"
                 "Flags:\n"

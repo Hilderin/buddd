@@ -21,6 +21,7 @@ struct Error {
         IoFailed,          // File I/O error (read/write image file)
         InputInitFailed,   // Input system initialisation failure
         Unsupported,
+        InvalidFormat,  // corrupt/invalid file format (e.g., malformed glTF)
         Unknown
     };
 
@@ -49,6 +50,7 @@ inline auto to_string(const Error& error) -> std::string {
         case Error::Category::IoFailed:                   category_str = "IoFailed"; break;
         case Error::Category::InputInitFailed:            category_str = "InputInitFailed"; break;
         case Error::Category::Unsupported:                category_str = "Unsupported"; break;
+        case Error::Category::InvalidFormat:              category_str = "InvalidFormat"; break;
         case Error::Category::Unknown:                    category_str = "Unknown"; break;
     }
     return category_str + ": " + error.message + " (code " + std::to_string(error.code) + ")";

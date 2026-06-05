@@ -38,6 +38,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(yaml-cpp)
 
+# ----- tinygltf (glTF 2.0 model loading, header-only) -----
+FetchContent_Declare(
+    tinygltf
+    GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
+    GIT_TAG v2.9.7
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+              -DTINYGLTF_BUILD_LOADER_EXAMPLE=OFF
+              -DTINYGLTF_BUILD_LOADER_TEST=OFF
+)
+FetchContent_MakeAvailable(tinygltf)
+
 find_package(OpenGL REQUIRED)
 
 # Collect all engine source files automatically using GLOB.
@@ -64,6 +75,7 @@ target_include_directories(buddd_engine PUBLIC
 target_include_directories(buddd_engine PRIVATE
     ${stb_SOURCE_DIR}
     ${yaml-cpp_SOURCE_DIR}/include
+    ${tinygltf_SOURCE_DIR}
 )
 
 target_link_libraries(buddd_engine PUBLIC

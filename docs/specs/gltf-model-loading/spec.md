@@ -279,21 +279,20 @@ To avoid duplicating the traversal boilerplate in every application, a free func
 ```cpp
 namespace buddd::engine {
 
-/// Creates ECS entities for each mesh node in the ModelNode tree.
-/// Traverses depth-first, computing local transforms from TRS.
-/// Each mesh node becomes an entity with a TransformComponent (holding
-/// the local transform) and a MeshRenderer (holding shared_ptr<Model>).
-/// Parent-child relationships are preserved via optional parent argument.
+/// Traverses a ModelNode tree depth-first and creates ECS entities for each
+/// mesh node. Each entity gets a Transform (set from the node's TRS) and a
+/// MeshRenderer (holding the node's Model via shared_ptr). Parent-child
+/// relationships in the entity hierarchy mirror the ModelNode tree.
 ///
-/// @param registry   The ECS registry to create entities in.
-/// @param node       The root ModelNode to traverse.
-/// @param parent     Optional parent entity (for hierarchy).
-/// @return The entity created for this node (or null_entity if no mesh).
+/// @param world   The World (ECS container) to create entities in.
+/// @param node    The root ModelNode to traverse (non-const: Model is move-only).
+/// @param parent  Optional parent Entity for hierarchy (Entity::none() = no parent).
+/// @return The Entity created for `node`, or Entity::none() if the node has no mesh.
 auto add_model_to_world(
-    Registry& registry,
-    const ModelNode& node,
-    entt::entity parent = entt::null
-) -> entt::entity;
+    World& world,
+    ModelNode& node,
+    Entity parent = Entity::none()
+) -> Entity;
 
 } // namespace buddd::engine
 ```
@@ -313,7 +312,7 @@ Applications can use this for the common case, or fall back to manual traversal 
 // Typical usage in an app:
 auto model_asset = engine.assets().create<ModelAsset>("models/helmet/DamagedHelmet");
 if (model_asset) {
-    add_model_to_world(registry, (*model_asset)->root_node());
+    add_model_to_world(engine.world(), (*model_asset)->root_node());
 }
 ```
 
@@ -732,7 +731,7 @@ All observability uses `std::cerr` consistent with the project pattern.
 
 | ID | Assumption |
 |---|---|
-| A-01 | tinygltf version 2.10.0 (or latest stable) is available via GitHub and compatible with C++26 and the project's CMake setup. |
+| A-01 | tinygltf version 2.9.7 (or latest stable) is available via GitHub and compatible with C++26 and the project's CMake setup. |
 | A-02 | The `assets/models/` directory exists and contains the Box and DamagedHelmet model files. |
 | A-03 | glTF files are well-formed according to the glTF 2.0 specification. | 
 | A-04 | The engine's coordinate system is right-handed Y-up, matching glTF's default. No coordinate conversion is needed. |
@@ -1029,7 +1028,7 @@ Add tinygltf via FetchContent in `src/engine/CMakeLists.txt`:
 FetchContent_Declare(
     tinygltf
     GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
-    GIT_TAG v2.10.0
+    GIT_TAG v2.9.7
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
               -DTINYGLTF_BUILD_LOADER_EXAMPLE=OFF
               -DTINYGLTF_BUILD_LOADER_TEST=OFF

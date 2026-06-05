@@ -14,6 +14,9 @@ public:
 
     auto type() const noexcept -> IndexType override;
 
+    /// Returns a const reference to the stored index data.
+    auto data() const noexcept -> const std::vector<std::byte>& { return data_; }
+
     IndexBufferHeadless(const IndexBufferHeadless&) = delete;
     auto operator=(const IndexBufferHeadless&) -> IndexBufferHeadless& = delete;
     IndexBufferHeadless(IndexBufferHeadless&&) = delete;

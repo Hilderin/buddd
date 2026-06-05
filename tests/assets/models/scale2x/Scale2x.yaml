@@ -1,0 +1,5 @@
+type: Model
+version: 1
+source: models/box/BoxTextured.gltf
+settings:
+  scale: 2.0

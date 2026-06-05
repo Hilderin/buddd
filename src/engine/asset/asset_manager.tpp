@@ -9,9 +9,9 @@ namespace buddd::engine {
 
 template<typename T>
 auto AssetManager::create(std::string_view id) -> Result<std::shared_ptr<T>> {
-    // Compile-time guard: T must be TextureAsset or MaterialAsset
-    static_assert(std::is_same_v<T, TextureAsset> || std::is_same_v<T, MaterialAsset>,
-        "AssetManager::create<T>() is only supported for TextureAsset and MaterialAsset");
+    // Compile-time guard: T must be TextureAsset, MaterialAsset, or ModelAsset
+    static_assert(std::is_same_v<T, TextureAsset> || std::is_same_v<T, MaterialAsset> || std::is_same_v<T, ModelAsset>,
+        "AssetManager::create<T>() is only supported for TextureAsset, MaterialAsset, and ModelAsset");
 
     // 1. Validate id is not empty
     if (id.empty()) {
@@ -41,6 +41,8 @@ auto AssetManager::create(std::string_view id) -> Result<std::shared_ptr<T>> {
         return load_texture(std::string(id), yaml_path);
     } else if constexpr (std::is_same_v<T, MaterialAsset>) {
         return load_material(std::string(id), yaml_path);
+    } else if constexpr (std::is_same_v<T, ModelAsset>) {
+        return load_model(std::string(id), yaml_path);
     }
 }
 

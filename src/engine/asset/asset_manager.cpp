@@ -1,5 +1,7 @@
 #include "asset/asset_manager.h"
+#include "asset/model_loader.h"
 #include "render/render_device.h"
+#include "render/pbr/pbr_material.h"
 #include "image/image.h"
 
 #include <yaml-cpp/yaml.h>
@@ -7,6 +9,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
+#include <functional>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -66,6 +69,10 @@ auto AssetManager::create_texture(std::string_view id) -> Result<std::shared_ptr
 
 auto AssetManager::create_material(std::string_view id) -> Result<std::shared_ptr<MaterialAsset>> {
     return create<MaterialAsset>(id);
+}
+
+auto AssetManager::create_model(std::string_view id) -> Result<std::shared_ptr<ModelAsset>> {
+    return create<ModelAsset>(id);
 }
 
 auto AssetManager::clear() -> void {
@@ -489,6 +496,99 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
 }
 
 // ============================================================================
+// load_model
+// ============================================================================
+
+auto AssetManager::load_model(const std::string& id, const std::string& yaml_path)
+    -> Result<std::shared_ptr<ModelAsset>>
+{
+    // 1. Parse YAML
+    auto yaml_result = parse_yaml_file(yaml_path);
+    if (!yaml_result) {
+        return std::unexpected(yaml_result.error());
+    }
+    auto yaml = std::move(*yaml_result);
+
+    // 2. Validate type
+    auto type = get_yaml_type(yaml);
+    if (type != "Model") {
+        auto err = make_error(Error::Category::InvalidArgument,
+            "Expected type 'Model', got '" + type + "'");
+#ifndef NDEBUG
+        std::cerr << "[Asset] Type mismatch: " << id << " (expected Model, got " << type << ")\n";
+#endif
+        return std::unexpected(err);
+    }
+
+    // 3. Validate version
+    auto version = get_yaml_version(yaml);
+    if (version != 1) {
+        return make_error(Error::Category::Unsupported,
+            "Unsupported Model version: " + std::to_string(version));
+    }
+
+    // 4. Read source field
+    std::string source;
+    try {
+        source = yaml["source"].as<std::string>("");
+    } catch (...) {}
+    if (source.empty()) {
+        return make_error(Error::Category::InvalidArgument,
+            "Model 'source' field is required");
+    }
+    auto source_path = resolve_path(source);
+
+    // 5. Read settings.scale
+    float scale = 1.0f;
+    try {
+        scale = yaml["settings"]["scale"].as<float>(1.0f);
+    } catch (...) {}
+
+    if (scale == 0.0f) {
+        std::cerr << "[Asset] Warn: Model '" << id << "' scale is 0.0\n";
+    }
+
+    // 6. Load glTF model
+    auto load_result = detail::load_gltf_model(device_, make_full_path(source_path), scale);
+    if (!load_result) {
+#ifndef NDEBUG
+        std::cerr << "[Asset] Model load failed: " << id << " \u2014 " << load_result.error().message << "\n";
+#endif
+        return std::unexpected(load_result.error());
+    }
+
+    // Count vertices and nodes for logging (BEFORE moving root)
+    size_t vertex_count = 0;
+    size_t root_children_count = load_result->root.children.size();
+    // Simple recursive count
+    std::function<void(const ModelNode&)> count_verts = [&](const ModelNode& n) {
+        if (n.model.has_value()) {
+            vertex_count += n.model->vertex_count();
+        }
+        for (const auto& c : n.children) {
+            count_verts(c);
+        }
+    };
+    count_verts(load_result->root);
+
+    // 7. Create ModelAsset
+    auto asset = std::make_shared<ModelAsset>(std::move(load_result->root));
+
+    // 8. Cache and track dependencies
+    cache_[id] = asset;
+    dependency_map_.add_dependency(id, std::string(id) + ".yaml");
+    dependency_map_.add_dependency(id, source_path);
+
+#ifndef NDEBUG
+    std::cerr << "[Asset] Model loaded: " << id << " ("
+              << vertex_count << " verts, "
+              << root_children_count << " root nodes)\n";
+#endif
+
+    return asset;
+}
+
+// ============================================================================
 // Hot-reload handlers
 // ============================================================================
 
@@ -630,6 +730,21 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         dependency_map_.add_dependency(asset_id, frag_path);
 
         std::cerr << "[Asset] Hot-reloaded: " << asset_id << " (YAML change)\n";
+
+    } else if (auto model_asset = std::dynamic_pointer_cast<ModelAsset>(cache_it->second)) {
+        // Model YAML changed — reload entirely
+        std::cerr << "[Asset] Hot-reload: " << asset_id << " (Model YAML changed)\n";
+        auto result = load_model(asset_id, full_changed_path);
+        if (!result) {
+            std::cerr << "[Asset] Hot-reload: model reload failed: " << asset_id
+                      << " \u2014 retaining old model (" << result.error().message << ")\n";
+            return;
+        }
+        // The new asset is already cached by load_model. Remove the old one.
+        // Note: load_model calls cache_[id] = asset, overwriting the old entry.
+        // The old ModelNode tree is destroyed when the old shared_ptr goes out of scope.
+        // Old shared_ptr<Material> references held by external code remain valid.
+        std::cerr << "[Asset] Hot-reload: model reloaded: " << asset_id << "\n";
     }
 }
 
@@ -690,6 +805,33 @@ auto AssetManager::handle_source_change(const std::string& changed_path, const s
         }
 
         std::cerr << "[Asset] Hot-reload: no shader program uses " << changed_path << "\n";
+
+    } else if (auto model_asset = std::dynamic_pointer_cast<ModelAsset>(cache_it->second)) {
+        // glTF source file changed — reload and replace in-place
+        std::cerr << "[Asset] Hot-reload: " << asset_id << " (glTF source changed)\n";
+
+        // Re-read YAML to get scale setting
+        auto yaml_path = base_path_ + "/" + asset_id + ".yaml";
+        auto yaml_result = parse_yaml_file(yaml_path);
+        if (!yaml_result) {
+            std::cerr << "[Asset] Hot-reload: YAML parse error for " << asset_id << "\n";
+            return;
+        }
+        auto yaml = std::move(*yaml_result);
+        float scale = 1.0f;
+        try { scale = yaml["settings"]["scale"].as<float>(1.0f); } catch (...) {}
+
+        // Reload the model
+        auto result = detail::load_gltf_model(device_, make_full_path(changed_path), scale);
+        if (!result) {
+            std::cerr << "[Asset] Hot-reload: model reload failed: " << asset_id
+                      << " \u2014 retaining old model\n";
+            return;
+        }
+
+        // Replace in-place
+        model_asset->replace_root(std::move(result->root));
+        std::cerr << "[Asset] Hot-reload: model reloaded: " << asset_id << "\n";
     }
 }
 
@@ -699,5 +841,6 @@ auto AssetManager::handle_source_change(const std::string& changed_path, const s
 
 template auto AssetManager::create<TextureAsset>(std::string_view id) -> Result<std::shared_ptr<TextureAsset>>;
 template auto AssetManager::create<MaterialAsset>(std::string_view id) -> Result<std::shared_ptr<MaterialAsset>>;
+template auto AssetManager::create<ModelAsset>(std::string_view id) -> Result<std::shared_ptr<ModelAsset>>;
 
 } // namespace buddd::engine

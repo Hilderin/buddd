@@ -1,0 +1,3 @@
+type: Model
+version: 1
+source: models/missing-texture/MissingTexture.gltf

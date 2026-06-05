@@ -1,0 +1,3 @@
+type: Model
+version: 1
+source: models/transform-only/TransformOnly.gltf
