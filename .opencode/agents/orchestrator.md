@@ -35,13 +35,13 @@ Prefer the `question` tool when asking the human for clarification or approval.
 
 | Agent | Role |
 |---|---|
-| `scout` | Targeted reconnaissance. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize relevant context without crawling the whole repository. |
-| `spec-author` | Drafts functional specs from human intent and project context. |
+| `scout` | Targeted reconnaissance. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize relevant context without crawling the whole repository. Prefer this agent to explore the repo over the explore agent. |
+| `spec-author` | Drafts functional specs from human intent and project context. Always use the agent to update the spec. |
 | `spec-critic` | Critiques and validates functional specs. |
-| `implementation-contract-author` | Converts accepted specs into precise implementation contracts. |
+| `implementation-contract-author` | Converts accepted specs into precise implementation contracts. Always use this agent to update the implementation contract. |
 | `implementation-contract-critic` | Critiques and validates implementation contracts. |
 | `code-implementer` | Implements only accepted and human-approved implementation contracts. |
-| `code-reviewer` | Reviews implementation against accepted spec, contract, tests, and constitution. |
+| `code-reviewer` | Reviews implementation against accepted spec, contract, tests, and constitution. Always use this agent to update the implementation contract. |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions. |
 | `constitution-agent` | Maintains the project constitution when fundamental project rules need to change. |
 | `wiki-agent` | Maintains the operational project wiki after accepted changes. |

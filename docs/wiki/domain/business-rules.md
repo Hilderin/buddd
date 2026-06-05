@@ -2,18 +2,103 @@
 
 ## CLI output behavior
 
-| Input | Output | Exit code |
-|---|---|---|
-| `buddd` (no arguments) | `Buddd Engine v0.1.0` | 0 |
-| `buddd --version` | `buddd 0.1.0` | 0 |
-| `buddd --help` | `Buddd Engine v0.1.0` | 0 |
-| `buddd <any other arguments>` | `Buddd Engine v0.1.0` | 0 |
+### Commands
 
-- The only recognized flag is `--version` as the sole argument.
-- All other argument combinations (including `--help`, multiple args, unknown flags) fall through to the greeting.
-- There is no error output (stderr is empty) for any argument combination.
-- The greeting message format is `Buddd Engine v<version>` with a trailing newline.
-- The version output format is `buddd <version>` with a trailing newline.
+| Invocation | App | Behavior |
+|---|---|---|
+| `buddd` | `run` (no scene) | Empty window, interactive |
+| `buddd run` | `RunApp` | Empty window, interactive |
+| `buddd run triangle` | `TriangleApp` | Runs until window close |
+| `buddd run cube` | `CubeApp` | Runs until window close |
+| `buddd run cube-scene` | `CubeSceneApp` | Runs until window close |
+| `buddd run textured-cube` | `TexturedCubeApp` | Runs until window close |
+| `buddd run free-camera` | `FreeCameraApp` | Interactive, ESC to exit |
+| `buddd run phong` | `PhongApp` | Interactive, ESC to exit |
+| `buddd run <scene> --frame N` | (same App) | Limit to N frames |
+| `buddd run <scene> --capture N:path` | (same App) | Capture frame N to path |
+| `buddd version` | — | Prints version to stdout |
+| `buddd help` | — | Prints usage text to stdout |
+| `buddd <unknown>` | — | Error + usage to stderr, exit 1 |
+| `buddd run <unknown>` | — | Error + scene usage to stderr, exit 1 |
+
+### Available scenes
+
+| Name | Description | Default behavior |
+|---|---|---|
+| (empty) | Interactive empty window (no scene) | Runs until window close |
+| triangle | Coloured triangle | Runs until window close |
+| cube | Rotating cube | Runs until window close |
+| cube-scene | Cube via scene graph (World + RenderSystem) | Runs until window close |
+| textured-cube | Textured cube with UV-mapped brick texture | Runs until window close |
+| free-camera | Interactive free camera (WASD + mouse look, ESC to exit) | Interactive, ESC to exit |
+| phong | Phong lighting demo (5 cubes + 5 lights) | Interactive, ESC to exit |
+
+### Flags for `buddd run`
+
+- `--frame N`: Render exactly N frames, then exit. N >= 1. Default: 0 (interactive, no limit).
+- `--capture N:path`: Capture frame N (1-based) to path. Repeatable.
+- Unknown flags → silently ignored.
+- Extra positional arguments after scene → warning printed to stderr, run proceeds.
+
+### Observability messages
+
+| Signal | Stream | Format |
+|---|---|---|
+| Window opened | stdout | `"Window opened: WxH\n"` |
+| Scene started (limited) | stderr | `"Scene started: <title> (N frames)\n"` |
+| Scene started (interactive) | stderr | `"Scene started: <title> (interactive)\n"` |
+| Scene aborted (ESC) | stderr | `"Scene aborted by user (frame N)\n"` (N 1-based) |
+| Scene aborted (window close) | stderr | `"Scene aborted by user\n"` |
+| Scene completed | stderr | `"Scene complete: <title> (N frames rendered)\n"` |
+| Capture saved | stdout | `"Captured: <path>\n"` |
+| Window shutdown | stdout | `"Window closed, shutting down.\n"` |
+| Unknown scene | stderr | `"Unknown scene: '<name>'\n\n"` + scene usage |
+| Unknown command | stderr | `"Unknown command: '<cmd>'\n\n"` + usage |
+| Error (parse, setup, etc.) | stderr | `"Error: <description>\n"` |
+
+### Exit codes
+
+| Condition | Code |
+|---|---|
+| Normal completion | EXIT_SUCCESS (0) |
+| Unknown command | EXIT_FAILURE (1) |
+| Unknown scene | EXIT_FAILURE (1) |
+| --frame parse error | EXIT_FAILURE (1) |
+| --capture parse error | EXIT_FAILURE (1) |
+| Platform/Window/Device creation failure | EXIT_FAILURE (1) |
+| app.setup() returns error | EXIT_FAILURE (1) |
+| All captures fail | EXIT_FAILURE (1) |
+| Some captures succeed, some fail | EXIT_SUCCESS (0) |
+| Window closed early | EXIT_SUCCESS (0) |
+| ESC pressed | EXIT_SUCCESS (0) |
+
+### App lifecycle (from `run_app()`)
+
+1. `app.config()` → `AppConfig`
+2. `Platform::create(backend)`
+3. `window = platform->create_window(AppConfig)`
+4. print "Window opened: WxH"
+5. `device = RenderDevice::create(window)`
+6. `app.setup(device)` → if error, `shutdown()` and exit 1
+7. print start message
+8. Loop until frame limit or window close or ESC:
+   a. `poll_events()`
+   b. `device->begin_frame()`
+   c. `app.render(device, frame)`
+   d. capture injection
+   e. `device->end_frame()`
+9. print completion/abort message
+10. `app.shutdown()`
+11. print "Window closed, shutting down."
+12. return exit code
+
+### Driver quirk
+
+`--capture 1:path` captures frame 2 (not frame 1). The `effective_frame` is computed as `(spec.frame < 2) ? 2 : spec.frame`. This is a known off-by-one issue documented in ADR-014.
+
+### Backend selection
+
+Backend is compile-time via `BUDDD_HAS_DISPLAY` define. SDL3 when `ON`, Headless when `OFF`.
 
 ## Version API contract
 
@@ -170,10 +255,12 @@ All methods (set_uniform, has_uniform, getters) use `normalize_uniform_name()` t
 
 ## Reference
 
-- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — User-visible behavior, User stories 1-3, Conventions
-- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 5, 7 (version and CLI behavior)
+- Spec: [SPEC-001](/docs/specs/project-setup/spec.md) — Project conventions, Version API contract
+- Implementation contract: [IMPL-001](/docs/specs/project-setup/implementation-contract.md) — sections 5, 7 (version API contract only; CLI behavior superseded by SPEC-008)
 - Spec: [SPEC-002](/docs/specs/platform-abstraction/spec.md) — User stories, Acceptance criteria, Error cases, Assumptions
 - Implementation contract: [IMPL-002](/docs/specs/platform-abstraction/implementation-contract.md) — Required implementation behavior, Edge cases
+- Spec: [SPEC-008](/docs/specs/cli-app-system/spec.md) — CLI App System (commands, scenes, flags, observability, exit codes, app lifecycle)
+- ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System lifecycle, driver quirk (--capture off-by-one)
 - Spec: [SPEC-013](/docs/specs/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration, frame-based state model)
 - Spec: [SPEC-018](/docs/specs/lighting/spec.md) — Phong Lighting System (Standard Vertex, Light Components, Phong module, RenderSystem extension, Phong demo)
 - Implementation contract: [IMPL-018-002](/docs/specs/lighting/implementation-contract.md) — Phong Lighting System implementation contract
