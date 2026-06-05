@@ -1,0 +1,7 @@
+type: Material
+version: 1
+shaders:
+  vertex: assets/shaders/demo.vert
+  fragment: assets/shaders/demo.frag
+textures:
+  u_tex: textures/texture_prototype_red

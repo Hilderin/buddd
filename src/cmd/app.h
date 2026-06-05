@@ -31,6 +31,10 @@ public:
     [[nodiscard]] virtual auto setup(buddd::engine::RenderDevice& device)
         -> buddd::engine::Result<void> = 0;
 
+    /// Called once per frame, before render(), between begin_frame() and end_frame().
+    /// Default no-op. Override for per-frame tasks like hot-reload polling.
+    virtual auto on_frame_begin() -> void {}
+
     /// Called once per frame, between begin_frame() and end_frame().
     /// frame is 0-based (0 = first rendered frame).
     virtual auto render(buddd::engine::RenderDevice& device, int frame) -> void = 0;

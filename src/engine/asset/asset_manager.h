@@ -72,8 +72,13 @@ private:
     AssetManager(RenderDevice& device, std::string base_path);
 
     // Resolve a path from YAML. If absolute, return as-is.
-    // If relative, resolve against the working directory.
-    static auto resolve_path(std::string_view path) -> std::string;
+    // If relative, strip the base_path_/ prefix so the returned path
+    // is relative to base_path_ (matching FileWatcher event format).
+    auto resolve_path(std::string_view path) -> std::string;
+
+    // Convert a relative path (as returned by resolve_path) back to
+    // a full filesystem path by prepending base_path_.
+    auto make_full_path(const std::string& path) const -> std::string;
 
     // Read entire file into string. Returns IoFailed on error.
     static auto read_file(const std::string& path) -> Result<std::string>;
@@ -85,8 +90,8 @@ private:
     auto load_material(const std::string& id, const std::string& yaml_path) -> Result<std::shared_ptr<MaterialAsset>>;
 
     // Hot-reload handlers.
-    auto handle_yaml_change(const std::string& changed_path) -> void;
-    auto handle_source_change(const std::string& changed_path) -> void;
+    auto handle_yaml_change(const std::string& changed_path, const std::string& asset_id) -> void;
+    auto handle_source_change(const std::string& changed_path, const std::string& asset_id) -> void;
 
     RenderDevice& device_;
     std::string base_path_;

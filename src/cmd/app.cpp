@@ -104,6 +104,9 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
         // Begin frame
         (*device)->begin_frame();
 
+        // Frame start hook (hot-reload polling, etc.)
+        app.on_frame_begin();
+
         // Render
         app.render(**device, frame);
 

@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <system_error>
 #include <vector>
@@ -28,13 +29,8 @@ InotifyFileWatcher::InotifyFileWatcher(std::string_view watch_path)
         return;
     }
 
-    // Add watch on the directory
-    watch_fd_ = inotify_add_watch(inotify_fd_, watch_path_.c_str(),
-                                  IN_CREATE | IN_MODIFY | IN_DELETE | IN_MOVED_TO);
-    if (watch_fd_ == -1) {
-        std::cerr << "[FileWatcher] inotify_add_watch failed for '"
-                  << watch_path_ << "': " << std::strerror(errno) << "\n";
-    }
+    // Recursively add watches for all subdirectories
+    add_watch_recursive(std::string(watch_path), "");
 
     // Create self-pipe for wake-on-shutdown
     if (pipe2(self_pipe_, O_CLOEXEC | O_NONBLOCK) == -1) {
@@ -55,6 +51,30 @@ InotifyFileWatcher::~InotifyFileWatcher() {
         close(self_pipe_[1]);
         self_pipe_[0] = -1;
         self_pipe_[1] = -1;
+    }
+    // watch_dirs_ watches are automatically removed when inotify_fd_ is closed
+}
+
+auto InotifyFileWatcher::add_watch_recursive(const std::string& dir_path, const std::string& relative_path) -> void {
+    int wd = inotify_add_watch(inotify_fd_, dir_path.c_str(),
+                               IN_CREATE | IN_MODIFY | IN_DELETE | IN_MOVED_TO);
+    if (wd != -1) {
+        watch_dirs_[wd] = relative_path;
+    }
+
+    // Recursively scan subdirectories
+    try {
+        for (auto& entry : std::filesystem::directory_iterator(dir_path)) {
+            if (entry.is_directory()) {
+                auto sub_dir = entry.path().string();
+                auto sub_rel = relative_path.empty()
+                    ? entry.path().filename().string()
+                    : relative_path + "/" + entry.path().filename().string();
+                add_watch_recursive(sub_dir, sub_rel);
+            }
+        }
+    } catch (...) {
+        // Ignore permission errors etc.
     }
 }
 
@@ -143,7 +163,14 @@ auto InotifyFileWatcher::watcher_thread_func() -> void {
                 auto* event = reinterpret_cast<struct inotify_event*>(buffer.data() + offset);
 
                 if (event->len > 0) {
-                    std::string file_path = watch_path_ + "/" + event->name;
+                    // Look up which directory this watch corresponds to
+                    auto dir_it = watch_dirs_.find(event->wd);
+                    std::string file_path;
+                    if (dir_it != watch_dirs_.end() && !dir_it->second.empty()) {
+                        file_path = dir_it->second + "/" + event->name;
+                    } else {
+                        file_path = event->name;
+                    }
 
                     FileEventType type;
                     if (event->mask & IN_CREATE || event->mask & IN_MOVED_TO) {

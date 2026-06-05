@@ -155,14 +155,16 @@ RenderDevice& device
 ### Frame loop (after EngineService setup)
 
 ```
-    [Frame loop: poll_events() orchestrates input and rendering]
-    - Each poll_events() call:
-        1. Computes delta_time from SDL_GetTicks () — time since the previous
-           poll_events() call in seconds. First call after construction returns 1/60.
-        2. Calls InputSystem::begin_frame() — copies current→previous state, resets
-           accumulated mouse delta/wheel to zero.
-        3. Processes SDL events — routes non-quit events to InputSystemSDL3::on_sdl_event()
-           (keyboard, mouse-motion, mouse-button, mouse-wheel).
+    [Frame loop: run_app() orchestrates rendering each frame]
+    - Each frame:
+        1. poll_events() — dispatches SDL events, computes delta_time, calls
+           InputSystem::begin_frame() to advance input state.
+        2. device->begin_frame() — clears buffers, starts GPU frame.
+        3. app.on_frame_begin() — per-frame hook (default no-op, apps override
+           for tasks like hot-reload polling via asset_manager->poll_file_events()).
+        4. app.render(device, frame) — application rendering logic.
+        5. Capture injection (if --capture matches current frame).
+        6. device->end_frame() — swap buffers, finalize GPU frame.
     - Application queries input state via device.window().platform().input_system()
       and delta time via device.window().platform().delta_time() between
       poll_events() and render/update logic.
@@ -268,7 +270,7 @@ Two materials with same (vert, frag) paths:
     Each has independent Material object
 ```
 
-Hot-reload flow (via explicit `poll_file_events()`):
+Hot-reload flow (via `app.on_frame_begin()` which calls `poll_file_events()`):
 
 ```
 FileWatcher thread (inotify):          Main thread:
@@ -299,7 +301,9 @@ FileWatcher thread (inotify):          Main thread:
     │                                            handle at bind() time)
 ```
 
-The FileWatcher is Linux-only (inotify). On non-Linux or headless mode, a `NullFileWatcher` is used — `poll_file_events()` returns immediately with no events.
+The FileWatcher is Linux-only (inotify) and watches **all subdirectories recursively** — every directory under the watch path gets an inotify watch added. On non-Linux or headless mode, a `NullFileWatcher` is used — `poll_file_events()` returns immediately with no events.
+
+Hot-reload is **fully implemented** — `handle_yaml_change()` and `handle_source_change()` in `AssetManager` perform actual in-place GPU handle swaps (texture via `replace_gl_handle()`, shaders via `replace_handle()` on the `ShaderProgram`). See the `HotReloadApp` test app for verification.
 
 ### Error propagation
 

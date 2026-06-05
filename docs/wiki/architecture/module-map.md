@@ -130,7 +130,7 @@ All types in namespace `buddd::engine`. Provides a centralised ID-based asset lo
 | `asset_id.h` | (Optional) Asset ID utilities and path resolution helpers. |
 | `asset_manager.h` | `AssetManager` class — core asset system. Factory `create(RenderDevice&, string_view) -> Result<unique_ptr>`. Template `create<T>(id) -> Result<shared_ptr<T>>` for loading assets. Convenience `create_texture(id)` and `create_material(id)`. `clear()`, `base_path()`, `poll_file_events()`, `set_file_watcher_enabled(bool)`. Owns cache, shader deduplication map, dependency map, and file watcher. |
 | `asset_manager.tpp` | Template implementation of `create<T>()` — included at bottom of `asset_manager.h`. |
-| `asset_manager.cpp` | Non-template implementation: `load_texture()`, `load_material()`, `poll_file_events()`, hot-reload handlers (`handle_yaml_change`, `handle_source_change`), explicit template instantiations. |
+| `asset_manager.cpp` | Non-template implementation: `load_texture()`, `load_material()`, `poll_file_events()`, hot-reload handlers (`handle_yaml_change`, `handle_source_change` — fully implemented, reload assets in-place with GPU handle swap), explicit template instantiations. |
 | `texture_asset.h` | `TextureAsset` final class — wraps `std::shared_ptr<Texture>`. Accessor: `texture() -> const shared_ptr<Texture>&`. |
 | `texture_asset.cpp` | TextureAsset implementation. |
 | `material_asset.h` | `MaterialAsset` final class — wraps `std::shared_ptr<Material>`. Accessor: `material() -> const shared_ptr<Material>&`. |
@@ -139,8 +139,8 @@ All types in namespace `buddd::engine`. Provides a centralised ID-based asset lo
 | `dependency_map.cpp` | DependencyMap implementation (internal `unordered_map<string, vector<string>>` for forward and reverse directions). |
 | `file_watcher.h` | Abstract `FileWatcher` base class. `FileEventType` enum (`Created`, `Modified`, `Deleted`). `FileEvent` struct (`path`, `type`). `NullFileWatcher` no-op final class. Factory `create(string_view) -> Result<unique_ptr>`. |
 | `file_watcher.cpp` | `FileWatcher::create()` factory — on Linux attempts `InotifyFileWatcher`, on other platforms returns `Unsupported` (caller falls back to `NullFileWatcher`). `~FileWatcher()` destructor (vtable emission). |
-| `file_watcher_inotify.h` | `InotifyFileWatcher` concrete class (Linux only, `#ifdef __linux__`). Monitors a directory via inotify, runs a dedicated thread, pushes events to a thread-safe queue. |
-| `file_watcher_inotify.cpp` | Inotify implementation: `inotify_init1`, `inotify_add_watch`, blocking read loop, mutex-protected queue. |
+| `file_watcher_inotify.h` | `InotifyFileWatcher` concrete class (Linux only, `#ifdef __linux__`). Monitors a directory tree via inotify, runs a dedicated thread, pushes events to a thread-safe queue. |
+| `file_watcher_inotify.cpp` | Inotify implementation: `inotify_init1`, `add_watch_recursive()` (walks directory tree recursively adding inotify watches for all subdirectories), blocking `poll()`-based read loop, mutex-protected queue, self-pipe for wake-on-shutdown. |
 
 ### Render submodule (`render/`)
 
@@ -225,8 +225,8 @@ Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) de
 | File | Role |
 |---|---|
 | `main.cpp` | Dispatcher: parse first positional argument, dispatch to matching handler. If no arg or arg is `run`: parse `<scene>`, create the appropriate `App` subclass, call `run_app()`. Also handles `version` and `help` commands. No engine header includes beyond those needed for forward declarations. |
-| `app.h` | Declares `AppConfig` struct (title, width, height), `App` base class with virtual lifecycle (`config()`, `setup()`, `render()`, `shutdown()`), and `run_app()` free function. |
-| `app.cpp` | Implementation of `run_app()`: creates `Platform` / `Window` / `RenderDevice`, calls `app.setup()`, runs the central render loop (with frame limiting via `--frame` and capture injection via `--capture`), then calls `app.shutdown()`. |
+| `app.h` | Declares `AppConfig` struct (title, width, height), `App` base class with virtual lifecycle (`config()`, `setup()`, `on_frame_begin()` (default no-op), `render()`, `shutdown()`), and `run_app()` free function. |
+| `app.cpp` | Implementation of `run_app()`: creates `Platform` / `Window` / `RenderDevice`, calls `app.setup()`, runs the central render loop (calling `begin_frame()` → `app.on_frame_begin()` → `app.render()` → capture injection → `end_frame()` with frame limiting via `--frame` and capture injection via `--capture`), then calls `app.shutdown()`. |
 | `app_config.h` | Declares `CaptureSpec` struct (frame number + path) and `RunningArgs` struct (frame limit + capture specs), plus `parse_running_args()` to parse `--frame N` and `--capture N:path` from argv. |
 | `app_config.cpp` | Implementation of `parse_running_args()`. |
 
@@ -250,6 +250,7 @@ Each scene is an `App` subclass whose `render()` method contains **only** the pe
 | `textured_cube_app.h` / `textured_cube_app.cpp` | `TexturedCubeApp` — 120-frame rotating UV-mapped cube with brick texture using scene graph. |
 | `free_camera_app.h` / `free_camera_app.cpp` | `FreeCameraApp` — interactive fly-through camera (WASD + mouse look + Space/Control). Uses `Platform::delta_time()` for frame-rate-independent movement. Exit via Escape key. Uses `PhongMaterial` with orbiting point light + directional fill. |
 | `phong_app.h` / `phong_app.cpp` | `PhongApp` — interactive Phong lighting demo. Textured cubes with `PhongMaterial`, orbiting `PointLightComponent`, static `DirectionalLightComponent` fill. Interactive free-camera (WASD + mouse, right-click to capture). Runs until Escape. Uses ECS: World + RenderSystem + light components + MeshRenderer + PhongMaterial. |
+| `hot_reload_app.h` / `hot_reload_app.cpp` | `HotReloadApp` — hot-reload verification test. Loads a material from YAML, swaps texture at frame 30 via `poll_file_events()`. Use with `--capture 30:before.png --capture 60:after.png` to verify before/after. Overrides `on_frame_begin()` to call `asset_manager_->poll_file_events()`. |
 
 ### Demo helpers (`src/cmd/demo/`)
 
@@ -262,7 +263,7 @@ Only `demo_helpers.*` remain in `src/cmd/demo/`. All old per-demo files (triangl
 ### Subcommand behavior
 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
-- `buddd run <scene> [--frame N] [--capture N:path]...` → runs the named scene. Available scenes: `triangle` (120 frames, coloured triangle), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), `textured-cube` (120 frames, UV-mapped cube with brick texture), `free-camera` (interactive, WASD + mouse look + Space/Control), `phong` (interactive, Phong lighting with orbiting point light + directional fill). `--frame N` limits rendering to N frames. `--capture N:path` captures frame N to a PNG file (repeatable for multiple captures). If no scene is given, defaults to `RunApp` (empty window). If scene is unknown, prints error to stderr and exits 1. Extra unexpected positional arguments print a warning on stderr.
+- `buddd run <scene> [--frame N] [--capture N:path]...` → runs the named scene. Available scenes: `triangle` (120 frames, coloured triangle), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), `textured-cube` (120 frames, UV-mapped cube with brick texture), `free-camera` (interactive, WASD + mouse look + Space/Control), `phong` (interactive, Phong lighting with orbiting point light + directional fill), `hot-reload` (60 frames, hot-reload verification, swaps texture at frame 30). `--frame N` limits rendering to N frames. `--capture N:path` captures frame N to a PNG file (repeatable for multiple captures). If no scene is given, defaults to `RunApp` (empty window). If scene is unknown, prints error to stderr and exits 1. Extra unexpected positional arguments print a warning on stderr.
 - `buddd version` → prints `buddd 0.1.0` to stdout
 - `buddd help` → prints usage information listing three commands (`run`, `version`, `help`)
 - Unknown command → prints `"Unknown command: '<cmd>'"` followed by usage to stderr, exits with code 1

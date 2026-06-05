@@ -15,6 +15,7 @@
 | `buddd run free-camera` | `FreeCameraApp` | Interactive, ESC to exit |
 | `buddd run phong` | `PhongApp` | Interactive, ESC to exit |
 | `buddd run asset-demo` | `AssetDemoApp` | Runs until window close (120 frames) |
+| `buddd run hot-reload` | `HotReloadApp` | Runs until window close (60 frames), swaps texture at frame 30 |
 | `buddd run <scene> --frame N` | (same App) | Limit to N frames |
 | `buddd run <scene> --capture N:path` | (same App) | Capture frame N to path |
 | `buddd version` | — | Prints version to stdout |
@@ -34,6 +35,7 @@
 | free-camera | Interactive free camera (WASD + mouse look, ESC to exit) | Interactive, ESC to exit |
 | phong | Phong lighting demo (5 cubes + 5 lights) | Interactive, ESC to exit |
 | asset-demo | Asset pipeline demo: textured cube loaded via YAML metadata | Runs until window close (120 frames) |
+| hot-reload | Hot-reload test: swaps texture source at frame 30 to trigger `poll_file_events()` reload | Runs until window close (60 frames) |
 
 ### Flags for `buddd run`
 
@@ -86,9 +88,10 @@
 8. Loop until frame limit or window close or ESC:
    a. `poll_events()`
    b. `device->begin_frame()`
-   c. `app.render(device, frame)`
-   d. capture injection
-   e. `device->end_frame()`
+   c. `app.on_frame_begin()` — per-frame hook (default no-op, overridden by apps like `AssetDemoApp` and `HotReloadApp` for hot-reload polling)
+   d. `app.render(device, frame)`
+   e. capture injection
+   f. `device->end_frame()`
 9. print completion/abort message
 10. `app.shutdown()`
 11. print "Window closed, shutting down."
@@ -296,11 +299,20 @@ constants:              # optional — map uniform name → float value
 - Each `Material` retains independent uniform/texture state.
 - The deduplication map lives inside `AssetManager` (`unordered_map<ShaderProgramKey, shared_ptr<ShaderProgram>>`).
 
-### Hot-reload (V1 — stub handlers)
+### Hot-reload (V1 — fully implemented)
 
 - The FileWatcher is Linux inotify only (`#ifdef __linux__`). On non-Linux or headless, `NullFileWatcher` is used.
-- `poll_file_events()` must be called explicitly by user code (e.g., once per frame) — the engine does not call it automatically.
-- Hot-reload handlers are implemented as stubs in V1 — no actual reload occurs. The pipeline structure (dependency map lookup, event injection) is tested but functional reload is deferred.
+- `poll_file_events()` must be called explicitly by user code — the engine does not call it automatically. Apps override `on_frame_begin()` to call `asset_manager_->poll_file_events()` once per frame.
+- **Fully implemented**: `handle_yaml_change()` and `handle_source_change()` perform in-place GPU handle swaps:
+  - **Texture source change**: reloads image, creates new GPU texture, extracts native GL handle via `release_gl_handle()`, injects into existing `Texture` via `replace_gl_handle()`.
+  - **Shader source change**: recompiles both vertex+fragment shaders, creates new `ShaderProgram`, extracts handle via `release_handle()`, injects into existing shared `ShaderProgram` via `replace_handle()`.
+  - **YAML metadata change**: re-parses YAML, updates dependency map, and (for materials) re-resolves texture bindings and constant overrides.
+  - All existing `shared_ptr<Material>` / `shared_ptr<Texture>` references remain valid — handles swap transparently.
+- **Recursive inotify**: `InotifyFileWatcher::add_watch_recursive()` walks the entire directory tree at startup, adding an inotify watch for every subdirectory. File events are reported with relative paths matching those stored in `DependencyMap`.
+- **HotReloadApp**: Test app (`buddd run hot-reload`) loads a textured cube via YAML, swaps `hot_reload_a.png` → `hot_reload_live.png` at frame 30, and calls `poll_file_events()` to trigger reload. Use with dual `--capture` to verify before/after:
+  ```
+  buddd run hot-reload --frame 60 --capture 30:/tmp/before.png --capture 60:/tmp/after.png
+  ```
 
 ### MaterialHeadless diagnostic accessors
 

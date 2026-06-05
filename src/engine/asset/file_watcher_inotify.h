@@ -5,11 +5,13 @@
 #ifdef __linux__
 
 #include <atomic>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 namespace buddd::engine {
 
@@ -29,9 +31,10 @@ public:
 
 private:
     auto watcher_thread_func() -> void;
+    auto add_watch_recursive(const std::string& dir_path, const std::string& relative_path) -> void;
 
     int inotify_fd_{-1};
-    int watch_fd_{-1};
+    std::unordered_map<int, std::string> watch_dirs_;
     int self_pipe_[2] = {-1, -1};
     std::thread watcher_thread_;
     std::mutex queue_mutex_;

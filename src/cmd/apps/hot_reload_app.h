@@ -6,7 +6,6 @@
 #include "scene/world.h"
 #include "render/render_system.h"
 
-#include <chrono>
 #include <memory>
 
 namespace buddd::engine {
@@ -15,13 +14,20 @@ class AssetManager;
 
 namespace buddd::cmd::app {
 
-class AssetDemoApp final : public App {
+/// Hot-reload test app.
+///
+/// - Creates an AssetManager that loads a material from YAML
+/// - At frame 30, swaps the source texture file on disk and triggers
+///   poll_file_events() to verify the hot-reload pipeline works
+/// - Run with dual captures to compare before/after:
+///   buddd run hot-reload --frame 60 --capture 30:/tmp/before.png --capture 60:/tmp/after.png
+class HotReloadApp final : public App {
 public:
-    AssetDemoApp();
-    ~AssetDemoApp() override;
+    HotReloadApp();
+    ~HotReloadApp() override;
 
     auto config() const -> AppConfig override {
-        return {"Buddd Engine \u2014 asset-demo", 1024, 768};
+        return {"Buddd Engine \u2014 hot-reload test", 1024, 768};
     }
 
     [[nodiscard]] auto setup(buddd::engine::RenderDevice& device)
@@ -35,7 +41,6 @@ private:
     std::unique_ptr<buddd::engine::World> world_;
     std::unique_ptr<buddd::engine::RenderSystem> render_system_;
     std::unique_ptr<buddd::engine::Entity> entity_;
-    std::chrono::steady_clock::time_point start_time_;
 };
 
 } // namespace buddd::cmd::app

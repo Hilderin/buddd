@@ -96,9 +96,9 @@ auto AssetManager::poll_file_events() -> void {
         for (const auto& asset_id : asset_ids) {
             if (event.path.size() >= 5 &&
                 event.path.substr(event.path.size() - 5) == ".yaml") {
-                handle_yaml_change(asset_id);
+                handle_yaml_change(event.path, asset_id);
             } else {
-                handle_source_change(asset_id);
+                handle_source_change(event.path, asset_id);
             }
         }
     }
@@ -132,9 +132,9 @@ void AssetManager::testing_inject_file_event(const FileEvent& event) {
     for (const auto& asset_id : asset_ids) {
         if (event.path.size() >= 5 &&
             event.path.substr(event.path.size() - 5) == ".yaml") {
-            handle_yaml_change(asset_id);
+            handle_yaml_change(event.path, asset_id);
         } else {
-            handle_source_change(asset_id);
+            handle_source_change(event.path, asset_id);
         }
     }
 }
@@ -147,7 +147,25 @@ void AssetManager::testing_inject_file_event(const FileEvent& event) {
 auto AssetManager::resolve_path(std::string_view path) -> std::string {
     if (path.empty()) return std::string(path);
     if (path.front() == '/') return std::string(path);
-    return std::string(path);
+    // Return the path relative to base_path_ so it matches FileWatcher event format.
+    // Use std::filesystem::relative to handle both absolute and relative base_path_.
+    auto path_str = std::string(path);
+    try {
+        auto base_abs = std::filesystem::absolute(std::filesystem::path(base_path_));
+        auto src_abs = std::filesystem::absolute(std::filesystem::path(path_str));
+        auto rel = src_abs.lexically_relative(base_abs);
+        if (!rel.empty() && rel.generic_string().front() != '.') {
+            return rel.generic_string();
+        }
+    } catch (...) {
+        // Fall through on error
+    }
+    return path_str;
+}
+
+auto AssetManager::make_full_path(const std::string& path) const -> std::string {
+    if (path.empty() || path.front() == '/') return path;
+    return base_path_ + "/" + path;
 }
 
 auto AssetManager::read_file(const std::string& path) -> Result<std::string> {
@@ -252,7 +270,7 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     auto source_path = resolve_path(source);
 
     // 5. Load image and create texture
-    auto image = Image::load(source_path);
+    auto image = Image::load(make_full_path(source_path));
     if (!image) {
         return std::unexpected(image.error());
     }
@@ -287,8 +305,9 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     auto asset = std::make_shared<TextureAsset>(std::move(shared_tex));
 
     // 8. Cache and track dependencies
+    //    Store paths relative to base_path_ so they match FileWatcher events.
     cache_[id] = asset;
-    dependency_map_.add_dependency(id, yaml_path);
+    dependency_map_.add_dependency(id, std::string(id) + ".yaml");
     dependency_map_.add_dependency(id, source_path);
 
 #ifndef NDEBUG
@@ -356,10 +375,10 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     auto frag_path = resolve_path(frag_path_str);
 
     // 5. Load shader source files
-    auto vert_source = read_file(vert_path);
+    auto vert_source = read_file(make_full_path(vert_path));
     if (!vert_source) return std::unexpected(vert_source.error());
 
-    auto frag_source = read_file(frag_path);
+    auto frag_source = read_file(make_full_path(frag_path));
     if (!frag_source) return std::unexpected(frag_source.error());
 
     // 6. Deduplicate shader program by (vert_path, frag_path)
@@ -456,8 +475,9 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     auto asset = std::make_shared<MaterialAsset>(std::move(shared_material));
 
     // 11. Cache and track dependencies
+    //     Store paths relative to base_path_ so they match FileWatcher events.
     cache_[id] = asset;
-    dependency_map_.add_dependency(id, yaml_path);
+    dependency_map_.add_dependency(id, std::string(id) + ".yaml");
     dependency_map_.add_dependency(id, vert_path);
     dependency_map_.add_dependency(id, frag_path);
 
@@ -472,18 +492,205 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
 // Hot-reload handlers
 // ============================================================================
 
-auto AssetManager::handle_yaml_change(const std::string& /*asset_id*/) -> void {
-    // Full YAML reload: re-run the loader for the given asset.
-    // The actual dispatching is done in poll_file_events which calls us
-    // with the asset_id from the dependency chain.
-    // (Stub for V1 — full reload is WIP)
+auto AssetManager::handle_yaml_change(const std::string& changed_path, const std::string& asset_id) -> void {
+    // Find the cached asset
+    auto cache_it = cache_.find(asset_id);
+    if (cache_it == cache_.end()) return;
+
+    // changed_path is relative to base_path_ — reconstruct full path for I/O
+    auto full_changed_path = make_full_path(changed_path);
+
+    // Determine asset type and reload
+    if (auto tex_asset = std::dynamic_pointer_cast<TextureAsset>(cache_it->second)) {
+        // Texture YAML change: reload image and swap GPU handles
+        auto yaml_result = parse_yaml_file(full_changed_path);
+        if (!yaml_result) {
+            std::cerr << "[Asset] Hot-reload YAML parse error: " << full_changed_path << "\n";
+            return;
+        }
+        auto yaml = std::move(*yaml_result);
+
+        // Read source path
+        std::string source;
+        try { source = yaml["source"].as<std::string>(""); } catch (...) {}
+        if (source.empty()) {
+            std::cerr << "[Asset] Hot-reload: missing source in " << full_changed_path << "\n";
+            return;
+        }
+        auto source_path = resolve_path(source);
+
+        // Load new image (source_path is relative to base_path_, prepend for I/O)
+        auto image = Image::load(make_full_path(source_path));
+        if (!image) {
+            std::cerr << "[Asset] Hot-reload: image load failed: " << source_path << "\n";
+            return;
+        }
+
+        // Create new GPU texture
+        auto new_tex = device_.create_texture(*image);
+        if (!new_tex) {
+            std::cerr << "[Asset] Hot-reload: texture creation failed\n";
+            return;
+        }
+
+        // Swap handles: extract handle from new texture, inject into existing
+        auto new_handle = (*new_tex)->release_gl_handle();
+        tex_asset->texture()->replace_gl_handle(new_handle);
+
+        // Update dependency map (source path may have changed)
+        // Use relative paths matching FileWatcher format
+        dependency_map_.remove_asset(asset_id);
+        dependency_map_.add_dependency(asset_id, std::string(asset_id) + ".yaml");
+        dependency_map_.add_dependency(asset_id, source_path);
+
+        std::cerr << "[Asset] Hot-reloaded: " << asset_id << " (YAML change)\n";
+
+    } else if (auto mat_asset = std::dynamic_pointer_cast<MaterialAsset>(cache_it->second)) {
+        // Material YAML change: re-parse and update bindings
+        auto yaml_result = parse_yaml_file(full_changed_path);
+        if (!yaml_result) {
+            std::cerr << "[Asset] Hot-reload YAML parse error: " << full_changed_path << "\n";
+            return;
+        }
+        auto yaml = std::move(*yaml_result);
+
+        // Read shader paths
+        std::string vert_path_str, frag_path_str;
+        try {
+            vert_path_str = yaml["shaders"]["vertex"].as<std::string>("");
+            frag_path_str = yaml["shaders"]["fragment"].as<std::string>("");
+        } catch (...) {}
+        if (vert_path_str.empty() || frag_path_str.empty()) return;
+
+        auto vert_path = resolve_path(vert_path_str);
+        auto frag_path = resolve_path(frag_path_str);
+
+        // Recompile shader if needed (will use cache if same key exists)
+        ShaderProgramKey program_key{vert_path, frag_path};
+        auto program_it = shader_programs_.find(program_key);
+
+        auto& material = mat_asset->material();
+
+        std::shared_ptr<ShaderProgram> shader_program;
+        if (program_it != shader_programs_.end()) {
+            shader_program = program_it->second;
+        } else {
+            // New shader pair — compile fresh
+            auto vert_source = read_file(make_full_path(vert_path));
+            auto frag_source = read_file(make_full_path(frag_path));
+            if (!vert_source || !frag_source) {
+                std::cerr << "[Asset] Hot-reload: failed to read shader sources\n";
+                return;
+            }
+            auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
+            auto fs = device_.create_shader(ShaderType::Fragment, *frag_source);
+            if (!vs || !fs) return;
+            auto program = device_.create_shader_program(std::move(*vs), std::move(*fs));
+            if (!program) return;
+            shader_program = std::move(*program);
+            shader_programs_[program_key] = shader_program;
+        }
+
+        // V1 limitation: cannot change Material's shader program after creation
+        std::cerr << "[Asset] Hot-reload: material " << asset_id << " YAML changed (textures/constants will update, shader changes require re-creation)\n";
+
+        // Update texture bindings
+        try {
+            auto textures_node = yaml["textures"];
+            if (textures_node) {
+                for (auto it = textures_node.begin(); it != textures_node.end(); ++it) {
+                    auto tex_name = it->first.as<std::string>();
+                    auto tex_id = it->second.as<std::string>();
+                    auto tex_asset = create<TextureAsset>(tex_id);
+                    if (tex_asset) {
+                        (void)material->set_texture(tex_name, (*tex_asset)->texture());
+                    }
+                }
+            }
+        } catch (...) {}
+
+        // Update constant overrides
+        try {
+            auto constants_node = yaml["constants"];
+            if (constants_node) {
+                for (auto it = constants_node.begin(); it != constants_node.end(); ++it) {
+                    auto name = it->first.as<std::string>();
+                    auto value = it->second;
+                    if (value.IsScalar()) {
+                        try { (void)material->set_uniform(name, value.as<float>()); } catch (...) {}
+                    }
+                }
+            }
+        } catch (...) {}
+
+        // Update dependency map — relative paths matching FileWatcher format
+        dependency_map_.remove_asset(asset_id);
+        dependency_map_.add_dependency(asset_id, std::string(asset_id) + ".yaml");
+        dependency_map_.add_dependency(asset_id, vert_path);
+        dependency_map_.add_dependency(asset_id, frag_path);
+
+        std::cerr << "[Asset] Hot-reloaded: " << asset_id << " (YAML change)\n";
+    }
 }
 
-auto AssetManager::handle_source_change(const std::string& /*changed_path*/) -> void {
-    // Source file change: recompile shaders or reload textures.
-    // The actual dispatching is done in poll_file_events which calls us
-    // with the asset_id from the dependency chain.
-    // (Stub for V1 — full hot-reload is WIP)
+auto AssetManager::handle_source_change(const std::string& changed_path, const std::string& asset_id) -> void {
+    auto cache_it = cache_.find(asset_id);
+    if (cache_it == cache_.end()) return;
+
+    // Check if this is a texture asset
+    if (auto tex_asset = std::dynamic_pointer_cast<TextureAsset>(cache_it->second)) {
+        // Source image changed — reload and swap handle
+        // changed_path is relative to base_path_, reconstruct for I/O
+        auto image = Image::load(make_full_path(changed_path));
+        if (!image) {
+            std::cerr << "[Asset] Hot-reload: image load failed: " << changed_path << "\n";
+            return;
+        }
+        auto new_tex = device_.create_texture(*image);
+        if (!new_tex) {
+            std::cerr << "[Asset] Hot-reload: texture creation failed\n";
+            return;
+        }
+        auto new_handle = (*new_tex)->release_gl_handle();
+        tex_asset->texture()->replace_gl_handle(new_handle);
+        std::cerr << "[Asset] Hot-reloaded texture: " << asset_id << " (source: " << changed_path << ")\n";
+
+    } else if (auto mat_asset = std::dynamic_pointer_cast<MaterialAsset>(cache_it->second)) {
+        // Shader source file changed — find and update ShaderProgram
+        for (auto& [key, program] : shader_programs_) {
+            if (key.vertex_path == changed_path || key.fragment_path == changed_path) {
+                // Re-read both shader sources
+                // key.vertex_path/key.fragment_path are relative to base_path_
+                auto vert_source = read_file(make_full_path(key.vertex_path));
+                auto frag_source = read_file(make_full_path(key.fragment_path));
+                if (!vert_source || !frag_source) {
+                    std::cerr << "[Asset] Hot-reload: failed to read shader sources\n";
+                    return;
+                }
+
+                // Recompile
+                auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
+                if (!vs) { std::cerr << "[Asset] Hot-reload: vertex shader compile failed\n"; return; }
+                auto fs = device_.create_shader(ShaderType::Fragment, *frag_source);
+                if (!fs) { std::cerr << "[Asset] Hot-reload: fragment shader compile failed\n"; return; }
+
+                auto new_program = device_.create_shader_program(std::move(*vs), std::move(*fs));
+                if (!new_program) {
+                    std::cerr << "[Asset] Hot-reload: shader program link failed \u2014 keeping old program\n";
+                    return;
+                }
+
+                // In-place mutation: replace the handle on the existing ShaderProgram
+                auto new_handle = (*new_program)->release_handle();
+                program->replace_handle(new_handle);
+
+                std::cerr << "[Asset] Hot-reloaded shaders: (" << key.vertex_path << ", " << key.fragment_path << ")\n";
+                return; // Found and updated
+            }
+        }
+
+        std::cerr << "[Asset] Hot-reload: no shader program uses " << changed_path << "\n";
+    }
 }
 
 // ============================================================================

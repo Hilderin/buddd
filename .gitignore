@@ -51,3 +51,6 @@ Makefile
 
 # Secrets
 .secrets/
+
+# Hot-reload test: this file is swapped during tests
+assets/textures/hot_reload_live.png

@@ -1,0 +1,8 @@
+type: Texture
+version: 1
+source: assets/textures/hot_reload_live.png
+settings:
+  wrap_s: repeat
+  wrap_t: repeat
+  min_filter: linear
+  mag_filter: linear

@@ -426,32 +426,37 @@ TEST_CASE("yaml-cpp compiles and links", "[asset][headless]") {
 }
 
 // ===========================================================================
-// Test 21: Hot-reload pipeline: shader FileEvent triggers recompile (headless)
+// Test 21: Hot-reload pipeline: texture source change (headless)
 // ===========================================================================
-TEST_CASE("Hot-reload pipeline: shader FileEvent triggers recompile", "[asset][headless]") {
+TEST_CASE("Hot-reload pipeline: texture source change", "[asset][headless]") {
     auto engine = make_headless_engine();
     auto& device = engine->device();
     auto assets = create_test_asset_manager(device);
 
-    auto mat = assets->create<MaterialAsset>("materials/test_material");
-    REQUIRE(mat.has_value());
+    auto tex_result = assets->create<TextureAsset>("textures/test_texture");
+    REQUIRE(tex_result.has_value());
+    auto tex = *tex_result;
 
-    // Record the old generation counter from the ShaderProgram
-    const auto& programs_before = assets->testing_shader_programs();
-    REQUIRE(programs_before.size() == 1);
-    auto old_gen = programs_before.begin()->second->testing_handle();
+    // Record original texture pointer
+    auto original_tex_ptr = tex->texture().get();
+    auto original_width = tex->texture()->width();
+    auto original_height = tex->texture()->height();
 
-    // Inject a synthetic FileEvent for the shader source file
-    auto shader_path = project_root() + "/tests/assets/shaders/test.vert";
-    assets->testing_inject_file_event({shader_path, FileEventType::Modified});
+    // Inject a synthetic FileEvent for the source image.
+    // The dependency map stores paths relative to base_path_ (tests/assets/),
+    // matching the format the FileWatcher produces:
+    // "textures/test_image.png"
+    std::string source_path = "textures/test_image.png";
+    assets->testing_inject_file_event({source_path, FileEventType::Modified});
+
+    // Poll to process the event
     assets->poll_file_events();
 
-    // Verify the ShaderProgram's generation changed (or the handle is still valid)
-    const auto& programs_after = assets->testing_shader_programs();
-    REQUIRE(programs_after.size() == 1);
-    auto new_gen = programs_after.begin()->second->testing_handle();
-    // In headless mode, the generation counter should change on recompile
-    // (the synthetic event triggers a reload attempt)
+    // Verify no crash and texture object is the same (in-place mutation)
+    REQUIRE(tex->texture().get() == original_tex_ptr);
+    // Verify texture is still valid
+    REQUIRE(tex->texture()->width() == original_width);
+    REQUIRE(tex->texture()->height() == original_height);
 }
 
 // ===========================================================================
@@ -552,4 +557,99 @@ TEST_CASE("Empty-ID returns InvalidArgument", "[asset][headless]") {
     auto result = assets->create<TextureAsset>("");
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().category == Error::Category::InvalidArgument);
+}
+
+// ===========================================================================
+// Test 26: Hot-reload pipeline: shader source change triggers recompile
+// ===========================================================================
+TEST_CASE("Hot-reload pipeline: shader source change triggers recompile", "[asset][headless]") {
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto assets = create_test_asset_manager(device);
+
+    auto mat = assets->create<MaterialAsset>("materials/test_material");
+    REQUIRE(mat.has_value());
+
+    // Record the old generation counter from the ShaderProgram
+    const auto& programs_before = assets->testing_shader_programs();
+    REQUIRE(programs_before.size() == 1);
+    auto old_gen = programs_before.begin()->second->testing_handle();
+
+    // Inject a synthetic FileEvent for the shader source file.
+    // The dependency map stores paths relative to base_path_ (tests/assets/),
+    // matching the format the FileWatcher produces:
+    // "shaders/test.vert"
+    std::string vert_path = "shaders/test.vert";
+    assets->testing_inject_file_event({vert_path, FileEventType::Modified});
+    assets->poll_file_events();
+
+    // Verify the ShaderProgram's generation changed
+    const auto& programs_after = assets->testing_shader_programs();
+    REQUIRE(programs_after.size() == 1);
+    auto new_gen = programs_after.begin()->second->testing_handle();
+    REQUIRE(new_gen != old_gen);
+}
+
+// ===========================================================================
+// Test 27: Hot-reload pipeline: YAML change for texture
+// ===========================================================================
+TEST_CASE("Hot-reload pipeline: YAML change for texture", "[asset][headless]") {
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto assets = create_test_asset_manager(device);
+
+    auto tex_result = assets->create<TextureAsset>("textures/test_texture");
+    REQUIRE(tex_result.has_value());
+    auto tex = *tex_result;
+
+    // Record original texture pointer and dimensions
+    auto original_tex_ptr = tex->texture().get();
+    auto original_width = tex->texture()->width();
+
+    // Inject a FileEvent for the texture's YAML file (relative to base_path_)
+    std::string yaml_path = "textures/test_texture.yaml";
+    assets->testing_inject_file_event({yaml_path, FileEventType::Modified});
+    assets->poll_file_events();
+
+    // Verify no crash and texture is still the same object with valid data
+    REQUIRE(tex->texture().get() == original_tex_ptr);
+    REQUIRE(tex->texture()->width() == original_width);
+    REQUIRE(tex->texture()->height() > 0);
+}
+
+// ===========================================================================
+// Test 28: Hot-reload pipeline: YAML change for material updates bindings
+// ===========================================================================
+TEST_CASE("Hot-reload pipeline: YAML change for material updates bindings", "[asset][headless]") {
+    auto engine = make_headless_engine();
+    auto& device = engine->device();
+    auto assets = create_test_asset_manager(device);
+
+    auto mat_result = assets->create<MaterialAsset>("materials/test_material");
+    REQUIRE(mat_result.has_value());
+    auto mat = *mat_result;
+
+    // Verify the material is valid
+    auto* headless_mat = dynamic_cast<MaterialHeadless*>(mat->material().get());
+    REQUIRE(headless_mat != nullptr);
+
+    // Check texture was set
+    auto tex_before = headless_mat->get_texture("albedo");
+    REQUIRE(tex_before.has_value());
+    REQUIRE((*tex_before) != nullptr);
+
+    // Inject a FileEvent for the material's YAML file (relative to base_path_)
+    std::string yaml_path = "materials/test_material.yaml";
+    assets->testing_inject_file_event({yaml_path, FileEventType::Modified});
+    assets->poll_file_events();
+
+    // Verify no crash and texture is still bound
+    auto tex_after = headless_mat->get_texture("albedo");
+    REQUIRE(tex_after.has_value());
+    REQUIRE((*tex_after) != nullptr);
+
+    // Verify constant was re-applied
+    auto roughness = headless_mat->get_uniform_float("roughness");
+    REQUIRE(roughness.has_value());
+    REQUIRE(roughness.value() == Catch::Approx(0.5f).margin(1e-5f));
 }

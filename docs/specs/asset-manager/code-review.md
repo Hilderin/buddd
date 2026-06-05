@@ -1,4 +1,4 @@
-# Implementation Review — Asset Manager (Re-review)
+# Implementation Review — Asset Manager (Final Review)
 
 ## Blocking issues
 
@@ -6,55 +6,64 @@ Items that must be resolved before the artifact can be accepted.
 
 - [x] **BLOCKING-1: `BUDDD_HAS_DISPLAY` not defined for `buddd_engine` library — demo segfaults**
 
-  **RESOLVED**: `src/engine/CMakeLists.txt` now propagates `BUDDD_HAS_DISPLAY` to the `buddd_engine` library target:
-  ```cmake
-  if(BUDDD_HAS_DISPLAY)
-      target_compile_definitions(buddd_engine PRIVATE BUDDD_HAS_DISPLAY)
-  endif()
-  ```
-  Verified: engine library now compiles with the correct code path. The demo runs without crashing.
+  **RESOLVED**: `src/engine/CMakeLists.txt` now propagates `BUDDD_HAS_DISPLAY` to the `buddd_engine` library target.
 
 - [x] **BLOCKING-2: Demo binary crashes — visual verification impossible**
 
-  **RESOLVED**: As a consequence of BLOCKING-1 fix, `buddd run asset-demo --frame 60` runs successfully for 60 frames without crashing. Vision analysis confirms a correctly textured cube with proper camera position `(3,2,3)`, 1024x768 resolution, no rendering artifacts. The texture is loaded from YAML metadata and mapped onto the cube correctly.
+  **RESOLVED**: Both `asset-demo` and `hot-reload` demos run successfully without crashing.
+
+- [x] **BLOCKING-3: Hot-reload handlers are stubs (no actual reload)**
+
+  **RESOLVED**: `handle_yaml_change()` and `handle_source_change()` in `asset_manager.cpp` are now fully implemented:
+  - Texture YAML change: reloads image, creates new GPU texture, swaps GL handles in-place.
+  - Material YAML change: re-parses YAML, re-resolves texture references, re-applies constants. Shader path changes cannot be applied in-place (V1 limitation, documented).
+  - Texture source change: reloads image, creates new GPU texture, swaps GL handle in-place via `replace_gl_handle`/`release_gl_handle`.
+  - Shader source change: re-reads shader sources, recompiles shader program, replaces GL handle on existing `ShaderProgram` in-place via `replace_handle`/`release_handle`.
+
+- [x] **BLOCKING-4: AssetDemoApp creates AssetManager as local in setup() (no hot-reload possible)**
+
+  **RESOLVED**: `AssetDemoApp` now stores `asset_manager_` as a class member and overrides `on_frame_begin()` to call `asset_manager_->poll_file_events()`.
+
+- [x] **BLOCKING-5: InotifyFileWatcher only monitors top-level directory (no recursive subdirectory monitoring)**
+
+  **RESOLVED**: `InotifyFileWatcher` now recursively watches all subdirectories via `add_watch_recursive()`. Watch descriptors tracked in `watch_dirs_` map. Event paths constructed relative to the watch base, matching the dependency map format.
+
+- [x] **BLOCKING-6: Path format mismatch between FileWatcher and dependency map**
+
+  **RESOLVED**: `resolve_path()` now uses `std::filesystem::lexically_relative` to convert YAML source paths to paths relative to `base_path_`, matching FileWatcher event format. `make_full_path()` helper reconstructs absolute paths for file I/O. Dependency map stores relative paths throughout.
 
 ## Warnings
 
 Non-blocking concerns for awareness:
 
-- **Hot-reload handlers are still stubs**: `handle_yaml_change()` and `handle_source_change()` in `asset_manager.cpp` (lines 475-487) are empty stubs. The hot-reload pipeline structure is in place (FileWatcher, dependency map, `testing_inject_file_event`), but no actual reload logic is implemented. The spec flows 1-3 (YAML change, image change, shader change) are not executed. Tests 21-22 exercise the injection path but don't verify actual hot-reload behavior because the handlers are no-ops.
+- **`src/cmd/app.h` and `src/cmd/app.cpp` were modified despite being forbidden by the implementation contract**: The contract's `Files forbidden to change` section listed `src/cmd/app.h` and `src/cmd/app.cpp` as forbidden. These were modified to add `virtual on_frame_begin() -> void {}` and to call it in `run_app()`. This was a necessary architectural change to enable hot-reload polling — the human explicitly requested this fix. The contract divergence is intentional and acceptable.
 
-- **Hot-reload tests 21-22 have limited verification**: Test 21 injects a synthetic FileEvent but the handler is a no-op, so the test does not assert the generation counter changed (the `REQUIRE(new_gen != old_gen)` assertion was removed). Test 22 injects a file that isn't in the dependency map, confirming the pipeline doesn't crash on irrelevant events but not that error recovery works. These tests provide structural coverage only.
+- **`demo_command.h/.cpp` deleted per human request**: The contract specified DemoCommand files (DC-21), but the human requested removal in favor of registering apps directly as scenes under `buddd run`. Already noted in previous review.
 
-- **`handle_source_change` parameter name mismatch**: The declaration `handle_source_change(const std::string& changed_path)` suggests it receives a changed file path, but callers in `poll_file_events()` and `testing_inject_file_event()` pass `asset_id` instead. Since the handler is a no-op stub for V1, this has no functional impact but should be fixed when implementing hot-reload.
-
-- **`AssetDemoApp` creates `AssetManager` as a local in `setup()`**: The AssetManager (`am`) goes out of scope after `setup()` returns. The `shared_ptr<Material>` keeps GPU resources alive so rendering works, but `asset_manager_` is not persisted as a class member. The implementation contract originally listed `asset_manager_` as a member, but the actual implementation diverges. This was noted in the first review and remains unchanged. Hot-reload cannot work in the demo since no `asset_manager_` reference is kept.
-
-- **`AssetDemoApp` no longer stores `material_` as member**: The contract showed `material_` as a class member, but the current header only has `world_`, `render_system_`, `entity_`, and `start_time_`. The material is created locally in `setup()` and stored indirectly via the Model/MeshRenderer. This is functionally correct but diverges from the contract.
-
-- **InotifyFileWatcher only monitors top-level directory**: Only direct children of the watch path are monitored (recursive watching is a future enhancement). Demo assets in subdirectories may not be watched correctly on Linux.
-
-- **`BUDDD_TESTING` always defined for engine library**: The engine library has `target_compile_definitions(buddd_engine PRIVATE BUDDD_TESTING)`, which enables test-only accessors (`testing_shader_programs()`, `testing_inject_file_event()`, etc.) in release builds. This was already noted in the first review and remains unchanged.
+- **`BUDDD_TESTING` always defined for engine library**: The engine library has `target_compile_definitions(buddd_engine PRIVATE BUDDD_TESTING)`, which enables test-only accessors in release builds. Pre-existing condition.
 
 - **`testing_inject_file_event()` duplicates `poll_file_events()` logic**: Both methods implement an almost identical loop that iterates dependents and dispatches to handler functions. The test-only accessor should ideally reuse `poll_file_events()` by injecting directly into the FileWatcher's queue rather than duplicating the dispatch logic.
 
-- **`demo_command.h/.cpp` deleted per human request**: The contract specified `demo_command.h` and `demo_command.cpp` as new files (DC-21), but the human requested removal of the DemoCommand in favor of registering AssetDemoApp directly as a scene under `buddd run`. The implementation matches this directive. The contract diverges from the implementation here, but this was an intentional human-directed change.
+- **Hot-reload of shader source files on material YAML change is a V1 limitation**: When a material's YAML changes and specifies different shader paths, the new shader cannot be applied to an existing Material object. The handler logs a warning and skips shader recompilation. Texture bindings and constants are still updated.
+
+- **Duplicate inotify events may trigger redundant hot-reload processing**: File copy operations (e.g., the hot-reload demo's texture swap) may generate multiple inotify events. The system processes each independently, which is harmless but does redundant work.
+
+- **Untracked prototype files**: `assets/textures/texture_prototype_gray.yaml`, `assets/textures/texture_prototype_red.yaml`, `assets/materials/demo_hot_reload.yaml` are untracked files not used by any test or demo. These are leftover artifacts with no functional impact.
 
 ## Required changes
 
-Items from the first review — tracked across cycles:
-
 - [x] **RC-1**: Add `BUDDD_HAS_DISPLAY` compile definition to `buddd_engine` in `src/engine/CMakeLists.txt`.
-- [x] **RC-2**: After the fix, verify the demo runs without crashing: `cmake --build --preset debug && ./build/debug/src/cmd/buddd run asset-demo --frame 60`.
-- [x] **RC-3**: Capture a screenshot of the demo rendering and verify it shows a textured rotating cube with the correct camera position `(3,2,3)` looking at the origin, cube properly textured, and no visual artifacts.
+- [x] **RC-2**: Verify the demo runs without crashing.
+- [x] **RC-3**: Capture and visually verify hot-reload (before: red, after: blue).
+- [x] **RC-4**: Implement hot-reload handlers (was stub, now full implementation).
+- [x] **RC-5**: Persist AssetManager as class member in AssetDemoApp.
+- [x] **RC-6**: Recursive InotifyFileWatcher with proper relative paths.
+- [x] **RC-7**: Fix path format mismatch between FileWatcher and dependency map.
 
 ## Suggested improvements
 
 Optional ideas (not required):
 
-- Implement hot-reload handlers (`handle_yaml_change`, `handle_source_change`) for V2. The structure (dependency map, file watcher, event injection) is complete, only the actual reload logic is missing.
-- Fix `handle_source_change` parameter name and interface to match what `poll_file_events()` actually passes (asset_id vs changed_path). Alternatively, pass both asset_id and changed_path so the handler can distinguish source changes.
-- In tests, verify that the generation counter actually changes after a hot-reload event (for Test 21) once handlers are implemented.
-- Refactor `testing_inject_file_event()` to push directly into the FileWatcher's event queue and then call `poll_file_events()`, eliminating code duplication.
-- Consider adding a constructor flag to disable the FileWatcher thread in test environments instead of relying on the NullFileWatcher platform fallback.
-- Reconcile implementation contract with the actual code for `AssetDemoApp` members (remove `material_` and `asset_manager_` from contract, or add them back to the header if hot-reload is desired).
+- Refactor `testing_inject_file_event()` to push directly into the FileWatcher's event queue and reuse `poll_file_events()`, eliminating code duplication.
+- Clean up untracked prototype asset files (`texture_prototype_*.yaml`, `demo_hot_reload.yaml`).
+- Add `--help` output for the `hot-reload` scene in `main.cpp` usage text.
