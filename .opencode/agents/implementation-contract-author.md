@@ -94,6 +94,21 @@ After drafting, review your own contract against these checks:
 
 If any check fails, fix the contract before reporting completion.
 
+## File update protocol
+
+When creating or updating the artifact file:
+
+- **First creation** (file does not exist): use `write` with the template to create the full file.
+- **Update** (file exists, second or later invocation):
+  1. **Read** the existing file first.
+  2. **Identify** only the sections that need modification.
+  3. **Use `edit`** for each targeted change — do NOT use `write` to rewrite the entire file.
+  4. Only use `write` for the full file if more than 50% of sections require structural changes.
+  5. After each `edit`, verify the file was correctly modified. If `edit` fails, retry with more surrounding context.
+  6. After all edits, do a final read to verify global coherence.
+
+This preserves unchanged content, maintains revision history, and reduces token waste.
+
 ## After writing
 
 After completing the implementation contract and passing self-validation:

@@ -15,9 +15,10 @@
 5. [Iteration #5: Coordination File to Reduce Orchestrator Context](#iteration-5-coordination-file-to-reduce-orchestrator-context)
 6. [Iteration #6: Grill-Me Step for Deeper Spec Clarification](#iteration-6-grill-me-step-for-deeper-spec-clarification)
 7. [Iteration #7: Definition of Ready](#iteration-7-definition-of-ready)
-8. [Cross-Cutting Observations](#cross-cutting-observations)
-9. [Ongoing Concerns](#ongoing-concerns)
-10. [Improvement Hypotheses](#improvement-hypotheses)
+8. [Iteration #8: File Update Protocol — Partial Edits Instead of Full Rewrites](#iteration-8-file-update-protocol--partial-edits-instead-of-full-rewrites)
+9. [Cross-Cutting Observations](#cross-cutting-observations)
+10. [Ongoing Concerns](#ongoing-concerns)
+11. [Improvement Hypotheses](#improvement-hypotheses)
 
 ---
 
@@ -162,12 +163,43 @@
 - Added `## E2E Verification` to spec template; structured `Documentation impact` and split `Required tests` in contract template
 
 **Observations:**
-in progress
+- In the grill me, le LLM asked about e2e testing correctly.
+
 
 **Still open:**
 - The DoR needs real use to validate that criteria are at the right level of detail — too vague and they won't catch anything, too specific and they'll be skipped or cause false positives
 - No automated enforcement yet — it relies on agents following their prompts correctly (which the orchestrator doesn't always do, as noted in Iteration #3)
 - The `## E2E Verification` section in specs could become a placeholder if spec-authors treat it as a checkbox rather than a meaningful description
+
+---
+
+## Iteration #8: File Update Protocol — Partial Edits Instead of Full Rewrites
+
+**Hypothesis:** Sub-agents that use targeted `edit` instead of full-file `write` will preserve revision history, reduce token waste, and eliminate regression risk from regenerating unchanged sections.
+
+**Problem:**
+Every agent (spec-author, implementation-contract-author, spec-critic, implementation-contract-critic, code-reviewer, governance-reviewer) rewrote its entire artifact file from scratch on every invocation — even when only a single blocking issue needed toggling.
+
+This meant:
+- A spec-critic re-review that only marks 2 issues as resolved would regenerate all 30+ lines of the review file
+- A spec-author correction loop would regenerate 500+ lines of spec.md even if only one section changed
+- Previous review history was silently lost because `write` always creates a brand-new file
+
+**Method:**
+Added an explicit `## File update protocol` section to all 6 agents, with two distinct modes:
+
+- **Auteurs** (spec-author, implementation-contract-author): `write` for first creation, `edit` ciblé pour les updates. Réécriture complète autorisée uniquement si >50% du fichier change structurellement.
+- **Critiques/Reviewers** (spec-critic, implementation-contract-critic, code-reviewer, governance-reviewer): `write` strictement interdit sur un fichier de review existant. Uniquement `edit` pour cocher `[x]`, ajouter des issues, mettre à jour le résumé. La création initiale reste en `write` avec le template.
+
+**Observations:**
+- This was previously listed as an untested hypothesis (see Improvement Hypotheses below). Implementing it was straightforward since all agents already had a similar instruction structure.
+- The `edit` tool requires exact string matching, which can fail on whitespace differences. The protocol adds: "If edit fails, retry with more surrounding context."
+- This change is low-risk — it only modifies agent instructions, not the workflow logic or templates.
+
+**Still open:**
+- Need to verify in practice that agents actually follow the `edit`-first rule rather than falling back to `write` habit.
+- The 50% threshold for authors is a judgement call — might need adjustment based on real usage.
+- This doesn't address the related hypothesis about skipping template re-reads when updating existing files.
 
 ---
 
@@ -199,6 +231,9 @@ in progress
 - The orchestrator's context grows fast (often >100k even for small features). Smaller models would hallucinate a lot. I've sometimes had to stop at human approval and start a fresh discussion
 - Documentation and governance agents don't do a great job maintaining project docs. For example, when the `--capture` argument was removed from the CLI, the README was never updated
 - Early specs often don't define how we'll verify the feature actually works end-to-end (e.g., adding a demo/app for real testing). This should be part of the grill-me step or formalized as a definition-of-ready checklist that the spec-critic enforces
+- The agents have some instructions that are specific to buddd engine, these should be included in docs folder and referenced by the agents.
+- New specs consistently include a `## Status` and `## Approval` section (with Draft/In Review/Accepted and an approval table) even though neither section exists in the spec template — this seems to be a learned behavior carried over from earlier iterations or from the coordination.md format, and it adds unnecessary bloat to every spec file.
+- **Stale specs:** Specs are written once during the workflow and never updated afterward. As the code evolves through subsequent features and refactors, the spec becomes increasingly inaccurate. The LLM has no way to distinguish what in the spec is still true and what is outdated — it trusts the spec (authority order #2), which leads to confusion and incorrect decisions.
 
 ---
 
@@ -212,3 +247,6 @@ in progress
 - **Reduce orchestrator context growth:** Find a way for the orchestrator to avoid reading full specs. A small communication file where agents post questions, set states, etc., could be more efficient than the current coordination model
 - **Generic screenshot tool:** Instead of app-specific capture code, a general screenshot mechanism would let agents test any UI without custom code
 - **Human-in-the-loop review before/after code review:** Currently I have to stop the process or wait until the end to test — and features often don't work 100% (e.g., inverted mouse movement in the free-camera demo)
+- ~~**Partial edits instead of full rewrites:** Currently sub-agents rewrite the entire spec, contract, or review file on every iteration. This burns context and risks losing details that weren't flagged as issues. An alternative would be to instruct agents to make targeted edits — append new sections, update specific paragraphs, mark resolved items — rather than regenerating the whole document from scratch.~~ ✅ **Implemented in Iteration #8** — added `## File update protocol` to all 6 writer agents, enforcing `edit` over `write` for updates.
+- **Avoid re-reading templates on every invocation:** Sub-agents load their template file at the start of every task, even when the artifact already exists and only needs updating. This wastes context and tokens. An alternative would be to let the agent skip template loading when the target file already exists and only load the template for brand-new documents.
+- **Spec staleness detection or auto-update:** Specs are written once and never updated, so they drift from reality as the code changes. Possibilities include: treating specs as snapshots tied to a git ref, having a dedicated agent that audits and updates stale specs, or deprecating specs after implementation and relying solely on the wiki + code for ground truth.

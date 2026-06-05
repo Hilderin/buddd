@@ -57,6 +57,19 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 - On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the review summary text to reflect the new verdict (verdict is expressed in coordination.md, not as a separate status field in the review file).
 - Never delete a review file — append and update it across review cycles so the full resolution history is preserved.
 
+## File update protocol
+
+When updating an existing review file (second or later review cycle):
+
+1. **Read** the existing review file first.
+2. **Use `edit`** for targeted changes:
+   - Change `[ ]` to `[x]` on resolved blocking issues.
+   - Append new issues at the end of the relevant section.
+   - Update the summary paragraph.
+3. **Never use `write`** on an existing review file — this erases resolution history.
+   Exception: first creation of the file (use `write` with the template).
+4. After each `edit`, verify the file was correctly modified. If `edit` fails, retry with more surrounding context.
+
 ## After writing
 
 After writing the governance review and before reporting completion:
