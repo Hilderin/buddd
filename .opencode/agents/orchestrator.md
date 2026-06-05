@@ -292,6 +292,8 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 
 Ask the questions one at a time.
 
+**Use the Definition of Ready** — Before or during the grill-me conversation, search the wiki for `definition-of-ready` (`docs/wiki/engineering/definition-of-ready.md`). Walk through each criterion with the human. Record answers and rationale in coordination.md `## Orchestrator` → **Notes** or in a new `## Decision Log` section.
+
 If a question can be answered by exploring the codebase, explore the codebase instead.
 
 Update the coordination.md based on the updated intent.
@@ -325,6 +327,8 @@ Gate (after spec-author reports completion):
 ### 3. Spec critic
 
 Ask `spec-critic` to review and write `docs/specs/<feature>/spec-critic.md`.
+
+The spec-critic checks against the Definition of Ready (`docs/wiki/engineering/definition-of-ready.md`). Any unsatisfied criterion is a blocking issue.
 
 Gate (after spec-critic reports completion):
 - Read coordination.md `## spec-critic` section ONLY.

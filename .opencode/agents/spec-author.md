@@ -88,6 +88,7 @@ After drafting, review your own spec against these checks:
 6. Are there no more than 10 `[NEEDS CLARIFICATION]` markers?
 7. Does the spec contradict any accepted spec or constitution rule?
 8. Are assumptions documented for every reasonable default made?
+9. **Check the Definition of Ready** — Search the wiki for `definition-of-ready` and verify your spec satisfies each criterion.
 
 If any check fails, fix the spec before reporting completion.
 

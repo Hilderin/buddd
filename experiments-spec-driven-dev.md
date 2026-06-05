@@ -14,9 +14,10 @@
 4. [Iteration #4: Vision MCP for Visual Validation](#iteration-4-vision-mcp-for-visual-validation)
 5. [Iteration #5: Coordination File to Reduce Orchestrator Context](#iteration-5-coordination-file-to-reduce-orchestrator-context)
 6. [Iteration #6: Grill-Me Step for Deeper Spec Clarification](#iteration-6-grill-me-step-for-deeper-spec-clarification)
-7. [Cross-Cutting Observations](#cross-cutting-observations)
-8. [Ongoing Concerns](#ongoing-concerns)
-9. [Improvement Hypotheses](#improvement-hypotheses)
+7. [Iteration #7: Definition of Ready](#iteration-7-definition-of-ready)
+8. [Cross-Cutting Observations](#cross-cutting-observations)
+9. [Ongoing Concerns](#ongoing-concerns)
+10. [Improvement Hypotheses](#improvement-hypotheses)
 
 ---
 
@@ -151,7 +152,24 @@
 
 ---
 
-## Cross-Cutting Observations
+## Iteration #7: Definition of Ready
+
+**Hypothesis:** A shared Definition of Ready checklist — stored in the wiki and referenced by multiple agents — would catch incomplete specs earlier, reduce spec-author→spec-critic loop iterations, and address two persistent gaps: missing E2E verification strategy and undocumented documentation impacts.
+
+**Method:**
+- Created `docs/wiki/engineering/definition-of-ready.md` with 13 criteria across 4 categories
+- Referenced it in the spec-critic, orchestrator, and spec-author prompts
+- Added `## E2E Verification` to spec template; structured `Documentation impact` and split `Required tests` in contract template
+
+**Observations:**
+in progress
+
+**Still open:**
+- The DoR needs real use to validate that criteria are at the right level of detail — too vague and they won't catch anything, too specific and they'll be skipped or cause false positives
+- No automated enforcement yet — it relies on agents following their prompts correctly (which the orchestrator doesn't always do, as noted in Iteration #3)
+- The `## E2E Verification` section in specs could become a placeholder if spec-authors treat it as a checkbox rather than a meaningful description
+
+---
 
 - **Orchestrator + sub-agents is a game-changer.** The process is far more autonomous and engaging. Critics suggest improvements, the orchestrator applies them immediately to specs/contracts, and re-runs the critic loop before moving on. This saves a lot of manual spec adjustment.
 - **Still missing a way to get more challenging spec/contract critique.** BMad's personas were great, but BMad seems to limit itself to a few user questions.

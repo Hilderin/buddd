@@ -41,8 +41,9 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 1. Load the template at `docs/templates/review-report-template.md`.
 2. Read the spec file at `docs/specs/<feature>/spec.md`.
 3. Search the wiki for relevant context using wiki search tools.
-4. Perform the review checks.
-5. Write the review to `docs/specs/<feature>/spec-critic.md` using the template.
+4. **Load the Definition of Ready** — Search the wiki for `definition-of-ready` (the file is at `docs/wiki/engineering/definition-of-ready.md`). Check every criterion listed there. Any unsatisfied criterion is a blocking issue.
+5. Perform the review checks.
+6. Write the review to `docs/specs/<feature>/spec-critic.md` using the template.
 6. Write the review verdict into the file's content (the verdict is expressed in the summary and blocking issues, not in a separate status field).
 7. The spec's status is tracked in coordination.md. Do NOT modify the spec file's status field.
 8. List every issue as a `- [ ]` checklist item under the appropriate section.

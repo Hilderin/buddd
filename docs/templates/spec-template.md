@@ -31,6 +31,13 @@
 | AC-001 | | |
 | AC-002 | | |
 
+## E2E Verification
+
+How will this feature be verified end-to-end before it is accepted?
+(e.g., demo app, screenshot capture, manual test script, integration test suite)
+
+- Method: <description>
+
 ## Success criteria
 
 | ID | Metric |
