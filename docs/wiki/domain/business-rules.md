@@ -39,7 +39,7 @@
 
 ### Flags for `buddd run`
 
-- `--frame N`: Render exactly N frames, then exit. N >= 1. Default: 0 (interactive, no limit).
+- `--frame N`: Render exactly N frames, then exit. N >= 0. Default: 0 (interactive, no limit).
 - `--capture N:path`: Capture frame N (1-based) to path. Repeatable.
 - Unknown flags → silently ignored.
 - Extra positional arguments after scene → warning printed to stderr, run proceeds.
@@ -68,6 +68,7 @@
 | Unknown command | EXIT_FAILURE (1) |
 | Unknown scene | EXIT_FAILURE (1) |
 | --frame parse error | EXIT_FAILURE (1) |
+| --frame too small for captures | EXIT_FAILURE (1) |
 | --capture parse error | EXIT_FAILURE (1) |
 | Platform/Window/Device creation failure | EXIT_FAILURE (1) |
 | app.setup() returns error | EXIT_FAILURE (1) |
@@ -99,7 +100,11 @@
 
 ### Driver quirk
 
-`--capture 1:path` captures frame 2 (not frame 1). The `effective_frame` is computed as `(spec.frame < 2) ? 2 : spec.frame`. This is a known off-by-one issue documented in ADR-014.
+`--capture 1:path` captures frame 2 (not frame 1). The `CaptureSpec::effective_frame()` method returns `(frame < 2) ? 2 : frame`. This is a known off-by-one issue documented in ADR-014.
+
+### Capture-frame auto-set and validation
+
+When `--capture` is specified without `--frame`, the frame limit is auto-set to the maximum `effective_frame()` across all captures. When `--frame N` is explicitly set and `N < max_capture_effective_frame`, an error is printed to stderr and the program exits with code 1. These rules ensure captures always fire and never silently produce nothing. See SPEC-009 for details.
 
 ### Backend selection
 

@@ -116,8 +116,7 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
             be::make_error(be::Error::Category::Unknown, "no capture needed");
 
         for (const auto& spec : args.captures) {
-            // Driver quirk: minimum capture frame is 2
-            int effective_frame = (spec.frame < 2) ? 2 : spec.frame;
+            int effective_frame = spec.effective_frame();
             if (effective_frame == frame + 1) {
                 if (!did_read_pixels) {
                     pixel_buffer = (*device)->read_pixels();

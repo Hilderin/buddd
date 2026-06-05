@@ -925,8 +925,8 @@ These tests verify `parse_running_args()` logic. They run without a display beca
 | `--capture` path is a directory | `Image::save()` fails; error printed to stderr; continues to next capture. |
 | Window closed during frame-limited run | `poll_events()` returns false; loop exits early; remaining captures not processed; `shutdown()` called. |
 | `BUDDD_HAS_DISPLAY=OFF` (headless) | Uses headless backend. `poll_events()` always returns `true` — use `--frame` to limit. Without `--frame`, runs until killed. |
-| Frame-limited run with `--capture` where frame > frame_limit | Capture spec stored but never matched; no output file created (no error). |
-| `--capture 1:path` (frame 1) | Driver quirk: `run_app()` forces minimum frame to 2; frame 1 is silently skipped and frame 2 is captured instead. No warning. |
+| Frame-limited run with `--capture` where frame > frame_limit | Impossible after IMPL-009: explicit `--frame < max_effective` is now an error; auto-set guarantees capture always fires. |
+| `--capture 1:path` (frame 1) | Driver quirk: `CaptureSpec::effective_frame()` returns 2 for frame 1. If `--frame` is auto-set, `frame_limit` becomes 2. If `--frame` is explicitly 1, `parse_running_args()` returns error: `'Error: --frame 1 is too small for captures (need at least 2)'`. |
 | No scene given but extra unknown flags | Extra arguments are warned about but the run proceeds. |
 
 ## Security impact
