@@ -77,7 +77,7 @@ Most AI-assisted code generation bypasses specification entirely — you ask for
 
 The project's SpecKit (`SpecKit.md`) and `AGENTS.md` document the full workflow and can be reused as a **Spec-Driven Development starter kit** for other projects.
 
-> **Model:** All agents run on DeepSeek V4 Flash via OpenCode. See [experiments-spec-driven-dev.md](experiments-spec-driven-dev.md) for the full experiment log across 5 iterations of this workflow.
+> **Model:** All agents run on DeepSeek V4 Flash via OpenCode. See [experiments-spec-driven-dev.md](experiments-spec-driven-dev.md) for the full experiment log across iterations of this workflow.
 
 ---
 
