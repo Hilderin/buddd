@@ -95,11 +95,11 @@ The multi-agent workflow relies on two MCP servers that must be cloned as siblin
 ```
 /parent/
 ├── buddd/               # this repo
-├── wiki-serve/              # https://github.com/anomalyco/wiki-serve
+├── wiki-serve/              # https://github.com/Hilderin/wiki-serve
 └── llm-openai-vision-mcp/  # https://github.com/Hilderin/llm-openai-vision-mcp
 ```
 
-- [wiki-serve](https://github.com/anomalyco/wiki-serve) — provides wiki search capabilities for agents (configured in `opencode.json` → `mcp.wiki-serve`)
+- [wiki-serve](https://github.com/Hilderin/wiki-serve) — provides wiki search capabilities for agents (configured in `opencode.json` → `mcp.wiki-serve`)
 - [llm-openai-vision-mcp](https://github.com/Hilderin/llm-openai-vision-mcp) — provides vision analysis for visual regression checks (configured in `opencode.json` → `mcp.vision`)
 
 You also need an OpenAI API key saved to `.secrets/openapi.key` for the vision MCP server.
