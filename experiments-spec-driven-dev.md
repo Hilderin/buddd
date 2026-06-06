@@ -255,14 +255,8 @@ Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-s
 
 **Observations:**
 
-- in progress
-- The LLM handled the meta-refactoring (agents modifying their own prompts) surprisingly well. The code-implementer correctly modified all agent prompts, templates, and configuration without getting confused by the self-referential nature of the task.
-- The spec-critic found 7 missing files in the first pass (gaps in scope) — a good validation that the critic step catches incomplete specs even for meta-tasks.
-- The implementation-contract-critic found 6 issues including subtle problems like duplicate "wiki" text after a replacement — showing the critic's attention to text-level correctness.
-- The wiki-agent's detection of 4 additional CONST-001 references across 3 wiki files (architecture/overview.md, module-map.md, domain/glossary.md) that the implementation missed demonstrates the value of the dedicated wiki detection step.
-- Running a meta-refactoring through the full workflow is slower upfront but produces comprehensive, reviewable results. Every change was documented in the spec, approved by human, and verified by multiple critics.
-- Agent prompts now need to stop referencing "constitution" — since we just removed it, the prompts themselves had to be refactored first. This creates a clean slate: no more constitution checks, no constitution-agent to maintain.
-- The coordination.md template is simpler: no constitution-agent section, no adr-agent section (on-demand). Fewer moving parts in the workflow.
+- No regression on the quality. In fact putting rules in agents or adr seems far more accurate. The constituions were rarely read.
+- Speedup a bit the workflow by removing one agent a some file reading.
 
 ---
 
@@ -275,7 +269,8 @@ Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-s
 - Kept it separate from the procedural steps — the DoD is a pre-reporting gate, not another step.
 
 **Observations:**
-- Freshly added — outcome pending first workflow run.
+- Better results observed in the coder, it runned tests in debug and release. We saw that some tests failed n release prior to the definition of done addion.
+
 
 ---
 
@@ -316,6 +311,7 @@ Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-s
 - **Root README.md is nobody's responsibility:** The root `README.md` is never updated during development. Two root causes identified: (1) the wiki agent is restricted to `docs/wiki/**` and cannot touch it; (2) no other agent in the workflow has permission or mandate to maintain it — the implementation contract has a `Documentation impact` section that mentions README, but there's no agent that both can and must act on it. Additionally, there are two README files (`/README.md` and `docs/wiki/README.md`), only the latter is indexed by wiki search, making the root one invisible to agents during research.
 - ~~**Doc restructuring is stuck — LLMs are bad at large-scale refactors:** I'd like to restructure the documentation: move specs to a better location, split ADRs vs standards clearly, rename `docs/wiki/` to something like `docs/llm-wiki/` to distinguish it from human docs, etc. But every time I consider it, the scope of changes is daunting — it would require updating all agent prompts, all search paths, all cross-references across specs, ADRs, wiki, and constitution. LLMs are surprisingly bad at this kind of large-scale, cross-cutting refactoring: they miss references, make inconsistent renaming, and introduce broken links. The risk of silent regressions (e.g., a wiki search that no longer indexes the right directory) is high and hard to verify without deep manual inspection. So the doc structure is frozen not because it's good, but because changing it is too risky relative to the value.~~ ✅ **Partially addressed in Iteration #9** — the specs move (the biggest item on the list) was successfully executed. The key insight: instead of asking the LLM to manually refactor, writing scripts (`migrate-specs.sh`, `update-references.sh`) let the LLM orchestrate the migration through code. The remaining items (ADR vs standards split, wiki rename) are still open.
 - ~~**Code-reviewer sometimes hangs on `buddd capture`:** The code-reviewer runs `buddd capture` to take screenshots for visual validation, but often forgets the `--frame N` flag. Without `--frame`, the app opens a window and stays open indefinitely — the command never returns, the agent hangs, and the review gets stuck. This happens repeatedly, suggesting the agent prompt doesn't emphasize the `--frame` flag enough, or the template command examples in the reviewer instructions don't make it mandatory.~~ ✅ **Addressed in capture-frame-validation feature** — mandatory `--frame` flag enforced in code-reviewer prompts and capture workflow.
+- We dont have a human documentation.
 
 ## Improvement Hypotheses
 
@@ -333,3 +329,5 @@ Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-s
 - **Clearer ADR vs standard vs convention boundaries:** Create explicit criteria for what goes where. An ADR captures a decision with rationale (why X over Y, context, tradeoffs, date, author). A constitution rule captures an active constraint (must/must not, applies globally). A wiki convention captures current understanding (how things work, patterns, non-binding recommendations). If the LLM can't decide which bucket something falls into, it should escalate rather than default to creating an ADR.
 - ~~**Definition of Done checklist for code-implementer:** The code-implementer sometimes skips E2E verification steps (running the app, taking screenshots, visual validation). A formal DoD checklist — similar to the Definition of Ready — embedded in the implementation contract or the code-implementer prompt could ensure that no step is forgotten. This would include: build passes, unit tests pass, E2E verification performed (screenshot capture + visual analysis), no build warnings, done criteria from contract all checked. The code-reviewer would then verify the DoD is complete rather than re-running everything from scratch.~~ ✅ **Implemented in Iteration #11** — added `## Definition of Done` to code-implementer.md with categories: Build & Compilation, Tests, E2E/Visual Verification, Contract Fidelity.
 - **Constitution might be redundant with ADRs — merge or drop constitution-agent:** In practice, the constitution hasn't proved useful. ADRs already capture important rules and decisions, and the constitution just duplicates or restates what's already in ADRs. Having both means two agents to run at the end of the workflow (constitution-agent + adr-agent) for little added value. Maybe the constitution should be removed entirely, and its role absorbed by better ADR tagging (e.g., a `[CONSTRAINT]` prefix for rules that are binding vs `[DECISION]` for historical context). Or keep the constitution but only for truly fundamental rules that shouldn't change without explicit human approval — everything else goes in ADRs.
+- **Eliminate separate critic files — coordination.md section is sufficient:** `implementation-contract-critic.md` and `spec-critic.md` contain near-duplicate content of what critics already write in `coordination.md`. Since the orchestrator gates exclusively on `coordination.md` sections (never reads full critic files for status/blocking issues), separate critic files add complexity without being consumed. **Hypothesis:** Removing them and having critics write only into `coordination.md` would reduce context waste, eliminate 2 files per feature, simplify File Update Protocol, and accelerate the loop without losing quality. Review history can be preserved as an accumulated section within `coordination.md` rather than a separate file.
+- I'm not sure but maybe adding a step in the coordination.md to force coder to write the DoD with checked element could have a positive impact.

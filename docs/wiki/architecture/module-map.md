@@ -32,7 +32,7 @@ See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) for th
 
 ### Log submodule (`log/`)
 
-All types in namespace `buddd::log`. The logging system is a lightweight, self-contained structured logging framework with five log levels (`Trace`, `Debug`, `Info`, `Warn`, `Error`), a macro-based C++ API (`BUDDD_LOG_INFO`, etc.), mandatory per-file source tags via `BUDDD_LOG_TAG("Module:Sub")`, two sinks (console stderr and optional file), thread safety via `std::mutex`, and `std::format`-style formatting. Zero external dependencies beyond the C++26 standard library (plus POSIX `write(2)` for pre-init stderr warnings in `FileSink`).
+All types in namespace `buddd::log`. The logging system is a lightweight, self-contained structured logging framework with six log levels (`Trace`, `Debug`, `Info`, `Warn`, `Error`, `Fatal`), a macro-based C++ API (`BUDDD_LOG_INFO`, etc.), mandatory per-file source tags via `BUDDD_LOG_TAG("Module:Sub")`, two sinks (console stderr and optional file), thread safety via `std::mutex`, and `std::format`-style formatting. Zero external dependencies beyond the C++26 standard library (plus POSIX `write(2)` for pre-init stderr warnings in `FileSink`).
 
 The logger is fully decoupled from `buddd::engine::Error`/`Result<T>`. CLI flags (`--log-level`, `--log-file`, `--log-filter`) are parsed in `src/cmd/app_config.cpp` before startup and passed to `Logger::init(LogConfig)`.
 
@@ -50,6 +50,16 @@ See [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) for architectural deci
 | `log/file_sink.h` | `FileSink` class declaration — static factory `FileSink::create(path) -> unique_ptr<FileSink>`. Private constructor. Returns `nullptr` on failure with raw `write(2)` stderr warning. |
 | `log/file_sink.cpp` | FileSink implementation — opens file in append mode (`std::ios::app`), writes `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp, flushed after every write. |
 | `log/memory_sink.h` | `MemorySink` header-only class (inherits `Sink`). Guarded by `#ifdef BUDDD_TESTING`. Stores messages in `std::vector<LogMessage>`, provides `messages()` and `clear()`. |
+
+### Debug submodule (`debug/`)
+
+All types in namespace `buddd::engine`. Provides a lightweight assertion system for checking engine invariants during development, with five assertion macros, a platform-aware debug break utility, and a testable assertion failure formatter. The assertion system integrates with the logging system using `LogLevel::Fatal` and the fixed tag `"Assert"`. Zero external dependencies beyond the C++26 standard library plus `log/log.h`. See ADR-021 for architectural decisions and SPEC-023 for the full specification.
+
+| File | Role |
+|---|---|
+| `debug/debug_break.h` | Header-only: `buddd::engine::debug_break()` inline function — platform-aware breakpoint intrinsic (`__builtin_trap()` on GCC/Clang, `__debugbreak()` on MSVC). No-op in `NDEBUG` (release) builds. |
+| `debug/assert.h` | **Public header.** Declares `format_assertion_failure_message()`, `handle_assertion_failure()`, and all five assertion macros: `BUDDD_ASSERT`, `BUDDD_ASSERT_MSG`, `BUDDD_VERIFY`, `BUDDD_FAIL`, `BUDDD_FAIL_MSG`. Includes `debug/debug_break.h` and `log/log.h`. |
+| `debug/assert.cpp` | Implementation of `format_assertion_failure_message()` (pure string builder, testable without abort) and `handle_assertion_failure()` (logs via `Logger`, calls `debug_break()`, then `std::abort()`). |
 
 ### Math submodule (`math/`)
 
@@ -378,6 +388,8 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Spec: [SPEC-020](/.specs/sprint-2026-06/model-multi-material/spec.md) — Multi-material Model (SubMesh, unified create_indexed factory, primitives, fallback material)
 - Implementation contract: [IMPL-020](/.specs/sprint-2026-06/model-multi-material/implementation-contract.md) — Multi-Material Model, Primitive Helpers & API Cleanup
 - Spec: [SPEC-NNNN](/.specs/sprint-2026-06/gltf-model-loading/spec.md) — glTF Model Loading (ModelAsset, ModelNode, PbrMaterial, PbrMaterialData, ModelLoader)
+- Spec: [SPEC-023](/.specs/sprint-2026-06/developer-assertions/spec.md) — Developer Assertions (five macros, Fatal level, debug break, NDEBUG-only build detection)
 - ADR: [ADR-018](/docs/adr/ADR-018-tinygltf-dependency.md) — tinygltf dependency for glTF 2.0 model loading
 - ADR: [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
 - ADR: [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)
+- ADR: [ADR-021](/docs/adr/ADR-021-developer-assertions.md) — Developer Assertions (Fatal level, five macros, debug break, fixed Assert tag)

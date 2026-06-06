@@ -1,4 +1,5 @@
 #include "engine_service.h"
+#include "debug/assert.h"
 #include "platform/platform.h"
 #include "window/window.h"
 #include "render/render_device.h"
@@ -48,18 +49,22 @@ auto EngineService::create(Backend backend, const WindowConfig& config)
 }
 
 auto EngineService::platform() noexcept -> Platform& {
+    BUDDD_ASSERT(platform_ != nullptr);
     return *platform_;
 }
 
 auto EngineService::window() noexcept -> Window& {
+    BUDDD_ASSERT(window_ != nullptr);
     return *window_;
 }
 
 auto EngineService::device() noexcept -> RenderDevice& {
+    BUDDD_ASSERT(device_ != nullptr);
     return *device_;
 }
 
 auto EngineService::assets() noexcept -> AssetManager& {
+    BUDDD_ASSERT(asset_manager_ != nullptr);
     return *asset_manager_;
 }
 

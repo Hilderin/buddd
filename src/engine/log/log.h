@@ -10,14 +10,14 @@
 namespace buddd::log {
 
 // ---------------------------------------------------------------------------
-// LogLevel enum — ordered from most verbose (0) to least verbose (4)
-// ---------------------------------------------------------------------------
+// LogLevel enum — ordered from most verbose (0) to least verbose (5)
 enum class LogLevel {
     Trace,   // 0 — off by default in debug builds, only via --log-level=trace
     Debug,   // 1 — default minimum in debug builds (NDEBUG not defined)
     Info,    // 2
     Warn,    // 3 — default minimum in release builds (NDEBUG defined)
-    Error    // 4
+    Error,   // 4
+    Fatal    // 5 — unrecoverable condition, process terminates (used by assertions)
 };
 
 // ---------------------------------------------------------------------------
@@ -181,5 +181,11 @@ private:
     BUDDD_LOG_INTERNAL(::buddd::log::LogLevel::Warn, tag_, fmt __VA_OPT__(,) __VA_ARGS__)
 #define BUDDD_LOG_TAGGED_ERROR(tag_, fmt, ...) \
     BUDDD_LOG_INTERNAL(::buddd::log::LogLevel::Error, tag_, fmt __VA_OPT__(,) __VA_ARGS__)
+
+#define BUDDD_LOG_FATAL(fmt, ...) \
+    BUDDD_LOG_INTERNAL(::buddd::log::LogLevel::Fatal, BUDDD_CURRENT_LOG_TAG, fmt __VA_OPT__(,) __VA_ARGS__)
+
+#define BUDDD_LOG_TAGGED_FATAL(tag_, fmt, ...) \
+    BUDDD_LOG_INTERNAL(::buddd::log::LogLevel::Fatal, tag_, fmt __VA_OPT__(,) __VA_ARGS__)
 
 } // namespace buddd::log

@@ -26,7 +26,7 @@ Every `.cpp` file that uses any `BUDDD_LOG_*` macro **must** declare a source ta
 
 ## Log levels
 
-Five ordered levels, from most verbose (0) to least verbose (4):
+Six ordered levels, from most verbose (0) to least verbose (5):
 
 | Level | Enum value | When to use | Enabled by default |
 |-------|-----------|-------------|-------------------|
@@ -35,11 +35,13 @@ Five ordered levels, from most verbose (0) to least verbose (4):
 | Info | `LogLevel::Info` (2) | Normal operational messages; lifecycle events, load completion | On (both) |
 | Warn | `LogLevel::Warn` (3) | Recoverable issues; fallback paths, degraded behaviour | On (both) |
 | Error | `LogLevel::Error` (4) | Unrecoverable errors; failures that abort the current operation | On (both) |
+| Fatal | `LogLevel::Fatal` (5) | Unrecoverable condition, process terminates; used for assertion failures | Always on (cannot be disabled) |
 
 ### Default thresholds (no CLI flags)
 
 - **Debug build** (`NDEBUG` not defined): minimum level is `Debug`. `Trace` messages are never active by default.
 - **Release build** (`NDEBUG` defined): minimum level is `Warn`. `Debug` and `Info` are suppressed by default.
+- **`Fatal` is always enabled** in all builds. It cannot be suppressed via `--log-level` or `--log-filter`. Assertion failure messages always pass through.
 
 ### When to use each level
 
@@ -50,6 +52,7 @@ Five ordered levels, from most verbose (0) to least verbose (4):
 | `BUDDD_LOG_INFO` | Engine startup, scene loaded, asset cached, window created. Operator-visible signals. |
 | `BUDDD_LOG_WARN` | Texture not found (fallback used), deprecated API called, minor resource exhaustion. Operation continues. |
 | `BUDDD_LOG_ERROR` | File I/O failure, shader compilation error, device lost. The current operation cannot complete. |
+| `BUDDD_LOG_FATAL` | Assertion failures, unrecoverable invariant violations, impossible switch cases. Process terminates immediately. |
 
 ## Source tags
 
@@ -118,6 +121,7 @@ BUDDD_LOG_TAG("Module:SubComponent");
 | `BUDDD_LOG_INFO("fmt", args...)` | Info |
 | `BUDDD_LOG_WARN("fmt", args...)` | Warn |
 | `BUDDD_LOG_ERROR("fmt", args...)` | Error |
+| `BUDDD_LOG_FATAL("fmt", args...)` | Fatal |
 
 Each macro:
 - Automatically captures `__FILE__`, `__LINE__`, `__FUNCTION__`.
@@ -132,7 +136,7 @@ BUDDD_LOG_TAGGED_INFO("Other:Tag", "format {}", arg);
 BUDDD_LOG_TAGGED_WARN("Other:Tag", "format {}", arg);
 ```
 
-Available for all five levels. Overrides the file's declared tag for a single call. Useful for logging with a different tag without restructuring code.
+Available for all six levels (including Fatal). Overrides the file's declared tag for a single call. Useful for logging with a different tag without restructuring code.
 
 ### Formatting
 
@@ -172,7 +176,7 @@ struct LogMessage {
 
 | Flag | Type | Repeatable | Description |
 |------|------|-----------|-------------|
-| `--log-level=<level>` | one of: `trace`, `debug`, `info`, `warn`, `error` | No | Set the global minimum log level. Overrides the build-type default. |
+| `--log-level=<level>` | one of: `trace`, `debug`, `info`, `warn`, `error` (NOT `fatal`) | No | Set the global minimum log level. Overrides the build-type default. `fatal` is **not** accepted — `LogLevel::Fatal` is always enabled and cannot be suppressed. |
 | `--log-file=<path>` | file path | No | Enable file sink and write to the given path (append mode, ISO 8601 timestamps). |
 | `--log-filter=<pattern>=<level>` | `<pattern>` = tag prefix, `<level>` = one of the above (optional) | Yes | Override the minimum level for all tags matching the given prefix. |
 
@@ -209,6 +213,10 @@ Format: `[LEVEL] [Tag] message\n` — written to stderr. No timestamp, no colour
 [INFO] [Engine] hello world
 [WARN] [Asset:Texture] texture not found, using fallback
 [ERROR] [Render:OpenGL] shader compilation failed
+[FATAL] [Assert] Assertion failed: entity.IsValid()
+       Message: Tried to access destroyed entity
+       Location: src/ecs/EntityManager.cpp:123
+       Function: EntityManager::GetComponent
 ```
 
 ### File sink (optional, via `--log-file`)
@@ -271,8 +279,13 @@ As part of the logging system adoption (SPEC-022), window lifecycle messages tha
 }   // ~ScopedMemoryLogger calls Logger::reset() for isolation
 ```
 
+## Assertion System
+
+The assertion system uses `LogLevel::Fatal` with the fixed tag `"Assert"` to report assertion failures. See [Assertion System](assertions.md) for the full API reference, behaviour matrix, and usage guide.
+
 ## Reference
 
 - Spec: [SPEC-021](/.specs/sprint-2026-06/logging-system/spec.md) — Full specification, user stories, acceptance criteria, edge cases
 - Implementation contract: [IMPL-021](/.specs/sprint-2026-06/logging-system/implementation-contract.md) — Required implementation behaviour, test requirements, API signatures
 - ADR: [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) — Architectural decisions (custom logger, macro API, singleton, sink interface, thread safety)
+- ADR: [ADR-021](/docs/adr/ADR-021-developer-assertions.md) — Architectural decisions for the assertion system (Fatal level, five macros, debug break, NDEBUG-only build detection)

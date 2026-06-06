@@ -19,6 +19,7 @@
 #include <tuple>
 
 #include "log/log.h"
+#include "debug/assert.h"
 
 BUDDD_LOG_TAG("Render:OpenGL");
 
@@ -47,8 +48,9 @@ auto vertex_attribute_type_to_gl(VertexAttributeType attr_type) -> GlTypeAndCoun
         case VertexAttributeType::UByte:      return {GL_UNSIGNED_BYTE, 1};
         case VertexAttributeType::UByte4:     return {GL_UNSIGNED_BYTE, 4};
         case VertexAttributeType::UByte4Norm: return {GL_UNSIGNED_BYTE, 4};
+        default:
+            BUDDD_FAIL_MSG("Unknown VertexAttributeType: {}", static_cast<int>(attr_type));
     }
-    return {GL_FLOAT, 1}; // fallback
 }
 
 auto primitive_topology_to_gl(PrimitiveTopology topology) -> GLenum {
@@ -58,8 +60,9 @@ auto primitive_topology_to_gl(PrimitiveTopology topology) -> GLenum {
         case PrimitiveTopology::Lines:         return GL_LINES;
         case PrimitiveTopology::LineStrip:     return GL_LINE_STRIP;
         case PrimitiveTopology::Points:        return GL_POINTS;
+        default:
+            BUDDD_FAIL_MSG("Unknown PrimitiveTopology: {}", static_cast<int>(topology));
     }
-    return GL_TRIANGLES; // fallback
 }
 
 auto primitive_topology_to_string(PrimitiveTopology topology) -> const char* {

@@ -11,6 +11,7 @@ static auto level_name(LogLevel level) -> const char* {
         case LogLevel::Info:  return "INFO";
         case LogLevel::Warn:  return "WARN";
         case LogLevel::Error: return "ERROR";
+        case LogLevel::Fatal: return "FATAL";
     }
     return "UNKNOWN";
 }

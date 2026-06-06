@@ -1,4 +1,5 @@
 #include "scene/entity.h"
+#include "debug/assert.h"
 #include "scene/world.h"
 
 namespace buddd::engine {
@@ -18,6 +19,7 @@ auto Entity::is_pending_destroy() const noexcept -> bool {
 }
 
 auto Entity::transform() noexcept -> Transform& {
+    BUDDD_ASSERT(world_ != nullptr);
     return world_->get_transform(id_);
 }
 

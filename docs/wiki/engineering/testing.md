@@ -206,6 +206,12 @@ Tags used: `[lighting]`, `[lighting][vertex]`, `[lighting][component]`, `[lighti
 | AC-031 | `"Spot light cone uniforms"` | `inner_cones[i]` ≈ cos(angle), `spot_directions[i]` matches direction |
 | AC-032 | `"glsl_util handles layout qualifiers"` | `layout(location=0) uniform vec4 u_x;` → {"u_x"} |
 
+### Assertion tests
+
+The assertion system test suite (`tests/assertion_tests.cpp`) provides 12 test cases covering all acceptance criteria from SPEC-023. Tests exercise: `LogLevel::Fatal` enum ordering, `debug_break()` compilation, `format_assertion_failure_message()` formatting (with and without custom message), Fatal-level log capture via `ScopedMemoryLogger`, `BUDDD_VERIFY` expression evaluation in all builds, non-double-evaluation of `BUDDD_ASSERT` / `BUDDD_VERIFY`, release-build expression omission for `BUDDD_ASSERT`, `BUDDD_FAIL_MSG` formatting, and the fixed `"Assert"` tag convention.
+
+Tags used: `[assertion]`.
+
 ## Test conventions
 
 - All assertions use `REQUIRE`/`REQUIRE_FALSE` (not `CHECK`).
