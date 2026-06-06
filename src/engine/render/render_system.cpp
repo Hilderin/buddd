@@ -124,25 +124,25 @@ auto RenderSystem::render_scene() -> void {
 
         // Check if this material supports lighting (has u_model uniform)
         if (material.has_uniform("u_model")) {
-            material.set_uniform("u_model", world_mat);
+            (void)material.set_uniform("u_model", world_mat);
             auto normal_mat = world_mat.inverse().transpose();
-            material.set_uniform("u_normal_mat", normal_mat);
-            material.set_uniform("u_camera_pos", camera_pos);
+            (void)material.set_uniform("u_normal_mat", normal_mat);
+            (void)material.set_uniform("u_camera_pos", camera_pos);
 
-            material.set_uniform("u_light_count", light_count);
+            (void)material.set_uniform("u_light_count", light_count);
             for (int i = 0; i < light_count; ++i) {
                 auto const& ld = light_data[i];
-                material.set_uniform(
+                (void)material.set_uniform(
                     "u_light_positions_or_dir[" + std::to_string(i) + "]", ld.position_or_dir);
-                material.set_uniform(
+                (void)material.set_uniform(
                     "u_light_colours[" + std::to_string(i) + "]", ld.colour);
-                material.set_uniform(
+                (void)material.set_uniform(
                     "u_light_ranges[" + std::to_string(i) + "]", ld.range);
-                material.set_uniform(
+                (void)material.set_uniform(
                     "u_light_spot_directions[" + std::to_string(i) + "]", ld.spot_direction);
-                material.set_uniform(
+                (void)material.set_uniform(
                     "u_light_inner_cones[" + std::to_string(i) + "]", ld.inner_cone_cos);
-                material.set_uniform(
+                (void)material.set_uniform(
                     "u_light_outer_cones[" + std::to_string(i) + "]", ld.outer_cone_cos);
             }
 

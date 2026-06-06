@@ -18,7 +18,7 @@ namespace buddd::engine {
 /// @param node    The root ModelNode to traverse.
 /// @param parent  Optional parent Entity for hierarchy (Entity::none() = no parent).
 /// @return The Entity created for `node`, or Entity::none() if the node has no mesh.
-[[nodiscard]] auto add_model_to_world(
+auto add_model_to_world(
     World& world,
     ModelNode& node,
     Entity parent = Entity::none()
@@ -27,7 +27,7 @@ namespace buddd::engine {
 namespace detail {
 
 /// Internal recursive implementation of add_model_to_world.
-[[nodiscard]] inline auto add_model_to_world_impl(
+inline auto add_model_to_world_impl(
     World& world,
     ModelNode& node,
     Entity parent,
