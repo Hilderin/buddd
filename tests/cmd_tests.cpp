@@ -101,9 +101,10 @@ TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
 
     // Use offscreen SDL driver to prevent a real window from popping up
     // during test runs (the run command opens a 1024x768 SDL3 window).
+    // --log-level=info ensures INFO-level messages appear in release builds.
     static_cast<void>(setenv("SDL_VIDEO_DRIVER", "offscreen", 1));
 
-    const std::string shell_cmd = "timeout 2 \"" + binary + "\" > \""
+    const std::string shell_cmd = "timeout 2 \"" + binary + "\" run --log-level=info > \""
                                   + out_file + "\" 2> \"" + err_file + "\" || true";
 
     const int sys_ret = std::system(shell_cmd.c_str());

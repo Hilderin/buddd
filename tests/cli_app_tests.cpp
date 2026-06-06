@@ -11,7 +11,8 @@
 // ---------------------------------------------------------------------------
 
 TEST_CASE("buddd run triangle --frame 2 runs and exits", "[cli][app]") {
-    const auto res = run_buddd("run triangle --frame 2");
+    // --log-level=info ensures INFO-level messages appear in release builds
+    const auto res = run_buddd("run triangle --frame 2 --log-level=info");
 
     REQUIRE(res.exit_code == 0);
     // Should complete without errors
@@ -20,7 +21,8 @@ TEST_CASE("buddd run triangle --frame 2 runs and exits", "[cli][app]") {
 }
 
 TEST_CASE("buddd run triangle extra_arg warns and proceeds", "[cli][app]") {
-    const auto res = run_buddd("run triangle --frame 2 extra_arg");
+    // --log-level=info ensures INFO-level messages appear in release builds
+    const auto res = run_buddd("run triangle --frame 2 extra_arg --log-level=info");
 
     // Limit with --frame so the process exits quickly
     REQUIRE(res.exit_code == 0);
@@ -69,14 +71,15 @@ TEST_CASE("buddd help shows updated usage", "[cli][app]") {
 }
 
 TEST_CASE("buddd run with no args runs empty window", "[cli][app]") {
-    // This spawns a window; we can verify it opens and starts
+    // This spawns a window; we can verify it opens and starts.
+    // Use --log-level=info so INFO-level messages appear in release builds.
     const auto binary = buddd_binary_path();
     const auto out_file = temp_filename("buddd_run_out");
     const auto err_file = temp_filename("buddd_run_err");
 
     static_cast<void>(setenv("SDL_VIDEO_DRIVER", "offscreen", 1));
 
-    const std::string shell_cmd = "timeout 2 \"" + binary + "\" > \""
+    const std::string shell_cmd = "timeout 2 \"" + binary + "\" run --log-level=info > \""
                                   + out_file + "\" 2> \"" + err_file + "\" || true";
     const int sys_ret = std::system(shell_cmd.c_str());
 

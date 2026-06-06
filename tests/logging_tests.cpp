@@ -226,6 +226,7 @@ TEST_CASE("File sink enabled via config", "[logging]") {
     // Test with file sink in config
     {
         buddd::log::LogConfig config;
+        config.global_min_level = buddd::log::LogLevel::Trace; // capture in all build types
         auto file_sink = buddd::log::FileSink::create(tmp_path);
         REQUIRE(file_sink != nullptr);
         config.sinks.push_back(std::move(file_sink));
@@ -288,6 +289,7 @@ TEST_CASE("File sink failure is non-fatal", "[logging]") {
 
     // Logger should still work with a memory sink
     buddd::log::LogConfig config;
+    config.global_min_level = buddd::log::LogLevel::Info; // capture INFO in all build types
     auto mem_sink = std::make_shared<buddd::log::MemorySink>();
     config.sinks.push_back(mem_sink);
     buddd::log::Logger::init(std::move(config));
