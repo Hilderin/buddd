@@ -69,24 +69,18 @@
     }
   },
   "mcp": {
-    "wiki": {
+    "wiki-serve": {
       "type": "local",
-      "command": [
-        "uv",
-        "run",
-        "--project",
-        "../llm-wiki-search/tools/wiki-search-mcp",
-        "python",
-        "-m",
-        "wiki_search_mcp.server"
-      ],
+      "command": ["uv", "run", "--project", "../wiki-serve", "wiki-serve", "bridge"],
       "workdir": ".",
       "enabled": true,
       "environment": {
-        "WIKI_ROOT": "docs/wiki",
+        "WIKI_INCLUDE": "docs/wiki:README.md",
         "WIKI_INDEX": ".wiki-index/wiki.sqlite",
         "WIKI_WATCH": "true",
-        "WIKI_REINDEX_ON_START": "true"
+        "WIKI_REINDEX_ON_START": "true",
+        "WIKI_PORT": "8767",
+        "WIKI_EMBEDDING_ENABLED": "true"
       }
     },
     "vision": {

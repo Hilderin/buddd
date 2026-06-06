@@ -54,7 +54,7 @@ Avoid:
 When the orchestrator gives you a topic or decision need, gather and synthesize relevant context from:
 
 1. **Code** — Which files, modules, symbols, and patterns are relevant?
-2. **Wiki** — What does the project wiki say? Use `wiki_wiki_search` when available.
+2. **Wiki** — What does the project wiki say? Use `wiki_serve_wiki_search` when available.
 3. **ADRs** — What architectural decisions constrain the topic?
 4. **Existing specs** — What has already been specified or accepted?
 5. **External disk** — Only when explicitly requested or clearly relevant.

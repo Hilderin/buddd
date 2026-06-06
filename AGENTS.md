@@ -38,11 +38,9 @@ Escalate to the Orchestrator when:
 ## Wiki tools
 
 All agents have access to wiki search tools that query the operational wiki at `docs/wiki/**`:
-- `wiki_wiki_search` — hybrid full-text and semantic search
-- `wiki_wiki_search_exact` — exact lexical/FTS search
-- `wiki_wiki_read_section` — read a specific section by path and heading
-- `wiki_wiki_status` — check index status
-- `wiki_wiki_reindex` — force reindex
+- `wiki_serve_wiki_search` — hybrid (FTS5 + vector) search for fuzzy/conceptual queries
+- `wiki_serve_wiki_search_exact` — exact lexical/FTS search for specific terms, IDs, file names
+- `wiki_serve_wiki_read_section` — read a specific section by path and heading
 
 Before making decisions, writing documents, reviewing work, or implementing code, agents should proactively search the wiki for relevant operational context. The wiki captures current understanding of architecture, domain concepts, engineering practices, and decisions.
 
