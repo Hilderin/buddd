@@ -137,5 +137,5 @@ Simpler custom vertex formats are **permitted** for:
 - IMPL-018-002 (`.specs/sprint-2026-05/lighting/implementation-contract.md`): Implementation contract for the standard Vertex struct (lines 138–182).
 - `src/engine/render/vertex.h`: Canonical implementation of the Vertex struct and `k_standard_vertex_format`.
 - `src/engine/render/vertex_format.h`: The `VertexFormat`, `VertexAttribute`, and `VertexAttributeType` definitions that `k_standard_vertex_format` uses.
-- ADR-003 (`docs/adr/003-render-pipeline-architecture.md`): Render pipeline architecture — establishes the interface-backend pattern within which `Vertex` lives.
-- ADR-002 (`docs/adr/002-glm-wrapper-math.md`): GLM wrapper pattern — `Vertex` uses `math::Vec2`, `math::Vec3`, `math::Vec4` wrapper types, ensuring no GLM types leak beyond `src/engine/math/`.
+- ADR-003 (`docs/adr/ADR-003-render-pipeline-architecture.md`): Render pipeline architecture — establishes the interface-backend pattern within which `Vertex` lives.
+- ADR-002 (`docs/adr/ADR-002-glm-wrapper-math.md`): GLM wrapper pattern — `Vertex` uses `math::Vec2`, `math::Vec3`, `math::Vec4` wrapper types, ensuring no GLM types leak beyond `src/engine/math/`.

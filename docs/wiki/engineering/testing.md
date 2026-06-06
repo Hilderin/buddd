@@ -72,7 +72,7 @@ The platform abstraction layer introduces headless backend tests that run **with
 
 SDL3 backend tests use SDL3's **offscreen video driver** (`SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen")`), so they do **not** require a physical display. They are conditionally compiled via the `BUDDD_HAS_DISPLAY` CMake option (default `ON`). Set `-DBUDDD_HAS_DISPLAY=OFF` to exclude them (e.g., in CI).
 
-The `<SDL3/SDL.h>` include in these test files is permitted by constitutional amendment [AMEND-2026-001](/docs/constitution/rules/CONST-001-architecture-boundaries.md#amendment-amend-2026-001--sdl3-test-file-exception) — a narrow exception to CONST-001 for testing SDL3-dependent engine functionality (hint-setting, synthetic event injection via `SDL_PushEvent()`, and SDL3 backend exercise).
+The `<SDL3/SDL.h>` include in these test files is permitted by amendment [AMEND-2026-001](/docs/adr/ADR-019-architecture-boundaries.md#amendment-amend-2026-001--sdl3-test-file-exception) — a narrow exception to the architecture boundary for testing SDL3-dependent engine functionality (hint-setting, synthetic event injection via `SDL_PushEvent()`, and SDL3 backend exercise).
 
 | Test case | Tags | Source file | Verification |
 |---|---|---|---|
@@ -219,10 +219,6 @@ Tags used: `[lighting]`, `[lighting][vertex]`, `[lighting][component]`, `[lighti
 3. Write `TEST_CASE` blocks with descriptive names and tags.
 4. New `*_tests.cpp` files are **auto-discovered** by `file(GLOB_RECURSE ... *_tests.cpp CONFIGURE_DEPENDS)` in `tests/CMakeLists.txt` — no manual CMakeLists.txt edit is needed. If the file is not picked up, re-run CMake configure (`cmake --build build/debug` or `cmake --preset debug`).
 5. Tests are automatically discovered by `catch_discover_tests()`.
-
-## Constitution reference
-
-[CONST-002 (Testing Policy)](/docs/constitution/rules/CONST-002-testing-policy.md) requires that all testable code must have corresponding unit tests and those tests must pass.
 
 ## Reference
 

@@ -199,6 +199,6 @@ The old `demo::setup_cube()` and `demo::setup_triangle()` helpers (which lived i
 
 - SPEC-020 (`.specs/sprint-2026-06/model-multi-material/spec.md`): Full specification of the multi-material Model redesign.
 - SPEC-009 (`.specs/sprint-2026-05/3d-cube-demo/spec.md`): The original Model design that this ADR supersedes/redesigns.
-- ADR-013 (`docs/adr/013-standard-vertex-format.md`): Standard Vertex struct used by primitives and all meshes.
-- ADR-010 (`docs/adr/010-no-raw-pointers-in-public-api.md`): Impact reduced by removal of `material()` returning `Result<Material&>`.
-- ADR-003 (`docs/adr/003-render-pipeline-architecture.md`): Render pipeline architecture — `Model::draw()` uses `RenderDevice::draw_indexed()` which returns void per ADR-003 Decision 1.
+- ADR-013 (`docs/adr/ADR-013-standard-vertex-format.md`): Standard Vertex struct used by primitives and all meshes.
+- ADR-010 (`docs/adr/ADR-010-no-raw-pointers-in-public-api.md`): Impact reduced by removal of `material()` returning `Result<Material&>`.
+- ADR-003 (`docs/adr/ADR-003-render-pipeline-architecture.md`): Render pipeline architecture — `Model::draw()` uses `RenderDevice::draw_indexed()` which returns void per ADR-003 Decision 1.

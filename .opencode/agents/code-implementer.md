@@ -24,7 +24,6 @@ Your job is to produce a working, building, fully-tested implementation. Do not 
 
 - Read the accepted implementation contract at `SPEC_DIR/implementation-contract.md`.
 - SPEC_DIR is provided by the orchestrator in the task description. It points to the sprint-specific feature directory (e.g. `.specs/sprint-2026-06/<feature>/`).
-- Read relevant constitution rules.
 - Read relevant ADRs.
 - Search the wiki for relevant architecture context and conventions using wiki search tools.
 - Inspect the files listed in the contract's `## Files to inspect` section.
@@ -132,7 +131,6 @@ After all tests pass, verify every item in the contract's `## Done criteria` sec
 ## You must not
 
 - Modify files outside the contract's allowed files list.
-- Modify `docs/constitution/**`.
 - Modify `docs/adr/**`.
 - Modify `.specs/**`.
 - Modify `docs/wiki/**`.

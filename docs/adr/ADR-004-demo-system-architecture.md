@@ -124,6 +124,6 @@ The `src/cmd/CMakeLists.txt` glob includes `demo/*.cpp`, so new demo files are a
 - SPEC-007 (`.specs/sprint-2026-05/cli-command-evolution/spec.md`): Spec-level documentation of the demo system CLI interface.
 - IMPL-007 (`.specs/sprint-2026-05/cli-command-evolution/implementation-contract.md`): Contract-level implementation details including pseudo-code.
 - CONST-001 (`docs/constitution/rules/CONST-001-architecture-boundaries.md`): Architecture boundary preserved by this design.
-- ADR-001 (`docs/adr/001-result-error-pattern.md`): Error handling convention (unchanged by this ADR).
-- ADR-003 (`docs/adr/003-render-pipeline-architecture.md`): Precedent that render loops are owned by application code.
+- ADR-001 (`docs/adr/ADR-001-result-error-pattern.md`): Error handling convention (unchanged by this ADR).
+- ADR-003 (`docs/adr/ADR-003-render-pipeline-architecture.md`): Precedent that render loops are owned by application code.
 - SPEC-006 (`.specs/sprint-2026-05/cli-command-system/spec.md`): The previous CLI command system that this design builds upon.

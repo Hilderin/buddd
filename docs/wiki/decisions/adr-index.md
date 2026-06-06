@@ -2,19 +2,19 @@
 
 | ADR | Title | Status |
 |---|---|---|
-| ADR-001 | `docs/adr/001-result-error-pattern.md` — `Result<T>` / `Error` as the project-wide error handling pattern | Accepted |
-| ADR-002 | `docs/adr/002-glm-wrapper-math.md` — GLM wrapper pattern for math types (Vec2/3/4, Mat4, Quat) | Accepted |
-| ADR-003 | `docs/adr/003-render-pipeline-architecture.md` — Render pipeline architecture (void draw, poll_events) | Accepted |
-| ADR-004 | `docs/adr/004-demo-system-architecture.md` — Per-demo files and extensible dispatch | Accepted |
-| ADR-005 | `docs/adr/005-optional-ref-component-api.md` — `std::optional<T&>` for component lookup API | Accepted |
-| ADR-006 | `docs/adr/006-rtti-component-dispatch.md` — RTTI-based `dynamic_cast<T*>()` for component dispatch | Accepted |
-| ADR-007 | `docs/adr/007-release-dependency-build.md` — Build fetched dependencies in Release mode | Accepted |
-| ADR-008 | `docs/adr/008-ci-docker-infrastructure.md` — Docker-based CI infrastructure | Accepted |
-| ADR-009 | `docs/adr/009-test-file-naming-convention.md` — Plural `_tests.cpp` suffix for test files | Accepted |
-| ADR-010 | `docs/adr/010-no-raw-pointers-in-public-api.md` — Raw pointers prohibited in public API signatures; prefer `T&`, `std::optional<T&>`, `std::reference_wrapper<T>`, `std::span<T>` | Accepted |
-| ADR-012 | `docs/adr/012-navigable-object-graph-engine-service.md` — Navigable object graph (RenderDevice→Window→Platform), EngineService lifecycle owner, virtual diagnostic accessors on RenderDevice, mouse capture on Window abstract interface | Accepted |
-| ADR-014 | `docs/adr/014-cli-app-system.md` — CLI App System: centralised render loop with App lifecycle, unified `run` command, removal of `demo`/`capture` commands. Partially supersedes ADR-004. | Accepted |
-| ADR-016 | `docs/adr/016-yaml-cpp-dependency.md` — yaml-cpp as FetchContent dependency for YAML asset metadata parsing, PRIVATE linkage, exception-safety wrappers. | Accepted |
+| ADR-001 | `docs/adr/ADR-001-result-error-pattern.md` — `Result<T>` / `Error` as the project-wide error handling pattern | Accepted |
+| ADR-002 | `docs/adr/ADR-002-glm-wrapper-math.md` — GLM wrapper pattern for math types (Vec2/3/4, Mat4, Quat) | Accepted |
+| ADR-003 | `docs/adr/ADR-003-render-pipeline-architecture.md` — Render pipeline architecture (void draw, poll_events) | Accepted |
+| ADR-004 | `docs/adr/ADR-004-demo-system-architecture.md` — Per-demo files and extensible dispatch | Accepted |
+| ADR-005 | `docs/adr/ADR-005-optional-ref-component-api.md` — `std::optional<T&>` for component lookup API | Accepted |
+| ADR-006 | `docs/adr/ADR-006-rtti-component-dispatch.md` — RTTI-based `dynamic_cast<T*>()` for component dispatch | Accepted |
+| ADR-007 | `docs/adr/ADR-007-release-dependency-build.md` — Build fetched dependencies in Release mode | Accepted |
+| ADR-008 | `docs/adr/ADR-008-ci-docker-infrastructure.md` — Docker-based CI infrastructure | Accepted |
+| ADR-009 | `docs/adr/ADR-009-test-file-naming-convention.md` — Plural `_tests.cpp` suffix for test files | Accepted |
+| ADR-010 | `docs/adr/ADR-010-no-raw-pointers-in-public-api.md` — Raw pointers prohibited in public API signatures; prefer `T&`, `std::optional<T&>`, `std::reference_wrapper<T>`, `std::span<T>` | Accepted |
+| ADR-012 | `docs/adr/ADR-012-navigable-object-graph-engine-service.md` — Navigable object graph (RenderDevice→Window→Platform), EngineService lifecycle owner, virtual diagnostic accessors on RenderDevice, mouse capture on Window abstract interface | Accepted |
+| ADR-014 | `docs/adr/ADR-014-cli-app-system.md` — CLI App System: centralised render loop with App lifecycle, unified `run` command, removal of `demo`/`capture` commands. Partially supersedes ADR-004. | Accepted |
+| ADR-016 | `docs/adr/ADR-016-yaml-cpp-dependency.md` — yaml-cpp as FetchContent dependency for YAML asset metadata parsing, PRIVATE linkage, exception-safety wrappers. | Accepted |
 
 The current project state was established via:
 

@@ -14,7 +14,7 @@
       "temperature": 0.1
     },
     "spec-critic": {
-      "description": "Critiques and validates specs for ambiguity, testability, scope, and constitutional conflicts.",
+      "description": "Critiques and validates specs for ambiguity, testability, and scope.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/spec-critic.md}",
       "temperature": 0.1
@@ -32,7 +32,7 @@
       "temperature": 0.1
     },
     "scout": {
-      "description": "General scout. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize context for the orchestrator.",
+      "description": "General scout. Searches code, wiki, ADRs, specs, and disk to synthesize context for the orchestrator.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/scout.md}",
       "temperature": 0.1
@@ -44,15 +44,9 @@
       "temperature": 0.1
     },
     "code-reviewer": {
-      "description": "Reviews implementation against the accepted spec, contract, tests, and constitution.",
+      "description": "Reviews implementation against the accepted spec, contract, and tests.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/code-reviewer.md}",
-      "temperature": 0.1
-    },
-    "constitution-agent": {
-      "description": "Maintains the project constitution when project-level rules need to change.",
-      "mode": "subagent",
-      "prompt": "{file:.opencode/agents/constitution-agent.md}",
       "temperature": 0.1
     },
     "adr-agent": {

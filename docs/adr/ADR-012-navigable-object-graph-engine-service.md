@@ -114,7 +114,7 @@ This is the first input/hardware feature on the `Window` abstract interface. It 
 ## Related documents
 
 - SPEC-016 (`.specs/sprint-2026-05/architecture-refactor-device-window-platform/spec.md`): Spec-level documentation of the refactoring.
-- ADR-010 (`docs/adr/010-no-raw-pointers-in-public-api.md`): Raw pointer prohibition — all back-references use `T&`.
-- ADR-003 (`docs/adr/003-render-pipeline-architecture.md`): Draw method exception and `Platform::poll_events()` — unchanged.
-- ADR-004 (`docs/adr/004-demo-system-architecture.md`): Demo system architecture — demo dispatch pattern unchanged.
+- ADR-010 (`docs/adr/ADR-010-no-raw-pointers-in-public-api.md`): Raw pointer prohibition — all back-references use `T&`.
+- ADR-003 (`docs/adr/ADR-003-render-pipeline-architecture.md`): Draw method exception and `Platform::poll_events()` — unchanged.
+- ADR-004 (`docs/adr/ADR-004-demo-system-architecture.md`): Demo system architecture — demo dispatch pattern unchanged.
 - CONST-001 (`docs/constitution/rules/CONST-001-architecture-boundaries.md`): Architecture boundary preserved.

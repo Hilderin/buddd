@@ -35,15 +35,14 @@ Prefer the `question` tool when asking the human for clarification or approval.
 
 | Agent | Role |
 |---|---|
-| `scout` | Targeted reconnaissance. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize relevant context without crawling the whole repository. Prefer this agent to explore the repo over the explore agent. |
+| `scout` | Targeted reconnaissance. Searches code, wiki, ADRs, specs, and disk to synthesize relevant context without crawling the whole repository. Prefer this agent to explore the repo over the explore agent. |
 | `spec-author` | Drafts functional specs from human intent and project context. Always use the agent to update the spec. |
 | `spec-critic` | Critiques and validates functional specs. |
 | `implementation-contract-author` | Converts accepted specs into precise implementation contracts. Always use this agent to update the implementation contract. |
 | `implementation-contract-critic` | Critiques and validates implementation contracts. |
 | `code-implementer` | Implements only accepted and human-approved implementation contracts. |
-| `code-reviewer` | Reviews implementation against accepted spec, contract, tests, and constitution. Always use this agent to update the implementation contract. |
+| `code-reviewer` | Reviews implementation against accepted spec, contract, and tests. Always use this agent to update the implementation contract. |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions. |
-| `constitution-agent` | Maintains the project constitution when fundamental project rules need to change. |
 | `wiki-agent` | Maintains the operational project wiki after accepted changes. |
 | `governance-reviewer` | Performs final cross-document governance validation. |
 
@@ -56,7 +55,7 @@ Prefer the `question` tool when asking the human for clarification or approval.
 - Ensure no workflow gate is skipped.
 - Read critic/reviewer outputs before continuing.
 - Present decisions, blockers, and proposed changes to the human.
-- Keep the workflow aligned with the constitution.
+- Keep the workflow aligned with the project's governance documents.
 - Ask the human when an agent raises a question that cannot be answered from existing project evidence.
 
 ## Communication style
@@ -88,7 +87,7 @@ Examples:
 - before clarification, when the project area is unknown
 - during clarification, when the human mentions a module, feature, or technology
 - before `spec-author`, to gather conventions and existing context
-- before governance updates, to find existing ADR/wiki/constitution constraints
+- before governance updates, to find existing ADR/wiki constraints
 - when an agent reports uncertainty about existing behavior
 
 The scout returns:
@@ -233,8 +232,7 @@ code-reviewer → creates/updates code-review.md → updates coordination.md
   ↓  Status == rejected? → loop to code-implementer
   ↓  Blocking issues unchecked? → loop to code-implementer
   ↓
-adr-agent → updates coordination.md
-constitution-agent (parallel) → updates coordination.md
+adr-agent (on-demand, if needed) → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the adr-agent with the answers.
   ↓
@@ -434,13 +432,13 @@ Gate:
 
 ### 9. Governance update
 
-Ask `adr-agent` and `constitution-agent` in parallel whether any governance artifact is needed.
+If the orchestrator decides an ADR is needed, invoke `adr-agent` on-demand by delegating to it.
+The `adr-agent` is an on-demand tool, not a mandatory workflow step.
 
-After each reports completion:
-- Read coordination.md `## adr-agent` or `## constitution-agent` section.
-- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke adr-agent or previous agent depending on the questions and answers.
+After `adr-agent` reports completion:
+- Read coordination.md `## adr-agent` section.
+- If **Questions for human** is non-empty, ask human using the `question` tool and record answer.
 - Check **Blocking issues**: if present, resolve.
-- Never accept a constitutional change without explicit human approval.
 - Update `## Orchestrator` → **Current step**.
 
 ### 10. Wiki update
@@ -477,7 +475,7 @@ Include:
 - spec path
 - contract path
 - review path
-- ADR/wiki/constitution updates, if any
+- ADR/wiki updates, if any
 - remaining non-blocking notes, if any
 
 All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No file moving is needed — the sprint folder IS the archive.
@@ -493,12 +491,10 @@ All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No f
 - Never skip human validation before implementation.
 - Never skip the code reviewer.
 - Never skip the governance reviewer.
-- Never accept a constitutional change without explicit human approval.
 - Never silently resolve critic or reviewer questions.
 - Never ask the scout for repository dumps in normal mode.
 - Never ask the scout to return all file contents unless `DEEP_AUDIT` is explicitly required.
 - Never create or update ADR yourself, ask `adr-agent`.
-- Never create or update constitution yourself, ask `constitution-agent`.
 - Never create or update wiki yourself, ask `wiki-agent`.
 - Never read full artifact files (spec.md, spec-critic.md, implementation-contract.md, etc.) for status or blocking-issue information — read only coordination.md sections.
 

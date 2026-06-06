@@ -47,7 +47,6 @@ Each section in the template constrains implementation in a specific way. Fill e
 | `Source spec` | Link to the accepted spec being implemented. |
 | `Goal` | One-paragraph summary of what the implementation achieves. |
 | `Non-goals` | What the implementation must NOT do or change. |
-| `Relevant constitution rules` | Constitution rules that directly constrain implementation (cite by rule ID). |
 | `Relevant ADRs` | ADRs that the implementation must respect (cite by ADR number). |
 | `Files to inspect` | Files the Code Agent must read to understand the existing code before editing. |
 | `Files allowed to change` | Explicit list of files that may be modified. Use specific paths, not glob patterns. |
@@ -61,7 +60,6 @@ Each section in the template constrains implementation in a specific way. Fill e
 | `API compatibility impact` | API contract changes, backward compatibility, deprecation strategy. |
 | `Documentation impact` | README, API docs, or wiki pages that must be updated. |
 | `ADR impact` | Whether this implementation warrants a new ADR or deprecates an existing one. |
-| `Constitution impact` | Whether this implementation warrants a constitution amendment. |
 | `Done criteria` | Concrete, verifiable checklist that the Code Agent must satisfy to consider the implementation complete. Include links or lines as objective evidence. |
 
 ## Quality rules
@@ -89,7 +87,7 @@ After drafting, review your own contract against these checks:
 4. Are there any hidden implementation decisions that should be explicit?
 5. Does every test requirement trace to a spec acceptance criterion?
 6. Are there no more than 10 `[NEEDS CLARIFICATION]` markers?
-7. Does the contract contradict any accepted spec, ADR, or constitution rule?
+7. Does the contract contradict any accepted spec or ADR?
 8. Are the `Done criteria` concrete and objectively checkable?
 9. Are edge cases from the spec carried forward into the contract?
 

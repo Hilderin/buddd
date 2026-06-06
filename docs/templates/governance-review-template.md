@@ -9,12 +9,6 @@ Contradictions or gaps between spec, contract, code, and tests:
 
 When re-reviewing, mark resolved items with `[x]`. Add new items as `[ ]`.
 
-## Constitution violations
-
-Checks against `docs/constitution/**`:
-
-- [ ] `<description>`
-
 ## ADR alignment
 
 Required ADRs exist or are proposed:
@@ -35,6 +29,6 @@ Non-blocking concerns for awareness:
 
 ## Required governance updates
 
-Concrete changes to governance documents (constitution, ADRs, wiki):
+Concrete changes to governance documents (ADRs, wiki):
 
 - `<description>`

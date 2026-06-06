@@ -192,7 +192,7 @@ Keep the existing `sleep_for`-based frame limiting from the old demo code to con
 
 - SPEC-008 (`.specs/sprint-2026-06/cli-app-system/spec.md`): Spec-level documentation of the CLI App System.
 - IMPL-008 (`.specs/sprint-2026-06/cli-app-system/implementation-contract.md`): Implementation contract with detailed file-by-file changes.
-- ADR-004 (`docs/adr/004-demo-system-architecture.md`): **Partially superseded** — per-demo free functions with individual render loops replaced by App subclasses with centralised loop.
-- ADR-003 (`docs/adr/003-render-pipeline-architecture.md`): Render pipeline architecture — precedent that render loops are application-level concern, now concretised in `run_app()`.
-- ADR-012 (`docs/adr/012-navigable-object-graph-engine-service.md`): EngineService pattern — enables `App` subclasses to access `Platform`/`Window`/`InputSystem` via `RenderDevice.window().platform()` without explicit references.
+- ADR-004 (`docs/adr/ADR-004-demo-system-architecture.md`): **Partially superseded** — per-demo free functions with individual render loops replaced by App subclasses with centralised loop.
+- ADR-003 (`docs/adr/ADR-003-render-pipeline-architecture.md`): Render pipeline architecture — precedent that render loops are application-level concern, now concretised in `run_app()`.
+- ADR-012 (`docs/adr/ADR-012-navigable-object-graph-engine-service.md`): EngineService pattern — enables `App` subclasses to access `Platform`/`Window`/`InputSystem` via `RenderDevice.window().platform()` without explicit references.
 - CONST-001 (`docs/constitution/rules/CONST-001-architecture-boundaries.md`): Architecture boundary preserved.

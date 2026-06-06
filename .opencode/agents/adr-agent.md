@@ -39,7 +39,6 @@ You may create files only under:
 
 ## Rules
 
-- ADRs explain decisions; they do not automatically create constitutional rules.
 - Do not rewrite ADR history after it has been merged (accepted via PR).
 - Use superseding ADRs instead of modifying existing ADRs.
 - Always include context, decision, alternatives, and consequences.

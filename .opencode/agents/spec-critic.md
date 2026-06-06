@@ -35,7 +35,6 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Missing permissions or security behavior
 - Hidden implementation decisions
 - Scope creep
-- Contradictions with `docs/constitution/**`
 - Contradictions with accepted specs
 - Contradictions with `docs/wiki/**`
 

@@ -1,4 +1,9 @@
-# ADR-YYYY-NNNN - Title
+<!--
+Filename: ADR-NNN-title-with-dashes.md (e.g. ADR-019-architecture-boundaries.md)
+NNN = zero-padded sequential number.
+-->
+
+# ADR-NNN: Title
 
 ## Status
 Proposed
@@ -18,6 +23,3 @@ Proposed
 ### Neutral
 
 ## Related documents
-
-## Does this imply a constitutional rule?
-No / Maybe / Yes

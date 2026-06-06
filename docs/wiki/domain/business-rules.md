@@ -336,7 +336,7 @@ All methods (set_uniform, has_uniform, getters) use `normalize_uniform_name()` t
 - Spec: [SPEC-002](/.specs/sprint-2026-05/platform-abstraction/spec.md) — User stories, Acceptance criteria, Error cases, Assumptions
 - Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md) — Required implementation behavior, Edge cases
 - Spec: [SPEC-008](/.specs/sprint-2026-06/cli-app-system/spec.md) — CLI App System (commands, scenes, flags, observability, exit codes, app lifecycle)
-- ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System lifecycle, driver quirk (--capture off-by-one)
+- ADR: [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System lifecycle, driver quirk (--capture off-by-one)
 - Spec: [SPEC-013](/.specs/sprint-2026-05/input-system/spec.md) — Input System (KeyCode, InputSystem, SDL3/Headless backends, Platform integration, frame-based state model)
 - Spec: [SPEC-018](/.specs/sprint-2026-05/lighting/spec.md) — Phong Lighting System (Standard Vertex, Light Components, Phong module, RenderSystem extension, Phong demo)
 - Implementation contract: [IMPL-018-002](/.specs/sprint-2026-05/lighting/implementation-contract.md) — Phong Lighting System implementation contract

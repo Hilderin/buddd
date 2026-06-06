@@ -36,7 +36,7 @@ buddd_editor            (standalone, no dependencies)
 | **stb** | `31c1ad37456438565541f9958214b6e762fb4` | `https://github.com/nothings/stb.git` | CMake `FetchContent` (automatic download at configure time) — header-only, only `#include` path needed. |
 
 - Catch2, SDL3, and GLM are fetched once and cached in the build directory; subsequent configures use the cached copy.
-- Compiled dependencies that are large or slow to debug (notably SDL3) are built with `-DCMAKE_BUILD_TYPE=Release` via `CMAKE_ARGS` in their `FetchContent_Declare` to avoid debugger startup slowness from their debug symbols. Header-only dependencies (GLM) are unaffected. See `src/engine/CMakeLists.txt` for the SDL3 declaration, [ADR-007](/docs/adr/007-release-dependency-build.md) for the full rationale, and the [setup guide](/docs/wiki/engineering/setup.md) for details.
+- Compiled dependencies that are large or slow to debug (notably SDL3) are built with `-DCMAKE_BUILD_TYPE=Release` via `CMAKE_ARGS` in their `FetchContent_Declare` to avoid debugger startup slowness from their debug symbols. Header-only dependencies (GLM) are unaffected. See `src/engine/CMakeLists.txt` for the SDL3 declaration, [ADR-007](/docs/adr/ADR-007-release-dependency-build.md) for the full rationale, and the [setup guide](/docs/wiki/engineering/setup.md) for details.
 - No network access is required after the initial fetch of each dependency.
 - SDL3 is linked to `buddd_engine` as PUBLIC so that all consumers of the engine have access to SDL3 headers (only within `src/engine/` — external consumers must not include them directly).
 - The headless backend of the platform layer has **zero** external dependencies — it uses only the C++ standard library and is always compiled.

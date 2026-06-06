@@ -101,38 +101,6 @@
 **Blocking issues**:
 <none, or a checklist of `- [ ]` items>
 
-## adr-agent
-
-**Status**: pending | in-progress | completed | blocked
-**Summary**:
-<2–5 lines>
-**Artifacts**:
-- <list of ADR files created or modified, or "none">
-**Decisions needed**:
-<none, or a description of ADR decisions identified>
-**Questions for human**:
-<none, or a bullet list of questions>
-**Warnings**:
-<none, or a bullet list of non-blocking concerns>
-**Blocking issues**:
-<none, or a checklist of `- [ ]` items>
-
-## constitution-agent
-
-**Status**: pending | in-progress | completed | blocked
-**Summary**:
-<2–5 lines>
-**Artifacts**:
-- <list of constitution files, or "none">
-**Changes needed**:
-<none, or a description of constitution changes proposed>
-**Questions for human**:
-<none, or a bullet list of questions>
-**Warnings**:
-<none, or a bullet list of non-blocking concerns>
-**Blocking issues**:
-<none, or a checklist of `- [ ]` items>
-
 ## wiki-agent
 
 **Status**: pending | in-progress | completed | blocked
@@ -171,7 +139,6 @@
 - Use exact field names as listed above (bold markdown `**Field**`).
 - Sub-agent sections must appear in the exact order listed above.
 - The `## Human Validation` section must appear between `## implementation-contract-critic` and `## code-implementer`.
-- The `## adr-agent` and `## constitution-agent` sections must include their extra fields (`**Decisions needed**` and `**Changes needed**` respectively).
 - The `## wiki-agent` section must include `**Changes made**` instead of `**Decisions needed**`.
 - **`{{SPRINT}}` must be replaced** with the actual sprint folder (e.g. `sprint-2026-06`) when the orchestrator creates coordination.md from this template.
 - **Exception**: during loop-backs, the orchestrator may temporarily reset a sub-agent's `**Status**` to "in-progress" to re-invoke them. This overrides the general principle that sub-agents self-manage their own status and is the only case where the orchestrator writes to a sub-agent's status field.

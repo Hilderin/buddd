@@ -10,6 +10,4 @@
 
 ## Related ADRs
 
-## Related constitution rules
-
 ## Last reviewed

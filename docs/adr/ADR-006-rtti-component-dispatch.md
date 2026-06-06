@@ -159,7 +159,7 @@ This decision also does **not** preclude a future migration to a static type ID 
 ## References
 
 - SPEC-008 / IMPL-008 (`.specs/sprint-2026-05/scene-graph/`): Scene graph specification and implementation contract.
-- ADR-001 (`docs/adr/001-result-error-pattern.md`): Project-wide `Result<T>` / `Error` pattern (this ADR does not modify or create exceptions to ADR-001).
-- ADR-005 (`docs/adr/005-optional-ref-component-api.md`): `std::optional<T&>` for component lookup API (the return type used by `get_component<T>()`).
+- ADR-001 (`docs/adr/ADR-001-result-error-pattern.md`): Project-wide `Result<T>` / `Error` pattern (this ADR does not modify or create exceptions to ADR-001).
+- ADR-005 (`docs/adr/ADR-005-optional-ref-component-api.md`): `std::optional<T&>` for component lookup API (the return type used by `get_component<T>()`).
 - `src/engine/scene/world.h`: Canonical implementation — `dynamic_cast<T*>()` at lines 114, 129, 142.
 - `src/engine/scene/component.h`: The `Component` base class (virtual destructor only).

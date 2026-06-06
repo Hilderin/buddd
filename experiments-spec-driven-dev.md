@@ -16,9 +16,11 @@
 6. [Iteration #6: Grill-Me Step for Deeper Spec Clarification](#iteration-6-grill-me-step-for-deeper-spec-clarification)
 7. [Iteration #7: Definition of Ready](#iteration-7-definition-of-ready)
 8. [Iteration #8: File Update Protocol — Partial Edits Instead of Full Rewrites](#iteration-8-file-update-protocol--partial-edits-instead-of-full-rewrites)
-9. [Cross-Cutting Observations](#cross-cutting-observations)
-10. [Ongoing Concerns](#ongoing-concerns)
-11. [Improvement Hypotheses](#improvement-hypotheses)
+9. [Iteration #9: Specs Move to `.specs/` — Historical Snapshots Organized by Sprint](#iteration-9-specs-move-to-specs--historical-snapshots-organized-by-sprint)
+10. [Iteration #10: Remove the Constitution — Governance Simplification](#iteration-10-remove-the-constitution--governance-simplification)
+11. [Cross-Cutting Observations](#cross-cutting-observations)
+12. [Ongoing Concerns](#ongoing-concerns)
+13. [Improvement Hypotheses](#improvement-hypotheses)
 
 ---
 
@@ -164,12 +166,8 @@
 
 **Observations:**
 - In the grill me, le LLM asked about e2e testing correctly.
-
-
-**Still open:**
-- The DoR needs real use to validate that criteria are at the right level of detail — too vague and they won't catch anything, too specific and they'll be skipped or cause false positives
-- No automated enforcement yet — it relies on agents following their prompts correctly (which the orchestrator doesn't always do, as noted in Iteration #3)
-- The `## E2E Verification` section in specs could become a placeholder if spec-authors treat it as a checkbox rather than a meaningful description
+- The agents does not forget anymore the e2e in specs and implementation.
+- The agents are using the DoR correctly and it helps (not perfect) to do more tests.
 
 ---
 
@@ -192,25 +190,82 @@ Added an explicit `## File update protocol` section to all 6 agents, with two di
 - **Critiques/Reviewers** (spec-critic, implementation-contract-critic, code-reviewer, governance-reviewer): `write` strictement interdit sur un fichier de review existant. Uniquement `edit` pour cocher `[x]`, ajouter des issues, mettre à jour le résumé. La création initiale reste en `write` avec le template.
 
 **Observations:**
-- This was previously listed as an untested hypothesis (see Improvement Hypotheses below). Implementing it was straightforward since all agents already had a similar instruction structure.
-- The `edit` tool requires exact string matching, which can fail on whitespace differences. The protocol adds: "If edit fails, retry with more surrounding context."
-- This change is low-risk — it only modifies agent instructions, not the workflow logic or templates.
-- **Orchestrator contradiction caught during review:** The orchestrator itself uses "writes" everywhere in its instructions — the workflow diagram (`spec-author → writes spec.md`), delegation sections ("Ask spec-critic to review and write..."), and loop-back patterns. This directly undermines the File update protocol since the orchestrator primes agents with "write" language. Fixed by:
-  - Replacing all `writes` with `creates/updates` in the workflow diagram (6 occurrences)
-  - Replacing all `write`/`create` with `create/update` in delegation instructions (6 occurrences)
-  - Adding a dedicated paragraph in `Delegation invariant`: "Do NOT ask an agent to 'write' or 'rewrite' its artifact. Say 'update' or 're-review' instead."
-- **Human caught it, not the LLM:** This contradiction was pointed out by a human after the initial implementation. The LLM didn't notice that its own orchestrator instructions conflicted with the File update protocol it had just written for the sub-agents — a blind spot worth noting.
-- **Systemic pattern:** This isn't an isolated case. The orchestrator has a tendency to give instructions that conflict with sub-agent prompts (e.g., "writes spec.md" vs the sub-agent's "use edit for updates"). It suggests the orchestrator doesn't fully internalize what it delegates — it describes actions from its own perspective (what it wants done) rather than the sub-agent's perspective (how it should do it).
-
-**Still open:**
-- Need to verify in practice that agents actually follow the `edit`-first rule rather than falling back to `write` habit.
-- The 50% threshold for authors is a judgement call — might need adjustment based on real usage.
-- This doesn't address the related hypothesis about skipping template re-reads when updating existing files.
-- The orchestrator's tendency to give conflicting instructions is a broader pattern worth monitoring. Other areas where it might contradict sub-agent prompts? (e.g., telling code-implementer to change files vs. telling governance agents not to modify code)
+- The editing of an existing spec, critic, contract is accelerated and no more useless rewrites. The content is still accurate.
 
 ---
 
-- **Orchestrator + sub-agents is a game-changer.** The process is far more autonomous and engaging. Critics suggest improvements, the orchestrator applies them immediately to specs/contracts, and re-runs the critic loop before moving on. This saves a lot of manual spec adjustment.
+## Iteration #9: Specs Move to `.specs/` — Historical Snapshots Organized by Sprint
+
+**Hypothesis:** Moving specs out of `docs/specs/` (where they look like current documentation) into a dedicated `.specs/` folder organized by sprint, lowering their authority below the wiki, and switching to orchestrator-driven paths will eliminate the "stale spec" confusion and make the role of specs unambiguous: they are historical snapshots.
+
+**Problem:**
+Specs lived at `docs/specs/<feature>/` and held authority order #2 — above ADRs and the wiki. In reality, specs were written once during a feature's workflow and never updated. They became increasingly inaccurate as the code evolved, yet agents trusted them as authoritative (authority #2). This caused:
+
+- **Confusion for humans**: `docs/` = "current documentation." But specs were historical, not current.
+- **Confusion for agents**: Authority order #2 meant agents consulted stale specs over the (more accurate) wiki.
+- **Wiki contamination**: Wiki pages referenced spec IDs and details (e.g., `[SPEC-001](/docs/specs/project-setup/spec.md)`). When a spec went stale, every wiki page referencing it became partially wrong too. This created a tangled web of cross-references to increasingly inaccurate documents — making the wiki harder to maintain, not easier.
+- **No closure**: After a feature was implemented, the spec had no "archived" marker. Agents couldn't distinguish an active spec from a completed one.
+- **Restructuring was stuck**: The experiments doc noted (Iteration #1, Ongoing Concerns) that restructuring `docs/` was frozen because "LLMs are bad at large-scale refactors" — the scope was too daunting.
+
+**Method:**
+Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-specs.sh` copied 157 files from `docs/specs/` to `.specs/sprint-YYYY-MM/<feature>/` using git dates, (3) `scripts/update-references.sh` updated all wiki/ADR/root file paths, (4) all 12 agent prompts switched from hardcoded paths to orchestrator-provided `SPEC_DIR`, (5) authority order changed (specs #2→#4, role switched to "historical snapshots"), (6) `{{SPRINT}}` placeholder added to coordination template.
+
+**Resulting structure:**
+```
+.specs/
+  README.md
+  sprint-2026-05/
+    3d-cube-demo/
+    math-foundations/
+    ... (19 specs total)
+  sprint-2026-06/
+    asset-manager/
+    capture-frame-validation/
+    ... (6 specs total)
+```
+
+**Observations:**
+
+- It's easier for me to find specs, having it at the top in VSCode instead of inside a subfolder in docs.
+- The Agents ask if specs should be updated in Iteration #9 so it understands better now that these are for history and not active docs. Before, the LLM would have updated the specs also.
+
+---
+
+## Iteration #10: Remove the Constitution — Governance Simplification
+
+**Hypothesis:** The constitution layer is redundant with ADRs and adds unnecessary workflow overhead (constitution-agent + governance checks). Removing it entirely — migrating its content to ADRs and wiki, deleting the constitution-agent, and making adr-agent on-demand — will simplify the workflow without losing governance coverage.
+
+**Method:**
+1. **Full workflow execution** — Used the entire spec → contract → critic → human approval → implement → review → governance pipeline to refactor the governance system itself. This was a meta-refactoring: the agents modified their own prompts and configuration.
+2. **Migrated CONST-001 (Architecture Boundaries)** to **ADR-019** with full amendment history (AMEND-2026-001 ratified, AMEND-2026-002 superseded).
+3. **Migrated engineering principles** to `docs/wiki/engineering/principles.md`.
+4. **Deleted:** `docs/constitution/` (6 files), constitution-agent, 2 templates, constitution-index wiki page.
+5. **Updated:** All 10 agent prompts, 5 templates, opencode.json, AGENTS.md, README.md, SpecKit.md, wiki pages, ADR README.
+6. **ADR agent is now on-demand** — removed from automatic workflow loop. Orchestrator calls it when needed.
+7. **New authority order:** ADRs > Current spec > Wiki > Code (constitution removed).
+
+**Scale of changes:**
+- 61 acceptance criteria, 38 files modified, 5 files deleted, 2 files created
+- All changes went through the full spec → critic → contract → critic → human approval → implement → review → governance pipeline
+- The workflow itself was used to modify its own agent prompts and templates
+
+**Spec path:** `.specs/sprint-2026-06/governance-refactor-remove-constitution/`
+
+**Observations:**
+
+- in progress
+- The LLM handled the meta-refactoring (agents modifying their own prompts) surprisingly well. The code-implementer correctly modified all agent prompts, templates, and configuration without getting confused by the self-referential nature of the task.
+- The spec-critic found 7 missing files in the first pass (gaps in scope) — a good validation that the critic step catches incomplete specs even for meta-tasks.
+- The implementation-contract-critic found 6 issues including subtle problems like duplicate "wiki" text after a replacement — showing the critic's attention to text-level correctness.
+- The wiki-agent's detection of 4 additional CONST-001 references across 3 wiki files (architecture/overview.md, module-map.md, domain/glossary.md) that the implementation missed demonstrates the value of the dedicated wiki detection step.
+- Running a meta-refactoring through the full workflow is slower upfront but produces comprehensive, reviewable results. Every change was documented in the spec, approved by human, and verified by multiple critics.
+- Agent prompts now need to stop referencing "constitution" — since we just removed it, the prompts themselves had to be refactored first. This creates a clean slate: no more constitution checks, no constitution-agent to maintain.
+- The coordination.md template is simpler: no constitution-agent section, no adr-agent section (on-demand). Fewer moving parts in the workflow.
+
+---
+
+## Notes / Global observations
+- **The process is far more autonomous and engaging.** Critics suggest improvements, the orchestrator applies them immediately to specs/contracts, and re-runs the critic loop before moving on. This saves a lot of manual spec adjustment.
 - **Still missing a way to get more challenging spec/contract critique.** BMad's personas were great, but BMad seems to limit itself to a few user questions.
 - **Easy workflow customization is powerful.** Having project-specific agents (e.g., a scout that knows Catchy2 test tags or project structure conventions) makes a real difference.
 - **Different features need different workflows.** Being able to change the workflow easily is essential.
@@ -240,11 +295,11 @@ Added an explicit `## File update protocol` section to all 6 agents, with two di
 - Early specs often don't define how we'll verify the feature actually works end-to-end (e.g., adding a demo/app for real testing). This should be part of the grill-me step or formalized as a definition-of-ready checklist that the spec-critic enforces
 - The agents have some instructions that are specific to buddd engine, these should be included in docs folder and referenced by the agents.
 - New specs consistently include a `## Status` and `## Approval` section (with Draft/In Review/Accepted and an approval table) even though neither section exists in the spec template — this seems to be a learned behavior carried over from earlier iterations or from the coordination.md format, and it adds unnecessary bloat to every spec file.
-- **Stale specs:** Specs are written once during the workflow and never updated afterward. As the code evolves through subsequent features and refactors, the spec becomes increasingly inaccurate. The LLM has no way to distinguish what in the spec is still true and what is outdated — it trusts the spec (authority order #2), which leads to confusion and incorrect decisions.
-- **Wiki contaminated by stale spec references:** The wiki references spec IDs and details extensively in its architecture, domain, and decision pages. When a spec goes stale, every wiki page referencing it becomes partially wrong too. The LLM then blends outdated spec details with possibly-correct wiki content, producing a confusing hybrid that's hard to debug. Over time, the wiki becomes a tangled web of cross-references to increasingly inaccurate specs, making it harder to maintain — not easier. I suspect the solution isn't better wiki maintenance but rather **decoupling the wiki from spec references entirely**: the wiki should describe current state only, and spec references should be limited to ADRs (which capture decisions, not evolving behavior).
+- ~~**Stale specs:** Specs are written once during the workflow and never updated afterward. As the code evolves through subsequent features and refactors, the spec becomes increasingly inaccurate. The LLM has no way to distinguish what in the spec is still true and what is outdated — it trusts the spec (authority order #2), which leads to confusion and incorrect decisions.~~ ✅ **Addressed in Iteration #9** — specs moved to `.specs/`, authority lowered below wiki, role changed to "historical snapshots." Agents now treat specs as historical records, not current reference.
+- ~~**Wiki contaminated by stale spec references:** The wiki references spec IDs and details extensively in its architecture, domain, and decision pages. When a spec goes stale, every wiki page referencing it becomes partially wrong too. The LLM then blends outdated spec details with possibly-correct wiki content, producing a confusing hybrid that's hard to debug. Over time, the wiki becomes a tangled web of cross-references to increasingly inaccurate specs, making it harder to maintain — not easier. I suspect the solution isn't better wiki maintenance but rather **decoupling the wiki from spec references entirely**: the wiki should describe current state only, and spec references should be limited to ADRs (which capture decisions, not evolving behavior).~~ ✅ **Addressed in Iteration #9** — all wiki links updated to point to `.specs/sprint-YYYY-MM/` locations, and the spec role change (historical snapshot) means future wiki updates should minimize spec ID references. The authority order change (wiki above specs) also reduces the incentive to cross-reference specs from wiki pages.
 - **No distinction between ADRs and standards:** The current framework treats ADRs and constitution rules as separate governance documents, but there's no clear criterion for when something should be an ADR vs a constitution rule vs just a wiki convention. This causes two problems: (1) too many ADRs are created — every architectural decision gets an ADR, even trivial ones that would be better as a quick wiki note or a constitution rule; (2) ADRs become a dumping ground that mixes historical decisions with active standards, making it hard to know which ADRs are still relevant. An ADR should capture a **decision with rationale** (why we chose X over Y, context, tradeoffs). A constitution rule should capture an **active constraint** (thou shalt not include X headers). A wiki page should capture **current understanding** (how the module works today). When these blur, LLMs (and humans) don't know where to look for what.
 - **Root README.md is nobody's responsibility:** The root `README.md` is never updated during development. Two root causes identified: (1) the wiki agent is restricted to `docs/wiki/**` and cannot touch it; (2) no other agent in the workflow has permission or mandate to maintain it — the implementation contract has a `Documentation impact` section that mentions README, but there's no agent that both can and must act on it. Additionally, there are two README files (`/README.md` and `docs/wiki/README.md`), only the latter is indexed by wiki search, making the root one invisible to agents during research.
-- **Doc restructuring is stuck — LLMs are bad at large-scale refactors:** I'd like to restructure the documentation: move specs to a better location, split ADRs vs standards clearly, rename `docs/wiki/` to something like `docs/llm-wiki/` to distinguish it from human docs, etc. But every time I consider it, the scope of changes is daunting — it would require updating all agent prompts, all search paths, all cross-references across specs, ADRs, wiki, and constitution. LLMs are surprisingly bad at this kind of large-scale, cross-cutting refactoring: they miss references, make inconsistent renaming, and introduce broken links. The risk of silent regressions (e.g., a wiki search that no longer indexes the right directory) is high and hard to verify without deep manual inspection. So the doc structure is frozen not because it's good, but because changing it is too risky relative to the value.
+- ~~**Doc restructuring is stuck — LLMs are bad at large-scale refactors:** I'd like to restructure the documentation: move specs to a better location, split ADRs vs standards clearly, rename `docs/wiki/` to something like `docs/llm-wiki/` to distinguish it from human docs, etc. But every time I consider it, the scope of changes is daunting — it would require updating all agent prompts, all search paths, all cross-references across specs, ADRs, wiki, and constitution. LLMs are surprisingly bad at this kind of large-scale, cross-cutting refactoring: they miss references, make inconsistent renaming, and introduce broken links. The risk of silent regressions (e.g., a wiki search that no longer indexes the right directory) is high and hard to verify without deep manual inspection. So the doc structure is frozen not because it's good, but because changing it is too risky relative to the value.~~ ✅ **Partially addressed in Iteration #9** — the specs move (the biggest item on the list) was successfully executed. The key insight: instead of asking the LLM to manually refactor, writing scripts (`migrate-specs.sh`, `update-references.sh`) let the LLM orchestrate the migration through code. The remaining items (ADR vs standards split, wiki rename) are still open.
 - **Code-reviewer sometimes hangs on `buddd capture`:** The code-reviewer runs `buddd capture` to take screenshots for visual validation, but often forgets the `--frame N` flag. Without `--frame`, the app opens a window and stays open indefinitely — the command never returns, the agent hangs, and the review gets stuck. This happens repeatedly, suggesting the agent prompt doesn't emphasize the `--frame` flag enough, or the template command examples in the reviewer instructions don't make it mandatory.
 
 ## Improvement Hypotheses
@@ -259,7 +314,7 @@ Added an explicit `## File update protocol` section to all 6 agents, with two di
 - **Human-in-the-loop review before/after code review:** Currently I have to stop the process or wait until the end to test — and features often don't work 100% (e.g., inverted mouse movement in the free-camera demo)
 - ~~**Partial edits instead of full rewrites:** Currently sub-agents rewrite the entire spec, contract, or review file on every iteration. This burns context and risks losing details that weren't flagged as issues. An alternative would be to instruct agents to make targeted edits — append new sections, update specific paragraphs, mark resolved items — rather than regenerating the whole document from scratch.~~ ✅ **Implemented in Iteration #8** — added `## File update protocol` to all 6 writer agents, enforcing `edit` over `write` for updates.
 - **Avoid re-reading templates on every invocation:** Sub-agents load their template file at the start of every task, even when the artifact already exists and only needs updating. This wastes context and tokens. An alternative would be to let the agent skip template loading when the target file already exists and only load the template for brand-new documents.
-- **Spec staleness detection or auto-update:** Specs are written once and never updated, so they drift from reality as the code changes. Possibilities include: treating specs as snapshots tied to a git ref, having a dedicated agent that audits and updates stale specs, or deprecating specs after implementation and relying solely on the wiki + code for ground truth.
+- ~~**Spec staleness detection or auto-update:** Specs are written once and never updated, so they drift from reality as the code changes. Possibilities include: treating specs as snapshots tied to a git ref, having a dedicated agent that audits and updates stale specs, or deprecating specs after implementation and relying solely on the wiki + code for ground truth.~~ ✅ **Addressed in Iteration #9** — specs moved to `.specs/`, lowered to authority #4, role changed to "historical snapshots." The solution was not to keep them current but to stop pretending they are current. Wiki is the source of truth.
 - **Clearer ADR vs standard vs convention boundaries:** Create explicit criteria for what goes where. An ADR captures a decision with rationale (why X over Y, context, tradeoffs, date, author). A constitution rule captures an active constraint (must/must not, applies globally). A wiki convention captures current understanding (how things work, patterns, non-binding recommendations). If the LLM can't decide which bucket something falls into, it should escalate rather than default to creating an ADR.
 - **Definition of Done checklist for code-implementer:** The code-implementer sometimes skips E2E verification steps (running the app, taking screenshots, visual validation). A formal DoD checklist — similar to the Definition of Ready — embedded in the implementation contract or the code-implementer prompt could ensure that no step is forgotten. This would include: build passes, unit tests pass, E2E verification performed (screenshot capture + visual analysis), no build warnings, done criteria from contract all checked. The code-reviewer would then verify the DoD is complete rather than re-running everything from scratch.
 - **Constitution might be redundant with ADRs — merge or drop constitution-agent:** In practice, the constitution hasn't proved useful. ADRs already capture important rules and decisions, and the constitution just duplicates or restates what's already in ADRs. Having both means two agents to run at the end of the workflow (constitution-agent + adr-agent) for little added value. Maybe the constitution should be removed entirely, and its role absorbed by better ADR tagging (e.g., a `[CONSTRAINT]` prefix for rules that are binding vs `[DECISION]` for historical context). Or keep the constitution but only for truly fundamental rules that shouldn't change without explicit human approval — everything else goes in ADRs.

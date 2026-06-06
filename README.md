@@ -41,7 +41,7 @@ Human Intent
   → Human Validation Gate
   → Code Implementer (writes code + tests)
   → Code Reviewer (reviews implementation)
-  → ADR / Constitution / Wiki updates
+  → ADR / Wiki updates
   → Governance Reviewer (cross-document validation)
   → Done
 ```
@@ -51,25 +51,23 @@ Each step is performed by a specialised OpenCode agent defined in `.opencode/age
 | Agent | Role |
 |---|---|
 | `orchestrator` | Main human interface; coordinates the full workflow |
-| `scout` | Targeted reconnaissance of code, wiki, ADRs, constitution |
+| `scout` | Targeted reconnaissance of code, wiki, ADRs |
 | `spec-author` | Drafts functional specs from human intent |
 | `spec-critic` | Validates specs for ambiguity, testability, scope |
 | `implementation-contract-author` | Converts accepted specs into precise contracts |
 | `implementation-contract-critic` | Validates implementation contracts |
 | `code-implementer` | Implements accepted contracts only |
-| `code-reviewer` | Reviews code against spec, contract, tests, constitution |
+| `code-reviewer` | Reviews code against spec, contract, tests |
 | `adr-agent` | Proposes ADRs for architectural decisions |
-| `constitution-agent` | Maintains project constitution rules |
 | `wiki-agent` | Maintains operational wiki |
 | `governance-reviewer` | Final cross-document governance validation |
 
 This workflow enforces a strict **authority order** for all project decisions:
 
-1. `docs/constitution/` — mandatory project rules
+1. `docs/adr/` — architectural decision records
 2. `.specs/` — historical feature specs (snapshots, not live docs)
-3. `docs/adr/` — architectural decision records
-4. `docs/wiki/` — operational knowledge
-5. Existing code conventions
+3. `docs/wiki/` — operational knowledge
+4. Existing code conventions
 
 ## Why?
 
@@ -169,7 +167,6 @@ buddd/
 │   └── editor/          # Editor library (placeholder)
 ├── tests/               # Catch2 unit tests
 ├── docs/
-│   ├── constitution/    # Mandatory project rules
 │   ├── specs/           # Functional specs + implementation contracts
 │   ├── adr/             # Architecture Decision Records
 │   ├── wiki/            # Operational knowledge

@@ -7,14 +7,13 @@ This starter kit provides a full multi-agent workflow for spec-driven developmen
 | Agent | Role |
 |---|---|
 | `orchestrator` | Main interface with the human; coordinates the full workflow |
-| `scout` | General scout. Searches code, wiki, ADRs, constitution, specs, and disk to synthesize context for the orchestrator |
+| `scout` | General scout. Searches code, wiki, ADRs, specs, and disk to synthesize context for the orchestrator |
 | `spec-author` | Drafts functional specs from human intent and project context |
 | `spec-critic` | Critiques and validates specs for ambiguity, testability, and scope |
 | `implementation-contract-author` | Converts accepted specs into precise implementation contracts |
 | `implementation-contract-critic` | Critiques and validates implementation contracts |
 | `code-implementer` | Implements only accepted implementation contracts |
-| `code-reviewer` | Reviews implementation against spec, contract, tests, and constitution |
-| `constitution-agent` | Maintains the project constitution when project rules need to change |
+| `code-reviewer` | Reviews implementation against spec, contract, and tests |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions |
 | `wiki-agent` | Maintains the operational project wiki after accepted changes |
 | `governance-reviewer` | Performs final cross-document governance validation |
@@ -50,22 +49,20 @@ Human intent
   → Contract critique
   → Accepted implementation contract
   → Code + tests
-  → ADR / constitution / wiki updates
+  → ADR / wiki updates
   → Governance review
 ```
 
 ## Authority order
 
-1. `docs/constitution/**`
+1. `docs/adr/**`
 2. `docs/wiki/**`
-3. `docs/adr/**`
-4. `.specs/**`
-5. Existing code conventions
+3. `.specs/**`
+4. Existing code conventions
 
 ## Documents (`docs/`)
 
 - `adr/` — Architectural Decision Records
-- `constitution/` — Mandatory project rules
 - `reviews/` — Review reports
 - `specs/` — Functional specs (proposed + accepted)
 - `templates/` — Templates for specs, contracts, ADRs, reviews, wiki pages
@@ -80,6 +77,5 @@ Then adapt:
 - `opencode.json`
 - `AGENTS.md`
 - `.opencode/agents/*.md`
-- `docs/constitution/**`
 
 The files are intentionally conservative. The goal is to reduce randomness during code generation.

@@ -38,9 +38,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Missing security impact
 - Missing documentation impact
 - Missing ADR impact
-- Missing constitution impact
 - Contradictions with the accepted spec
-- Contradictions with `docs/constitution/**`
 - Contradictions with `docs/wiki/**`
 
 ## Review process

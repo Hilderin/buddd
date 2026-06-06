@@ -87,7 +87,7 @@ After drafting, review your own spec against these checks:
 4. Are success criteria measurable and technology-agnostic?
 5. Are user stories prioritized and independently testable?
 6. Are there no more than 10 `[NEEDS CLARIFICATION]` markers?
-7. Does the spec contradict any accepted spec or constitution rule?
+7. Does the spec contradict any accepted spec?
 8. Are assumptions documented for every reasonable default made?
 9. **Check the Definition of Ready** — Search the wiki for `definition-of-ready` and verify your spec satisfies each criterion.
 

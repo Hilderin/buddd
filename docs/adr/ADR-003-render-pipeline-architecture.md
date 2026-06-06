@@ -104,7 +104,7 @@ These two exceptions do **not** establish a pattern for automatic approval of si
 
 ## References
 
-- ADR-001 (`docs/adr/001-result-error-pattern.md`): The error-handling convention that Decision 1 carves out from.
+- ADR-001 (`docs/adr/ADR-001-result-error-pattern.md`): The error-handling convention that Decision 1 carves out from.
 - CONST-001 (`docs/constitution/rules/CONST-001-architecture-boundaries.md`): The architecture boundary that Decision 2 preserves by adding `Platform::poll_events()`.
 - SPEC-005 (`.specs/sprint-2026-05/render-pipeline/spec.md`): Spec-level documentation of the render pipeline.
 - IMPL-005 (`.specs/sprint-2026-05/render-pipeline/implementation-contract.md`): Contract-level implementation details.

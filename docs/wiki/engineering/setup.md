@@ -18,7 +18,7 @@ The following are downloaded automatically at configure time via CMake's `FetchC
 - **SDL3 release-3.2.30** (windowing and graphics context management)
 - **GLM 1.0.1** (header-only math library — provides the implementation backend for Vec2, Vec3, Vec4, Mat4, Quat wrappers)
 
-> **Note on compiled dependencies**: Large compiled dependencies (especially SDL3) are declared with `CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release` in `FetchContent_Declare`. This ensures SDL3 is built in Release mode regardless of the parent project's build type, avoiding debugger startup slowness caused by SDL3's own debug symbols. Header-only dependencies (like GLM) are unaffected, as they have no compiled artifacts. See `src/engine/CMakeLists.txt` for the current implementation and [ADR-007](/docs/adr/007-release-dependency-build.md) for the full rationale.
+> **Note on compiled dependencies**: Large compiled dependencies (especially SDL3) are declared with `CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release` in `FetchContent_Declare`. This ensures SDL3 is built in Release mode regardless of the parent project's build type, avoiding debugger startup slowness caused by SDL3's own debug symbols. Header-only dependencies (like GLM) are unaffected, as they have no compiled artifacts. See `src/engine/CMakeLists.txt` for the current implementation and [ADR-007](/docs/adr/ADR-007-release-dependency-build.md) for the full rationale.
 
 ## Quick start
 
@@ -136,7 +136,7 @@ docker run --rm -v $(pwd):/workspace -w /workspace --user "$(id -u):$(id -g)" \
 
 ### Publishing the image
 
-The CI Docker image is automatically published to `ghcr.io/hilderin/buddd-ci` via `.github/workflows/publish.yml`. It is tagged with both `:latest` (rolling) and `:<commit-sha>` (permanent traceability). See [ADR-015](/docs/adr/015-ci-docker-image-pre-publishing.md) for the full decision and rationale.
+The CI Docker image is automatically published to `ghcr.io/hilderin/buddd-ci` via `.github/workflows/publish.yml`. It is tagged with both `:latest` (rolling) and `:<commit-sha>` (permanent traceability). See [ADR-015](/docs/adr/ADR-015-ci-docker-image-pre-publishing.md) for the full decision and rationale.
 
 ## Reference
 

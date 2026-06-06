@@ -32,9 +32,7 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 - Contract matches accepted spec.
 - Code matches accepted contract.
 - Tests prove acceptance criteria.
-- Constitution is not violated.
 - Required ADRs exist or are proposed.
-- Required constitution updates exist or are proposed.
 - Wiki reflects current state and does not become law.
 - Cross-document coherence between all artifacts.
 
@@ -46,16 +44,14 @@ Use the template at `docs/templates/governance-review-template.md` as the starti
 4. Read the spec-critic review at `SPEC_DIR/spec-critic.md`.
 5. Read the implementation-contract-critic review at `SPEC_DIR/implementation-contract-critic.md`.
 6. Read the code review at `SPEC_DIR/code-review.md`.
-7. Read the constitution at `docs/constitution/**`.
-8. Read relevant ADRs at `docs/adr/**`.
-9. Search the wiki using wiki search tools, then read relevant sections at `docs/wiki/**`.
-10. Perform the governance checks.
-11. Write the review to `SPEC_DIR/governance-review.md` using the template.
-12. List every issue as a `- [ ]` checklist item under the appropriate section.
+7. Read relevant ADRs at `docs/adr/**`.
+8. Search the wiki using wiki search tools, then read relevant sections at `docs/wiki/**`.
+9. Perform the governance checks.
+10. Write the review to `SPEC_DIR/governance-review.md` using the template.
+11. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
 
-- Be strict about constitution violations — they are always blocking.
 - Cross-document contradictions are blocking even if each document is valid individually.
 - On re-review, update the same review file: mark resolved items with `[x]`, add new issues as `[ ]`, and update the review summary text to reflect the new verdict (verdict is expressed in coordination.md, not as a separate status field in the review file).
 - Never delete a review file — append and update it across review cycles so the full resolution history is preserved.

@@ -97,8 +97,8 @@ The following cases are **exempt** from the rule:
 
 ## Related documents
 
-- ADR-001 (`docs/adr/001-result-error-pattern.md`): Project-wide `Result<T>` / `Error` pattern — established the C++26 compiler baseline that enables `std::optional<T&>`.
-- ADR-005 (`docs/adr/005-optional-ref-component-api.md`): `std::optional<T&>` for component lookup API — precedent for the nullable-reference replacement pattern.
+- ADR-001 (`docs/adr/ADR-001-result-error-pattern.md`): Project-wide `Result<T>` / `Error` pattern — established the C++26 compiler baseline that enables `std::optional<T&>`.
+- ADR-005 (`docs/adr/ADR-005-optional-ref-component-api.md`): `std::optional<T&>` for component lookup API — precedent for the nullable-reference replacement pattern.
 - SPEC-011 / IMPL-011: Scene Rendering — the work that surfaced the need for this ADR.
 - C++ Core Guidelines:
   - ES.47: Use `T*` rather than `T&` if you must use a pointer and may need to rebind it.

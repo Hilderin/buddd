@@ -6,8 +6,6 @@
 
 ## Non-goals
 
-## Relevant constitution rules
-
 ## Relevant ADRs
 
 ## Files to inspect
@@ -44,7 +42,5 @@
 - Other specs: <which specs or "none">
 
 ## ADR impact
-
-## Constitution impact
 
 ## Done criteria

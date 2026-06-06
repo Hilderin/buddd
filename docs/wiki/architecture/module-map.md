@@ -15,7 +15,7 @@ The engine library is the core of the project. It provides a version API, a math
 | `engine_service.h` | Public header: `EngineService` class — owns the `Platform` → `Window` → `RenderDevice` → `AssetManager` chain via `unique_ptr`. Factory: `EngineService::create(Backend, WindowConfig) -> Result<unique_ptr<EngineService>>`. Accessors: `platform() -> Platform&`, `window() -> Window&`, `device() -> RenderDevice&`, `assets() -> AssetManager&`. Member declaration order (`platform_`, `window_`, `device_`, `asset_manager_`) guarantees correct destruction ordering. |
 | `engine_service.cpp` | Factory implementation: creates `Platform`, then `Window` (via `platform->create_window()`), then `RenderDevice` (via `RenderDevice::create()`), wrapping them in an `EngineService`. Then creates `AssetManager` via `AssetManager::create(engine_service.device(), "assets")` and stores it in `asset_manager_`. |
 
-See [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) for the architectural rationale.
+See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) for the architectural rationale.
 
 ### Version module
 
@@ -174,7 +174,7 @@ The render submodule depends on the `scene/` submodule: `MeshRenderer` inherits 
 | `shader_opengl.cpp` | OpenGL shader backend: resource lifetime managed via `glCreateShader`/`glDeleteShader` |
 | `shader_headless.h` | Private header: `ShaderHeadless` concrete class storing type and GLSL source string |
 | `shader_headless.cpp` | Headless shader backend: stores source for linking-error simulation and uniform discovery |
-| `shader_program.h` | Abstract `ShaderProgram` base class — wraps a compiled shader program handle (`uint32_t`). Pure virtual `handle()`, `is_valid()`, `replace_handle()`, `release_handle()`. Non-copyable, non-movable. CONST-001 compliant (uses `uint32_t` not `GLuint` in the base). |
+| `shader_program.h` | Abstract `ShaderProgram` base class — wraps a compiled shader program handle (`uint32_t`). Pure virtual `handle()`, `is_valid()`, `replace_handle()`, `release_handle()`. Non-copyable, non-movable. ADR-019 compliant (uses `uint32_t` not `GLuint` in the base). |
 | `shader_program.cpp` | Vtable emission + default virtual implementations (`testing_handle()`, `vs_source()`, `fs_source()`). |
 | `shader_program_opengl.h` | `ShaderProgramOpenGL` concrete class — wraps a `GLuint` program handle. `replace_handle` calls `glDeleteProgram` before assigning. `release_handle()` extracts the handle to prevent double-deletion. |
 | `shader_program_opengl.cpp` | OpenGL implementation: `glCreateProgram`, `glAttachShader`, `glLinkProgram`, `glDeleteProgram`. |
@@ -230,7 +230,7 @@ The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` 
 
 The command-line binary. Links `buddd_engine` as PRIVATE.
 
-Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) defines `config()` / `setup()` / `render()` / `shutdown()`, and a centralised `run_app()` free function owns the render loop. Scene implementations are `App` subclasses in `src/cmd/apps/`. The CLI dispatches only three commands (`run`, `version`, `help`) — see [ADR-014](/docs/adr/014-cli-app-system.md) for the architectural rationale.
+Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) defines `config()` / `setup()` / `render()` / `shutdown()`, and a centralised `run_app()` free function owns the render loop. Scene implementations are `App` subclasses in `src/cmd/apps/`. The CLI dispatches only three commands (`run`, `version`, `help`) — see [ADR-014](/docs/adr/ADR-014-cli-app-system.md) for the architectural rationale.
 
 ### Build system
 
@@ -289,7 +289,7 @@ The `demo_helpers.*` files are now **empty placeholders**. All helper functions 
 - `buddd test` is **removed** — produces an unknown command error
 - Old `--test` and `--version` flags are **dropped** — produce an unknown command error
 
-**Note**: Old `demo` and `capture` subcommands are permanently removed per [ADR-014](/docs/adr/014-cli-app-system.md). Use `buddd run <scene>` with `--capture` instead.
+**Note**: Old `demo` and `capture` subcommands are permanently removed per [ADR-014](/docs/adr/ADR-014-cli-app-system.md). Use `buddd run <scene>` with `--capture` instead.
 
 ## `buddd_editor` — INTERFACE library placeholder (`src/editor/`)
 
@@ -341,7 +341,7 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Spec: [SPEC-005](/.specs/sprint-2026-05/render-pipeline/spec.md) — Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes
 - Implementation contract: [IMPL-005](/.specs/sprint-2026-05/render-pipeline/implementation-contract.md) — File directory structure, open questions, draw-methods-as-void exception
 - Spec: [SPEC-006](/.specs/sprint-2026-05/cli-command-system/spec.md) — CLI Command System: Command pattern, subcommand structure, file layout
-- Implementation contract: [IMPL-006](/.specs/sprint-2026-05/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, CONST-001 compliance
+- Implementation contract: [IMPL-006](/.specs/sprint-2026-05/cli-command-system/implementation-contract.md) — File list, dispatch logic, CMake glob, ADR-019 compliance
 - Spec: [SPEC-007](/.specs/sprint-2026-05/cli-command-evolution/spec.md) — CLI Command Evolution: Demo System & Empty Run
 - Implementation contract: [IMPL-007](/.specs/sprint-2026-05/cli-command-evolution/implementation-contract.md) — Replacement of TestCommand with DemoCommand, per-demo files, RunCommand simplification
 - Spec: [SPEC-008](/.specs/sprint-2026-05/scene-graph/spec.md) — Scene Graph (World, Entity, Transform, Components, Hierarchy)
@@ -357,6 +357,6 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - Spec: [SPEC-020](/.specs/sprint-2026-06/model-multi-material/spec.md) — Multi-material Model (SubMesh, unified create_indexed factory, primitives, fallback material)
 - Implementation contract: [IMPL-020](/.specs/sprint-2026-06/model-multi-material/implementation-contract.md) — Multi-Material Model, Primitive Helpers & API Cleanup
 - Spec: [SPEC-NNNN](/.specs/sprint-2026-06/gltf-model-loading/spec.md) — glTF Model Loading (ModelAsset, ModelNode, PbrMaterial, PbrMaterialData, ModelLoader)
-- ADR: [ADR-018](/docs/adr/018-tinygltf-dependency.md) — tinygltf dependency for glTF 2.0 model loading
-- ADR: [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
-- ADR: [ADR-014](/docs/adr/014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)
+- ADR: [ADR-018](/docs/adr/ADR-018-tinygltf-dependency.md) — tinygltf dependency for glTF 2.0 model loading
+- ADR: [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
+- ADR: [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)

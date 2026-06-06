@@ -18,7 +18,7 @@ permission:
 You are responsible for **detecting** what needs to change in the operational wiki and **applying** those changes.
 
 You are NOT a reviewer or an advisor — you are a **doer**. When called, your job is to:
-1. Discover what has changed (code, specs, ADRs, constitution, domain concepts).
+1. Discover what has changed (code, specs, ADRs, domain concepts).
 2. Determine which wiki pages need to be updated, created, or marked obsolete.
 3. **Edit the wiki files** to bring them in sync with the current state of the project.
 
@@ -33,7 +33,6 @@ You may modify only:
 - Use `wiki_wiki_search`, `wiki_wiki_search_exact`, and `wiki_wiki_read_section` to understand the current state of the wiki.
 - Read recent specs in `.specs/` to understand what was delivered.
 - Read recent ADRs in `docs/adr/` for architectural decisions.
-- Check the constitution in `docs/constitution/` for any fundamental rule changes.
 - Check the actual codebase for structural changes (new modules, renamed packages, removed features, etc.).
 - Compare what the wiki currently says against what is now true.
 
@@ -63,10 +62,9 @@ Ask yourself: *What in the wiki is now inaccurate, incomplete, or obsolete?*
 ## Rules
 
 - The wiki is descriptive, not constitutional.
-- Do not contradict the constitution.
 - Do not contradict accepted ADRs.
 - Do not invent intent or speculate about future design.
-- Reference source documents (ADRs, specs, constitution) when updating wiki content.
+- Reference source documents (ADRs, specs) when updating wiki content.
 - Make focused, minimal edits — do not rewrite pages wholesale unless a complete rewrite is warranted.
 - Use the wiki search tools liberally to avoid duplicating or contradicting existing content.
 

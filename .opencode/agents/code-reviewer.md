@@ -1,5 +1,5 @@
 ---
-description: Reviews implementation against accepted spec, contract, tests, and constitution.
+description: Reviews implementation against accepted spec, contract, and tests.
 mode: subagent
 temperature: 0.1
 permission:
@@ -31,7 +31,6 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 
 - Accepted spec
 - Accepted implementation contract
-- Constitution rules
 - Relevant ADRs
 - Wiki documentation
 - Existing code conventions
@@ -44,8 +43,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Did it satisfy every acceptance criterion?
 - Did it add the required tests?
 - Did it introduce hidden architecture decisions?
-- Did it violate the constitution?
-- Did it require an ADR or constitution update?
+- Did it require an ADR?
 - **If the feature produces rendered/visual output**:
   - Did the implementer perform visual verification using `buddd capture` + `vision_analyze_image`?
   - Does the captured output match the spec's visual expectations (camera position, colors, dimensions, objects, etc.)?

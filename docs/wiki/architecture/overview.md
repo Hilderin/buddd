@@ -30,7 +30,6 @@ buddd2/
 │   └── editor/              # Editor placeholder (INTERFACE lib)
 ├── tests/                   # Unit tests (Catch2 v3)
 └── docs/
-    ├── constitution/        # Mandatory project rules
     ├── specs/               # Product specs and implementation contracts
     ├── adr/                 # Architecture decision records
     └── wiki/                # Operational documentation (this wiki)
@@ -131,7 +130,7 @@ src/engine/
     ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides + in-memory create_texture; uses glsl_util for uniform discovery)
     ├── shader_opengl.h/cpp         # OpenGL shader backend (ShaderOpenGL)
     ├── shader_headless.h/cpp       # Headless shader backend (ShaderHeadless)
-    ├── shader_program.h            # Abstract ShaderProgram base class (uint32_t handle, CONST-001)
+    ├── shader_program.h            # Abstract ShaderProgram base class (uint32_t handle, ADR-019)
     ├── shader_program.cpp          # ShaderProgram vtable + default implementations
     ├── shader_program_opengl.h/cpp # ShaderProgramOpenGL — GLuint wrapper, glLinkProgram
     ├── shader_program_headless.h/cpp # ShaderProgramHeadless — generation counter, simulated linking
@@ -196,7 +195,7 @@ RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
 - `RenderDevice` exposes a pure virtual `window() -> Window&` accessor, implemented by each backend.
 - From any `RenderDevice&`, the entire upstream graph is reachable: `device.window().platform().input_system()`.
 - Demo functions no longer receive a separate `Platform&` parameter — they access platform services via the navigable graph.
-- `EngineService` owns the entire chain via `std::unique_ptr` with correct destruction ordering. See [ADR-012](/docs/adr/012-navigable-object-graph-engine-service.md).
+- `EngineService` owns the entire chain via `std::unique_ptr` with correct destruction ordering. See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md).
 
 ### GLM boundary
 
