@@ -44,6 +44,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 - Did it add the required tests?
 - Did it introduce hidden architecture decisions?
 - Did it require an ADR?
+- **Does the build produce zero warnings in our code (src/ and tests/)?** Warnings from dependencies (`_deps/`) are acceptable, but our own code must compile cleanly.
 - **If the feature produces rendered/visual output**:
   - Did the implementer perform visual verification using `buddd capture` + `vision_analyze_image`?
   - Does the captured output match the spec's visual expectations (camera position, colors, dimensions, objects, etc.)?
@@ -63,17 +64,18 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
    - Note any prior commits that appear related to the same feature — these are part of the review scope.
 6. Read the test files for the feature.
 7. Read the implemented code files.
-7b. **If the feature produces visual/rendered output**:
-    - Build the binary: `cmake --build --preset debug`
-    - Run `buddd capture` to produce a screenshot (if not already done by the implementer):
-      ```bash
-      ./build/debug/buddd capture cube [--frame N] /tmp/buddd_review_<feature>.png
-      ```
-    - Use the `vision_analyze_image` tool to check the captured image against spec expectations.
-    - Document whether the visual output matches the spec's expectations (camera position, colors, scene content, dimensions, etc.).
-8. Perform the review checks against the full diff and any prior related commits.
-9. Write the review to `SPEC_DIR/code-review.md` using the template.
-10. List every issue as a `- [ ]` checklist item under the appropriate section.
+8. **If the feature produces visual/rendered output**:
+   - Build the binary: `cmake --build --preset debug`
+   - Run `buddd capture` to produce a screenshot (if not already done by the implementer):
+     ```bash
+     ./build/debug/buddd capture cube [--frame N] /tmp/buddd_review_<feature>.png
+     ```
+   - Use the `vision_analyze_image` tool to check the captured image against spec expectations.
+   - Document whether the visual output matches the spec's expectations (camera position, colors, scene content, dimensions, etc.).
+9. **Check build warnings** — Rebuild the project and check that no warnings originate from our code (`src/` or `tests/`). Dependency warnings (`_deps/`) are acceptable.
+10. Perform the review checks against the full diff and any prior related commits.
+11. Write the review to `SPEC_DIR/code-review.md` using the template.
+12. List every issue as a `- [ ]` checklist item under the appropriate section.
 
 ## Rules
 
