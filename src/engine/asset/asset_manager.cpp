@@ -93,20 +93,7 @@ auto AssetManager::poll_file_events() -> void {
 
     auto events = file_watcher_->poll_events();
     for (const auto& event : events) {
-        auto dependents = dependency_map_.get_dependents(event.path);
-        if (dependents.empty()) continue;
-
-        // Collect asset IDs into a vector (avoid iterator invalidation)
-        std::vector<std::string> asset_ids(dependents.begin(), dependents.end());
-
-        for (const auto& asset_id : asset_ids) {
-            if (event.path.size() >= 5 &&
-                event.path.substr(event.path.size() - 5) == ".yaml") {
-                handle_yaml_change(event.path, asset_id);
-            } else {
-                handle_source_change(event.path, asset_id);
-            }
-        }
+        dispatch_file_event(event.path, event.type);
     }
 }
 
@@ -115,36 +102,22 @@ auto AssetManager::set_file_watcher_enabled(bool enabled) -> void {
 }
 
 // ============================================================================
-// Test-only accessors
+// Public introspection and reload API
 // ============================================================================
 
-#ifdef BUDDD_TESTING
-auto AssetManager::get_dependency_map() const -> const DependencyMap& {
+auto AssetManager::dependency_map() const noexcept -> const DependencyMap& {
     return dependency_map_;
 }
 
-auto AssetManager::testing_shader_programs() const noexcept
+auto AssetManager::shader_programs() const noexcept
     -> const std::unordered_map<ShaderProgramKey, std::shared_ptr<ShaderProgram>>&
 {
     return shader_programs_;
 }
 
-void AssetManager::testing_inject_file_event(const FileEvent& event) {
-    auto dependents = dependency_map_.get_dependents(event.path);
-    if (dependents.empty()) return;
-
-    std::vector<std::string> asset_ids(dependents.begin(), dependents.end());
-
-    for (const auto& asset_id : asset_ids) {
-        if (event.path.size() >= 5 &&
-            event.path.substr(event.path.size() - 5) == ".yaml") {
-            handle_yaml_change(event.path, asset_id);
-        } else {
-            handle_source_change(event.path, asset_id);
-        }
-    }
+auto AssetManager::reload(std::string_view path) -> void {
+    dispatch_file_event(std::string(path), FileEventType::Modified);
 }
-#endif
 
 // ============================================================================
 // Path resolution and file I/O
@@ -556,6 +529,21 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
 // ============================================================================
 // Hot-reload handlers
 // ============================================================================
+
+auto AssetManager::dispatch_file_event(const std::string& path, FileEventType type) -> void {
+    auto dependents = dependency_map_.get_dependents(path);
+    if (dependents.empty()) return;
+
+    std::vector<std::string> asset_ids(dependents.begin(), dependents.end());
+
+    for (const auto& asset_id : asset_ids) {
+        if (path.size() >= 5 && path.substr(path.size() - 5) == ".yaml") {
+            handle_yaml_change(path, asset_id);
+        } else {
+            handle_source_change(path, asset_id);
+        }
+    }
+}
 
 auto AssetManager::handle_yaml_change(const std::string& changed_path, const std::string& asset_id) -> void {
     // Find the cached asset

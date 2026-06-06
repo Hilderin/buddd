@@ -28,10 +28,6 @@ public:
     /// when transferring ownership.
     virtual auto release_handle() noexcept -> uint32_t = 0;
 
-    /// Returns an opaque ID that changes on each successful recompilation.
-    /// Default implementation returns handle().
-    virtual auto testing_handle() const -> uint32_t;
-
     /// Returns the vertex shader source string (primarily for headless mode).
     /// Default implementation returns empty string.
     virtual auto vs_source() const noexcept -> const std::string&;

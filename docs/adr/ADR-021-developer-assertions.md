@@ -53,7 +53,7 @@ Assertion behavior is governed **solely** by the standard `NDEBUG` preprocessor 
 - `#ifndef NDEBUG` → debug build: assertions are active.
 - `#ifdef NDEBUG` → release build: `BUDDD_ASSERT` / `BUDDD_ASSERT_MSG` compile out entirely; `BUDDD_VERIFY` preserves expression evaluation but does not abort; `BUDDD_FAIL` / `BUDDD_FAIL_MSG` remain unconditional.
 
-No additional CMake option (e.g., `BUDDD_ENABLE_ASSERTIONS`) is introduced. The `BUDDD_TESTING` define (present in both debug and release test builds) is **not** used to control assertion behaviour — tests verify formatting via `format_assertion_failure_message()` rather than a test-mode flag in the macros.
+No additional CMake option (e.g., `BUDDD_ENABLE_ASSERTIONS`) is introduced. No test-specific define controls assertion behaviour — tests verify formatting via `format_assertion_failure_message()` rather than a test-mode flag in the macros.
 
 This decision avoids fragmentation of the build-type concept and is consistent with the project's existing use of `NDEBUG` for debug/release discrimination (ADR-020 uses the same convention for log level defaults).
 
@@ -158,9 +158,9 @@ Rejected because the assertion system needs to integrate with the engine's own l
 
 Rejected in favour of `NDEBUG` only. Adding a custom option fragments the build-type concept. The project already uses `NDEBUG` to distinguish debug/release builds for log level defaults (ADR-020). Using `NDEBUG` as the sole discriminator ensures assertions are always-on in debug builds and always-off (or reduced) in release builds without requiring extra CMake configuration or CI matrix expansion.
 
-### 3. `BUDDD_TESTING` involvement in assertion behavior
+### 3. Test-specific define involvement in assertion behavior (historical: `BUDDD_TESTING`)
 
-Rejected. `BUDDD_TESTING` is used to conditionally compile test-only infrastructure (e.g., `MemorySink`). Using it to suppress `std::abort()` in tests would risk shipping code where assertions silently fail to abort. Instead, `format_assertion_failure_message()` is extracted as a testable helper, and tests never invoke `handle_assertion_failure()`. This keeps assertion behaviour cleanly governed by `NDEBUG` alone.
+Rejected. A test-specific define (historically `BUDDD_TESTING`, since removed) must not control assertion behaviour. Using such a define to suppress `std::abort()` in tests would risk shipping code where assertions silently fail to abort. Instead, `format_assertion_failure_message()` is extracted as a testable helper, and tests never invoke `handle_assertion_failure()`. This keeps assertion behaviour cleanly governed by `NDEBUG` alone.
 
 ### 4. `abort()` with custom signal handler for graceful shutdown
 
@@ -215,7 +215,7 @@ Rejected because the behaviour matrix (debug vs release, always-evaluate vs. com
 
 - `src/engine/debug/assert.h` MUST declare the five assertion macros with the `do { } while(false)` wrapper and the `NDEBUG`-based behaviour matrix documented above.
 - `src/engine/debug/debug_break.h` MUST use `__builtin_trap()` on GCC/Clang and `__debugbreak()` on MSVC, guarded by `#ifndef NDEBUG`.
-- `src/engine/debug/assert.h` MUST NOT use `BUDDD_TESTING` to control assertion behaviour.
+- `src/engine/debug/assert.h` MUST NOT use any test-specific define to control assertion behaviour.
 - All assertion macros MUST hardcode the `"Assert"` tag — no per-file `BUDDD_LOG_TAG` declaration required.
 - `src/engine/log/log.h` MUST add `LogLevel::Fatal` after `LogLevel::Error`.
 - `src/engine/log/log.h` MUST add `BUDDD_LOG_FATAL` and `BUDDD_LOG_TAGGED_FATAL` macros.

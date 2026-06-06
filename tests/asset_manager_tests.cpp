@@ -308,8 +308,8 @@ TEST_CASE("Shader deduplication: two materials share ShaderProgram", "[asset][he
     auto mat2 = assets->create<MaterialAsset>("materials/test_material_same_shaders");
     REQUIRE(mat2.has_value());
 
-    // Verify deduplication via testing_shader_programs() accessor
-    const auto& programs = assets->testing_shader_programs();
+    // Verify deduplication via shader_programs() accessor
+    const auto& programs = assets->shader_programs();
     REQUIRE(programs.size() == 1);
 
     // The single ShaderProgram should be valid
@@ -447,7 +447,7 @@ TEST_CASE("Hot-reload pipeline: texture source change", "[asset][headless]") {
     // matching the format the FileWatcher produces:
     // "textures/test_image.png"
     std::string source_path = "textures/test_image.png";
-    assets->testing_inject_file_event({source_path, FileEventType::Modified});
+    assets->reload(source_path);
 
     // Poll to process the event
     assets->poll_file_events();
@@ -471,24 +471,24 @@ TEST_CASE("Shader recompilation failure retains old program", "[asset][headless]
     REQUIRE(mat.has_value());
 
     // Record the old generation counter
-    const auto& programs_before = assets->testing_shader_programs();
+    const auto& programs_before = assets->shader_programs();
     REQUIRE(programs_before.size() == 1);
-    auto old_gen = programs_before.begin()->second->testing_handle();
+    auto old_gen = programs_before.begin()->second->handle();
 
     // Inject a synthetic FileEvent for a shader file that would fail
     // The compile_error.vert contains #error which triggers simulated failure
     // Note: the dependency map only tracks test.vert, not compile_error.vert
     // So this test verifies that a missing shader source retains the old program
     auto shader_path = project_root() + "/tests/assets/shaders/compile_error.vert";
-    assets->testing_inject_file_event({shader_path, FileEventType::Modified});
+    assets->reload(shader_path);
     assets->poll_file_events();
 
     // The old program should still be in the map
-    const auto& programs_after = assets->testing_shader_programs();
+    const auto& programs_after = assets->shader_programs();
     REQUIRE(programs_after.size() == 1);
 
     // The generation should be the same since the failed file isn't a dependency
-    auto new_gen = programs_after.begin()->second->testing_handle();
+    auto new_gen = programs_after.begin()->second->handle();
     REQUIRE(new_gen == old_gen);
 }
 
@@ -503,7 +503,7 @@ TEST_CASE("Dependency map tracks texture source path", "[asset][headless]") {
     auto tex = assets->create<TextureAsset>("textures/test_texture");
     REQUIRE(tex.has_value());
 
-    const auto& deps = assets->get_dependency_map();
+    const auto& deps = assets->dependency_map();
     auto dependencies = deps.get_dependencies("textures/test_texture");
     REQUIRE(dependencies.size() >= 2); // yaml path + source path
 
@@ -529,7 +529,7 @@ TEST_CASE("Dependency map tracks material YAML + shader paths", "[asset][headles
     auto mat = assets->create<MaterialAsset>("materials/test_material");
     REQUIRE(mat.has_value());
 
-    const auto& deps = assets->get_dependency_map();
+    const auto& deps = assets->dependency_map();
     auto dependencies = deps.get_dependencies("materials/test_material");
     REQUIRE(dependencies.size() >= 3); // yaml + vert + frag
 
@@ -571,22 +571,22 @@ TEST_CASE("Hot-reload pipeline: shader source change triggers recompile", "[asse
     REQUIRE(mat.has_value());
 
     // Record the old generation counter from the ShaderProgram
-    const auto& programs_before = assets->testing_shader_programs();
+    const auto& programs_before = assets->shader_programs();
     REQUIRE(programs_before.size() == 1);
-    auto old_gen = programs_before.begin()->second->testing_handle();
+    auto old_gen = programs_before.begin()->second->handle();
 
     // Inject a synthetic FileEvent for the shader source file.
     // The dependency map stores paths relative to base_path_ (tests/assets/),
     // matching the format the FileWatcher produces:
     // "shaders/test.vert"
     std::string vert_path = "shaders/test.vert";
-    assets->testing_inject_file_event({vert_path, FileEventType::Modified});
+    assets->reload(vert_path);
     assets->poll_file_events();
 
     // Verify the ShaderProgram's generation changed
-    const auto& programs_after = assets->testing_shader_programs();
+    const auto& programs_after = assets->shader_programs();
     REQUIRE(programs_after.size() == 1);
-    auto new_gen = programs_after.begin()->second->testing_handle();
+    auto new_gen = programs_after.begin()->second->handle();
     REQUIRE(new_gen != old_gen);
 }
 
@@ -608,7 +608,7 @@ TEST_CASE("Hot-reload pipeline: YAML change for texture", "[asset][headless]") {
 
     // Inject a FileEvent for the texture's YAML file (relative to base_path_)
     std::string yaml_path = "textures/test_texture.yaml";
-    assets->testing_inject_file_event({yaml_path, FileEventType::Modified});
+    assets->reload(yaml_path);
     assets->poll_file_events();
 
     // Verify no crash and texture is still the same object with valid data
@@ -640,7 +640,7 @@ TEST_CASE("Hot-reload pipeline: YAML change for material updates bindings", "[as
 
     // Inject a FileEvent for the material's YAML file (relative to base_path_)
     std::string yaml_path = "materials/test_material.yaml";
-    assets->testing_inject_file_event({yaml_path, FileEventType::Modified});
+    assets->reload(yaml_path);
     assets->poll_file_events();
 
     // Verify no crash and texture is still bound

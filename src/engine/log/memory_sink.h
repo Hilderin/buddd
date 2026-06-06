@@ -4,13 +4,11 @@
 
 #include <vector>
 
-#ifdef BUDDD_TESTING
-
 namespace buddd::log {
 
-/// Memory sink that accumulates log messages in a vector for test assertions.
-/// Only compiled when BUDDD_TESTING is defined.
-/// Not thread-safe (test-only, single-threaded test environment).
+/// Memory sink that accumulates log messages in a vector for test assertions,
+/// diagnostics, or any use case requiring in-process log capture.
+/// Not thread-safe.
 class MemorySink : public Sink {
 public:
     void write(const LogMessage& message) override { messages_.push_back(message); }
@@ -21,5 +19,3 @@ private:
 };
 
 } // namespace buddd::log
-
-#endif // BUDDD_TESTING

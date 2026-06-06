@@ -27,8 +27,6 @@ public:
     auto replace_handle(uint32_t new_handle) -> void override;
     auto release_handle() noexcept -> uint32_t override;
 
-    auto testing_handle() const -> uint32_t override { return static_cast<uint32_t>(generation_); }
-
     /// Returns the vertex shader source string.
     auto vs_source() const noexcept -> const std::string& override { return vs_source_; }
 

@@ -76,7 +76,7 @@
       "enabled": true,
       "environment": {
         "WIKI_INCLUDE": "docs/wiki:README.md",
-        "WIKI_INDEX": ".wiki-index/wiki.sqlite",
+        "WIKI_DATA_DIR": ".wiki-index",
         "WIKI_WATCH": "true",
         "WIKI_REINDEX_ON_START": "true",
         "WIKI_PORT": "8767",

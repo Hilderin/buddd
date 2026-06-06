@@ -230,9 +230,9 @@ Format: `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` — ISO 8601 timestamp pre
 
 Each message is flushed immediately. Messages longer than 32 KB are truncated before dispatch.
 
-### Memory sink (test only)
+### Memory sink (always compiled)
 
-Compiled only in test builds (`#ifdef BUDDD_TESTING`). Accumulates messages in a `std::vector<LogMessage>` for unit test assertions. Used via the `ScopedMemoryLogger` RAII helper in `tests/log_helpers.h`.
+Always compiled. Accumulates messages in a `std::vector<LogMessage>` for unit test assertions and diagnostic use. Used via the `ScopedMemoryLogger` RAII helper in `tests/log_helpers.h`.
 
 ## Thread safety
 

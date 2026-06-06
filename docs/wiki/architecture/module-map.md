@@ -40,7 +40,7 @@ See [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) for architectural deci
 
 | File | Role |
 |---|---|
-| `log/log.h` | **Public header.** `LogLevel` enum, `LogMessage` struct, `Sink` abstract interface, `LogConfig` struct, `ConsoleSink`, `FileSink` (factory), `MemorySink` (test-only, `#ifdef BUDDD_TESTING`), `Logger` singleton, all `BUDDD_LOG_*` and `BUDDD_LOG_TAGGED_*` macros, `BUDDD_LOG_TAG` declaration macro. This is the sole public entry point. |
+| `log/log.h` | **Public header.** `LogLevel` enum, `LogMessage` struct, `Sink` abstract interface, `LogConfig` struct, `ConsoleSink`, `FileSink` (factory), `MemorySink`, `Logger` singleton, all `BUDDD_LOG_*` and `BUDDD_LOG_TAGGED_*` macros, `BUDDD_LOG_TAG` declaration macro. This is the sole public entry point. |
 | `log/log_filter.h` | **Internal header.** `LogFilter` class — holds global minimum level and per-tag prefix overrides, provides `is_enabled(level, tag) -> bool`. |
 | `log/log_filter.cpp` | LogFilter implementation — tag override matching, prefix-based lookup with last-match-wins semantics. |
 | `log/logger.h` | **Internal header.** `Logger` singleton class declaration — `init(LogConfig)`, `shutdown()`, `reset()`, `instance()`, `log(...)`, `is_enabled(...)`. |
@@ -49,7 +49,7 @@ See [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) for architectural deci
 | `log/console_sink.cpp` | ConsoleSink implementation — `std::fprintf(stderr, ...)`, no timestamp, no colour. |
 | `log/file_sink.h` | `FileSink` class declaration — static factory `FileSink::create(path) -> unique_ptr<FileSink>`. Private constructor. Returns `nullptr` on failure with raw `write(2)` stderr warning. |
 | `log/file_sink.cpp` | FileSink implementation — opens file in append mode (`std::ios::app`), writes `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp, flushed after every write. |
-| `log/memory_sink.h` | `MemorySink` header-only class (inherits `Sink`). Guarded by `#ifdef BUDDD_TESTING`. Stores messages in `std::vector<LogMessage>`, provides `messages()` and `clear()`. |
+| `log/memory_sink.h` | `MemorySink` header-only class (inherits `Sink`). Always compiled. Stores messages in `std::vector<LogMessage>`, provides `messages()` and `clear()`. |
 
 ### Debug submodule (`debug/`)
 

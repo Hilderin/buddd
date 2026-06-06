@@ -37,7 +37,7 @@ This header includes `debug/debug_break.h` and `log/log.h` automatically — no 
 
 ## Behaviour matrix
 
-All assertion behaviour is governed solely by `NDEBUG` — no additional CMake flags or `BUDDD_TESTING` involvement.
+All assertion behaviour is governed solely by `NDEBUG` — no additional CMake flags are involved.
 
 | Macro | Debug (`NDEBUG` not defined) | Release (`NDEBUG` defined) |
 |---|---|---|

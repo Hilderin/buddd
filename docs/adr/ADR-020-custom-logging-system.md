@@ -53,7 +53,7 @@ An abstract `Sink` interface with a single `write(const LogMessage&)` method sup
 
 - **ConsoleSink** — Always present, writes `[LEVEL] [Tag] message\n` to stderr. No timestamp, no color.
 - **FileSink** — Created on demand via a static factory `FileSink::create(path)`. Returns `nullptr` on failure (writes a raw warning to stderr via POSIX `write(2)`, since the logger may not be initialised yet). Uses append mode (`std::ios::app`). Output format: `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp.
-- **MemorySink** — Header-only, compiled only in test builds (`#ifdef BUDDD_TESTING`). Accumulates messages in a `std::vector<LogMessage>` for test assertions. A `ScopedMemoryLogger` RAII helper automates its lifecycle.
+- **MemorySink** — Header-only, always compiled. Accumulates messages in a `std::vector<LogMessage>` for unit test assertions and diagnostic use. A `ScopedMemoryLogger` RAII helper automates its lifecycle.
 
 ### 6. Thread safety via std::mutex
 

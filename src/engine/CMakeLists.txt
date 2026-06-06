@@ -60,9 +60,6 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 
 add_library(buddd_engine STATIC ${ENGINE_SOURCES})
 
-# Enable test-only accessors (BUDDD_TESTING guards)
-target_compile_definitions(buddd_engine PRIVATE BUDDD_TESTING)
-
 # Propagate display backend flag so the engine library uses the right ShaderProgram code path
 if(BUDDD_HAS_DISPLAY)
     target_compile_definitions(buddd_engine PRIVATE BUDDD_HAS_DISPLAY)

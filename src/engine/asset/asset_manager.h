@@ -57,13 +57,26 @@ public:
     auto poll_file_events() -> void;
     auto set_file_watcher_enabled(bool enabled) -> void;
 
-    // Test-only accessors (under BUDDD_TESTING only, never in release builds).
-#ifdef BUDDD_TESTING
-    auto get_dependency_map() const -> const DependencyMap&;
-    auto testing_shader_programs() const noexcept
+    /// Returns a const reference to the internal dependency map.
+    /// Useful for diagnostics, tooling, crash reporting, and editor features.
+    [[nodiscard]] auto dependency_map() const noexcept -> const DependencyMap&;
+
+    /// Returns a const reference to the shader program deduplication map.
+    /// Useful for cache introspection, diagnostics, and tooling.
+    [[nodiscard]] auto shader_programs() const noexcept
         -> const std::unordered_map<ShaderProgramKey, std::shared_ptr<ShaderProgram>>&;
-    void testing_inject_file_event(const FileEvent& event);
-#endif
+
+    /// Trigger a hot-reload for the asset(s) that depend on the given file path.
+    /// The path is relative to the asset base path and should match the format
+    /// used by the FileWatcher (e.g. "textures/brick.png" or "materials/wall.yaml").
+    ///
+    /// The method determines from the file extension whether it is a YAML change
+    /// or a source file change (same logic as poll_file_events()), then dispatches
+    /// to the appropriate internal handler.
+    ///
+    /// This is the programmatic equivalent of a file system change notification.
+    /// Safe to call even when the FileWatcher is disabled or a NullFileWatcher is in use.
+    auto reload(std::string_view path) -> void;
 
     AssetManager(const AssetManager&) = delete;
     auto operator=(const AssetManager&) -> AssetManager& = delete;
@@ -97,6 +110,15 @@ private:
     // Hot-reload handlers.
     auto handle_yaml_change(const std::string& changed_path, const std::string& asset_id) -> void;
     auto handle_source_change(const std::string& changed_path, const std::string& asset_id) -> void;
+
+    /// Dispatches a file change event to the appropriate internal handler
+    /// based on the file extension. Routes `.yaml` files to `handle_yaml_change`
+    /// and all other files to `handle_source_change`.
+    ///
+    /// Called internally by both:
+    ///   - `poll_file_events()`   (with the real FileEventType from FileWatcher)
+    ///   - `reload(path)`         (with FileEventType::Modified)
+    auto dispatch_file_event(const std::string& path, FileEventType type) -> void;
 
     RenderDevice& device_;
     std::string base_path_;

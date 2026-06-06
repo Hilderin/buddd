@@ -732,12 +732,8 @@ TEST_CASE("Hot-reload synthetic FileEvent triggers model reload", "[model][headl
     REQUIRE(model_asset != nullptr);
     REQUIRE(model_asset->root_node().children.size() >= 1);
 
-    // Inject a synthetic FileEvent for the glTF source file
-    // The dependency map tracks the source path (relative to base_path_)
-    FileEvent event;
-    event.path = "models/box/BoxTextured.gltf";
-    event.type = FileEventType::Modified;
-    assets->testing_inject_file_event(event);
+    // Trigger a reload for the glTF source file
+    assets->reload("models/box/BoxTextured.gltf");
 
     // After the event, the root should still be valid (model replaced in-place)
     // It may have the same or different structure, but should not crash
