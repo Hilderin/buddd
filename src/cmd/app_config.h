@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.h"
+#include "log/log.h"
 
 #include <string>
 #include <vector>
@@ -33,5 +34,12 @@ struct RunningArgs {
 /// Returns RunningArgs on success, or an error on invalid input.
 [[nodiscard]] auto parse_running_args(int argc, char* argv[], int start)
     -> engine::Result<RunningArgs>;
+
+/// Parse --log-level, --log-file, --log-filter from argv starting at `start`.
+/// Returns LogConfig on success, or an error on invalid values.
+/// --log-filter format: pattern=level (level is optional, defaults to global_level).
+/// Invalid level strings return InvalidArgument error.
+[[nodiscard]] auto parse_logging_args(int argc, char* argv[], int start)
+    -> engine::Result<buddd::log::LogConfig>;
 
 } // namespace buddd::cmd

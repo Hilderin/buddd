@@ -1,5 +1,7 @@
 #include "app.h"
 #include "app_config.h"
+#include "log/log.h"
+#include "log/console_sink.h"
 #include "apps/asset_demo_app.h"
 #include "apps/hot_reload_app.h"
 #include "apps/hot_reload_gltf_app.h"
@@ -26,6 +28,19 @@ namespace be = buddd::engine;
 
 auto main(int argc, char* argv[]) -> int {
     if (argc <= 0) return EXIT_FAILURE;  // defensive
+
+    // Parse logging flags at the very top, before any other logic.
+    // This ensures the logger is ready before any subsystem initialisation.
+    {
+        auto log_config = bc::parse_logging_args(argc, argv, 1);
+        if (!log_config) {
+            std::fprintf(stderr, "Error: %s\n", be::to_string(log_config.error()).c_str());
+            return EXIT_FAILURE;
+        }
+        // Always add a ConsoleSink (default console output)
+        log_config->sinks.push_back(std::make_shared<buddd::log::ConsoleSink>());
+        buddd::log::Logger::init(std::move(*log_config));
+    }
 
     // No positional argument -> default to run with no scene
     if (argc < 2 || argv[1] == nullptr) {

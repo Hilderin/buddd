@@ -24,7 +24,10 @@ endif()
 # Enable BUDDD_TESTING for test-only accessors
 target_compile_definitions(buddd_tests PRIVATE BUDDD_TESTING)
 
-target_include_directories(buddd_tests PRIVATE ${CMAKE_SOURCE_DIR}/src/cmd)
+target_include_directories(buddd_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/cmd
+    ${CMAKE_SOURCE_DIR}/src/engine
+)
 
 target_link_libraries(buddd_tests PRIVATE
     buddd_engine

@@ -60,6 +60,29 @@
 | Unknown command | stderr | `"Unknown command: '<cmd>'\n\n"` + usage |
 | Error (parse, setup, etc.) | stderr | `"Error: <description>\n"` |
 
+### Structured logging (new system as of SPEC-021)
+
+Engine internal logging now uses the structured logger (`src/engine/log/`) instead of raw `std::cerr`/`printf`. The logger is a C++26 lightweight framework with five levels, hierarchical source tags, mutex-based thread safety, and multiple sinks.
+
+**Console format** (stderr): `[LEVEL] [Tag] message\n`
+**File format** (with `--log-file`): `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n`
+
+**New CLI flags** (available on all `buddd run <scene>` invocations):
+
+| Flag | Description |
+|------|-------------|
+| `--log-level=<level>` | Set global minimum log level (`trace`, `debug`, `info`, `warn`, `error`). Overrides build-type default. |
+| `--log-file=<path>` | Enable file sink; output written in append mode with ISO 8601 timestamps. |
+| `--log-filter=<pattern>=<level>` | Override level for tags matching a prefix (repeatable). E.g., `--log-filter=Asset:ModelLoader=trace`. |
+
+**Examples:**
+```bash
+buddd run phong --log-level=debug --log-file=/tmp/phong.log
+buddd run gltf-demo --log-level=info --log-filter=Asset:ModelLoader=trace
+```
+
+See the full API reference in [docs/wiki/domain/logging.md](/docs/wiki/domain/logging.md) or the specification in [SPEC-021](/.specs/sprint-2026-06/logging-system/spec.md).
+
 ### Exit codes
 
 | Condition | Code |

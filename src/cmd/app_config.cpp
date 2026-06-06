@@ -1,8 +1,11 @@
 #include "app_config.h"
+#include "log/log.h"
+#include "log/file_sink.h"
 
 #include <cstdlib>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace be = buddd::engine;
 
@@ -89,4 +92,80 @@ auto buddd::cmd::parse_running_args(int argc, char* argv[], int start)
     }
 
     return args;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: parse a level string into LogLevel
+// ---------------------------------------------------------------------------
+static auto parse_level(std::string_view s) -> std::optional<buddd::log::LogLevel> {
+    if (s == "trace") return buddd::log::LogLevel::Trace;
+    if (s == "debug") return buddd::log::LogLevel::Debug;
+    if (s == "info")  return buddd::log::LogLevel::Info;
+    if (s == "warn")  return buddd::log::LogLevel::Warn;
+    if (s == "error") return buddd::log::LogLevel::Error;
+    return std::nullopt;
+}
+
+// ---------------------------------------------------------------------------
+// parse_logging_args() — parse --log-level, --log-file, --log-filter
+// ---------------------------------------------------------------------------
+auto buddd::cmd::parse_logging_args(int argc, char* argv[], int start)
+    -> engine::Result<buddd::log::LogConfig>
+{
+    buddd::log::LogConfig config;
+
+    for (int i = start; i < argc; ++i) {
+        std::string_view arg{argv[i]};
+
+        // --log-level=<level>
+        if (arg.substr(0, 12) == "--log-level=") {
+            std::string_view level_str = arg.substr(12);
+            auto level = parse_level(level_str);
+            if (!level) {
+                std::string msg = "Error: invalid --log-level value '";
+                msg += level_str;
+                msg += "'. Expected one of: trace, debug, info, warn, error";
+                return be::make_error(
+                    be::Error::Category::InvalidArgument, std::move(msg));
+            }
+            config.global_min_level = *level;
+        }
+        // --log-file=<path>
+        else if (arg.substr(0, 11) == "--log-file=") {
+            std::string_view path_str = arg.substr(11);
+            auto sink = buddd::log::FileSink::create(path_str);
+            if (sink) {
+                config.sinks.push_back(std::move(sink));
+            }
+            // If sink is null, FileSink::create already warned on stderr
+        }
+        // --log-filter=<pattern>=<level>
+        else if (arg.substr(0, 13) == "--log-filter=") {
+            std::string_view value = arg.substr(13);
+
+            // Split on the LAST '=' to handle colons in tag prefixes
+            auto eq_pos = value.rfind('=');
+            if (eq_pos == std::string_view::npos || eq_pos == 0) {
+                // No level specified — pattern only, use global level (no-op effectively)
+                std::string pattern(value);
+                config.tag_overrides.emplace_back(std::move(pattern), config.global_min_level);
+            } else {
+                std::string_view pattern_str = value.substr(0, eq_pos);
+                std::string_view level_str = value.substr(eq_pos + 1);
+
+                auto level = parse_level(level_str);
+                if (!level) {
+                    std::string msg = "Error: invalid level '";
+                    msg += level_str;
+                    msg += "' in --log-filter, expected one of: trace, debug, info, warn, error";
+                    return be::make_error(
+                        be::Error::Category::InvalidArgument, std::move(msg));
+                }
+                config.tag_overrides.emplace_back(std::string(pattern_str), *level);
+            }
+        }
+        // Unknown flags are silently ignored (existing convention)
+    }
+
+    return config;
 }

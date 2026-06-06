@@ -30,6 +30,27 @@ See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) for th
 |---|---|
 | `error.h` | Public header: defines `Error` struct (with `Category` enum: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `TextureCreationFailed`, `IoFailed`, `InputInitFailed`, `Unsupported`, `Unknown`), `int code`, `std::string message`, `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
 
+### Log submodule (`log/`)
+
+All types in namespace `buddd::log`. The logging system is a lightweight, self-contained structured logging framework with five log levels (`Trace`, `Debug`, `Info`, `Warn`, `Error`), a macro-based C++ API (`BUDDD_LOG_INFO`, etc.), mandatory per-file source tags via `BUDDD_LOG_TAG("Module:Sub")`, two sinks (console stderr and optional file), thread safety via `std::mutex`, and `std::format`-style formatting. Zero external dependencies beyond the C++26 standard library (plus POSIX `write(2)` for pre-init stderr warnings in `FileSink`).
+
+The logger is fully decoupled from `buddd::engine::Error`/`Result<T>`. CLI flags (`--log-level`, `--log-file`, `--log-filter`) are parsed in `src/cmd/app_config.cpp` before startup and passed to `Logger::init(LogConfig)`.
+
+See [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) for architectural decisions.
+
+| File | Role |
+|---|---|
+| `log/log.h` | **Public header.** `LogLevel` enum, `LogMessage` struct, `Sink` abstract interface, `LogConfig` struct, `ConsoleSink`, `FileSink` (factory), `MemorySink` (test-only, `#ifdef BUDDD_TESTING`), `Logger` singleton, all `BUDDD_LOG_*` and `BUDDD_LOG_TAGGED_*` macros, `BUDDD_LOG_TAG` declaration macro. This is the sole public entry point. |
+| `log/log_filter.h` | **Internal header.** `LogFilter` class — holds global minimum level and per-tag prefix overrides, provides `is_enabled(level, tag) -> bool`. |
+| `log/log_filter.cpp` | LogFilter implementation — tag override matching, prefix-based lookup with last-match-wins semantics. |
+| `log/logger.h` | **Internal header.** `Logger` singleton class declaration — `init(LogConfig)`, `shutdown()`, `reset()`, `instance()`, `log(...)`, `is_enabled(...)`. |
+| `log/logger.cpp` | Logger implementation — pimpl pattern (`unique_ptr<Impl>` hiding mutex, filter, sink list, lifecycle flags), `init()`/`shutdown()`/`reset()` lifecycle, mutex-guarded `write_to_sinks()`, tag truncation at 255 chars, message truncation at 32 KB. |
+| `log/console_sink.h` | `ConsoleSink` class declaration — writes `[LEVEL] [Tag] message\n` to stderr. |
+| `log/console_sink.cpp` | ConsoleSink implementation — `std::fprintf(stderr, ...)`, no timestamp, no colour. |
+| `log/file_sink.h` | `FileSink` class declaration — static factory `FileSink::create(path) -> unique_ptr<FileSink>`. Private constructor. Returns `nullptr` on failure with raw `write(2)` stderr warning. |
+| `log/file_sink.cpp` | FileSink implementation — opens file in append mode (`std::ios::app`), writes `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp, flushed after every write. |
+| `log/memory_sink.h` | `MemorySink` header-only class (inherits `Sink`). Guarded by `#ifdef BUDDD_TESTING`. Stores messages in `std::vector<LogMessage>`, provides `messages()` and `clear()`. |
+
 ### Math submodule (`math/`)
 
 All types in namespace `buddd::engine::math`. The math module wraps GLM (`glm`) with zero-overhead C++ wrapper types — header-only (except `Camera`). GLM headers are included only inside `src/engine/math/`.
