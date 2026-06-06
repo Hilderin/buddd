@@ -30,7 +30,7 @@ The implementation contract follows the template at `docs/templates/implementati
 
 1. **Load the template** at `docs/templates/implementation-contract-template.md` — it defines the required structure.
 2. **Read the accepted spec** at `SPEC_DIR/spec.md` — understand every acceptance criterion, edge case, and user story.
-3. **Search the wiki** — Use wiki search tools (`wiki_serve_wiki_search`, `wiki_serve_wiki_search_exact`, `wiki_serve_wiki_read_section`) to find relevant architecture context, dependency maps, module boundaries, data flow, and existing conventions.
+3. **Search the wiki** — Use wiki search tools (`wiki_wiki_search`, `wiki_wiki_search_exact`, `wiki_wiki_read_section`) to find relevant architecture context, dependency maps, module boundaries, data flow, and existing conventions.
 4. **Review existing ADRs** in `docs/adr/` — identify any that constrain the implementation approach.
 5. **Review existing contracts** in `.specs/` — avoid contradictions with previously accepted contracts.
 6. **Check the spec-critic review** at `SPEC_DIR/spec-critic.md` — confirm the verdict allows proceeding before writing the contract. If it does not, stop and escalate.

@@ -69,7 +69,7 @@
     }
   },
   "mcp": {
-    "wiki-serve": {
+    "wiki": {
       "type": "local",
       "command": ["uv", "run", "--project", "../wiki-serve", "wiki-serve", "bridge"],
       "workdir": ".",
