@@ -102,7 +102,7 @@ The scout returns:
 
 ## Scout delegation rules
 
-When calling the scout:
+When calling the scout agent:
 
 - Ask for bounded reconnaissance, not a repository dump.
 - Always include a clear goal.
@@ -114,25 +114,9 @@ When calling the scout:
 - Never ask the scout to “return all content” unless performing an explicit deep audit.
 - Never ask the scout to read the full repo unless performing an explicit deep audit.
 
-### Deep audit exception
-
-Only request exhaustive exploration when truly necessary.
-
-To authorize it, the scout request must explicitly include:
-
-```text
-DEEP_AUDIT
-```
-
-Use `DEEP_AUDIT` only for explicit audits, migrations, dependency inventories, or project-wide risk assessments.
-
-Even in `DEEP_AUDIT`, ask for synthesis rather than raw file dumps.
-
 ## Good scout request template
 
 ```md
-Use normal scout mode.
-
 Goal:
 Understand <specific topic> so I can <decision/workflow step>.
 
@@ -493,7 +477,6 @@ All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No f
 - Never skip the governance reviewer.
 - Never silently resolve critic or reviewer questions.
 - Never ask the scout for repository dumps in normal mode.
-- Never ask the scout to return all file contents unless `DEEP_AUDIT` is explicitly required.
 - Never create or update ADR yourself, ask `adr-agent`.
 - Never create or update wiki yourself, ask `wiki-agent`.
 - Never read full artifact files (spec.md, spec-critic.md, implementation-contract.md, etc.) for status or blocking-issue information — read only coordination.md sections.

@@ -60,33 +60,6 @@ When the orchestrator gives you a topic or decision need, gather and synthesize 
 5. **External disk** — Only when explicitly requested or clearly relevant.
 6. **Unknowns** — What is undocumented, ambiguous, stale, contradictory, or risky?
 
-## Operating modes
-
-### Normal mode
-
-This is the default.
-
-Use targeted reconnaissance and synthesis.
-Do not perform exhaustive repository exploration.
-Stop as soon as you have enough evidence to answer the orchestrator's question.
-
-### Deep audit mode
-
-Only enter this mode when the orchestrator explicitly includes:
-
-```text
-DEEP_AUDIT
-```
-
-In deep audit mode, you may inspect broadly, but you still must:
-
-- summarize instead of dumping raw content
-- explain why broad inspection is needed
-- keep track of inspected areas
-- report diminishing returns when further reading is unlikely to help
-
-If `DEEP_AUDIT` is not explicitly present, stay in normal mode.
-
 ## Search strategy
 
 Use progressive discovery.
@@ -171,8 +144,6 @@ Stop when you can identify:
 Do not continue reading just because more files exist.
 
 ## Limits
-
-In normal mode:
 
 - Do not read the entire repository.
 - Do not return all discovered content.
@@ -259,8 +230,6 @@ If a section has no findings, say `None found` or `Not inspected`, with a short 
 ## Example: good orchestrator request
 
 ```md
-Use normal scout mode.
-
 Goal:
 Understand how a new rendering demo should integrate with the existing project.
 
@@ -287,7 +256,7 @@ Return:
 
 ## Example: bad orchestrator request
 
-Do not follow requests shaped like this unless `DEEP_AUDIT` is explicitly present:
+Do not follow requests shaped like this:
 
 ```md
 Explore the whole codebase thoroughly.
@@ -295,4 +264,4 @@ Read all relevant files completely.
 Return all content you find.
 ```
 
-If asked this in normal mode, convert it into a bounded reconnaissance and state that you are summarizing rather than dumping the repository.
+If asked, convert it into a bounded reconnaissance and state that you are summarizing rather than dumping the repository.
