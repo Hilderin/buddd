@@ -17,8 +17,8 @@ main(int argc, char* argv[])
       ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
       ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
       │
-      └── Unknown command ──► fprintf(stderr, "Unknown command: '%s'\n", argv[1])
-                              fwrite(k_usage_text, stderr)
+      └── Unknown command ──► BUDDD_LOG_ERROR("Unknown command: '{}'", argv[1])
+                              fwrite(k_usage_text, stderr)  // usage text remains as fprintf(stderr)
                               return EXIT_FAILURE
 ```
 
@@ -33,17 +33,19 @@ For `run`, the scene dispatch is:
 ├── argv[2] == "free-camera"               → FreeCameraApp
 ├── argv[2] == "phong"                     → PhongApp
 ├── argv[2] == "asset-demo"               → AssetDemoApp
-└── Unknown scene                          → fprintf(stderr, "Unknown scene: ..."), exit 1
+└── Unknown scene                          → BUDDD_LOG_ERROR("Unknown scene: '{}'", scene_name)
+                                             fwrite(scene_usage, stderr)  // usage text remains as fprintf(stderr)
+                                             exit 1
 ```
 
 Output:
 
 | Invocation | stdout | stderr |
 |---|---|---|
-| `buddd` / `buddd run` | — | `"Window opened: 1024x768"`, then `"Window closed, shutting down."` (via `std::cerr`) |
+| `buddd` / `buddd run` | — | `"Window opened: 1024x768"`, then `"Window closed, shutting down."` (via `BUDDD_LOG_INFO`) |
 | `buddd run <scene>` | — | Scene-specific messages: frame-limited scenes print `"Scene started: <name> (N frames)"` + `"Scene complete: <name> (N frames rendered)"`. Interactive scenes print `"Scene started: <name> (interactive)"` and `"Scene complete: <name> (interactive)"` on Escape. On window close: `"Scene aborted by user (frame N)"`. If unknown scene: `"Unknown scene: '<name>'"` + usage. |
-| `buddd run asset-demo` | — | `"Scene started: asset-demo (120 frames)"`, `"Scene complete: asset-demo (120 frames rendered)"` (via `std::cerr`) |
-| `buddd run <scene> --capture N:path` | `"Captured: <path>"` | Capture messages merged into scene output |
+| `buddd run asset-demo` | — | `"Scene started: asset-demo (120 frames)"`, `"Scene complete: asset-demo (120 frames rendered)"` (via `BUDDD_LOG_INFO`) |
+| `buddd run <scene> --capture N:path` | — | `"Captured: <path>"` (via `BUDDD_LOG_INFO` on stderr, no longer on stdout). Capture messages merged into scene output |
 | `buddd version` | `"buddd 0.1.0"` | — |
 | `buddd help` | Usage text (3 commands: `run`, `version`, `help`) | — |
 | Unknown (including `demo`, `capture`, `test`) | — | `"Unknown command: '<cmd>'"` + usage text |

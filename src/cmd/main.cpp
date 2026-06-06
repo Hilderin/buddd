@@ -21,10 +21,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <string>
 #include <string_view>
 
 namespace bc = buddd::cmd;
 namespace be = buddd::engine;
+
+BUDDD_LOG_TAG("App");
 
 auto main(int argc, char* argv[]) -> int {
     if (argc <= 0) return EXIT_FAILURE;  // defensive
@@ -47,7 +50,7 @@ auto main(int argc, char* argv[]) -> int {
         bc::app::RunApp run_app_instance;
         auto args = bc::parse_running_args(argc, argv, 1);
         if (!args) {
-            std::fprintf(stderr, "Error: %s\n", be::to_string(args.error()).c_str());
+            BUDDD_LOG_ERROR("Error: {}", be::to_string(args.error()));
             return EXIT_FAILURE;
         }
         return bc::run_app(run_app_instance, *args);
@@ -61,7 +64,7 @@ auto main(int argc, char* argv[]) -> int {
         return bc::HelpCommand{}.run(argc, argv);
 
     if (cmd != "run") {
-        std::fprintf(stderr, "Unknown command: '%s'\n\n", argv[1]);
+        BUDDD_LOG_ERROR("Unknown command: '{}'", argv[1]);
         std::fwrite(bc::k_usage_text.data(), 1, bc::k_usage_text.size(), stderr);
         return EXIT_FAILURE;
     }
@@ -100,7 +103,7 @@ auto main(int argc, char* argv[]) -> int {
         else if (scene == "hot-reload-gltf")
             app = std::make_unique<bc::app::HotReloadGltfApp>();
         else {
-            std::fprintf(stderr, "Unknown scene: '%s'\n\n", argv[2]);
+            BUDDD_LOG_ERROR("Unknown scene: '{}'", argv[2]);
             std::fprintf(stderr,
                 "Usage: buddd run [<scene>] [--frame N] [--capture N:path]...\n"
                 "\n"
@@ -130,7 +133,7 @@ auto main(int argc, char* argv[]) -> int {
     // Parse running arguments (--frame, --capture)
     auto args = bc::parse_running_args(argc, argv, flags_start);
     if (!args) {
-        std::fprintf(stderr, "Error: %s\n", be::to_string(args.error()).c_str());
+        BUDDD_LOG_ERROR("Error: {}", be::to_string(args.error()));
         return EXIT_FAILURE;
     }
 
@@ -149,10 +152,12 @@ auto main(int argc, char* argv[]) -> int {
             break;
         }
         if (has_unexpected) {
-            std::fprintf(stderr, "Warning: unexpected arguments after '%s':", argv[flags_start - 1]);
-            for (int i = flags_start; i < argc; ++i)
-                std::fprintf(stderr, " %s", argv[i]);
-            std::fprintf(stderr, "\n");
+            std::string unexpected;
+            for (int i = flags_start; i < argc; ++i) {
+                unexpected += ' ';
+                unexpected += argv[i];
+            }
+            BUDDD_LOG_WARN("Warning: unexpected arguments after '{}':{}", argv[flags_start - 1], unexpected);
         }
     }
 

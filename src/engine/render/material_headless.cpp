@@ -1,8 +1,11 @@
 #include "material_headless.h"
 #include "render/glsl_util.h"
 
-#include <iostream>
 #include <optional>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:Headless");
 
 namespace buddd::engine {
 
@@ -19,15 +22,13 @@ auto MaterialHeadless::set_uniform(std::string_view name, float value) -> Result
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
     known_uniforms_.insert(norm_key);
     uniform_values_[exact_key] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=float)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform set: {} (type=float)", name);
     return {};
 }
 
@@ -35,15 +36,13 @@ auto MaterialHeadless::set_uniform(std::string_view name, int32_t value) -> Resu
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
     known_uniforms_.insert(norm_key);
     uniform_values_[exact_key] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=int)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform set: {} (type=int)", name);
     return {};
 }
 
@@ -51,15 +50,13 @@ auto MaterialHeadless::set_uniform(std::string_view name, bool value) -> Result<
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
     known_uniforms_.insert(norm_key);
     uniform_values_[exact_key] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=bool)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform set: {} (type=bool)", name);
     return {};
 }
 
@@ -67,15 +64,13 @@ auto MaterialHeadless::set_uniform(std::string_view name, const math::Vec3& valu
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
     known_uniforms_.insert(norm_key);
     uniform_values_[exact_key] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=Vec3)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform set: {} (type=Vec3)", name);
     return {};
 }
 
@@ -83,15 +78,13 @@ auto MaterialHeadless::set_uniform(std::string_view name, const math::Vec4& valu
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
     known_uniforms_.insert(norm_key);
     uniform_values_[exact_key] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=Vec4)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform set: {} (type=Vec4)", name);
     return {};
 }
 
@@ -99,15 +92,13 @@ auto MaterialHeadless::set_uniform(std::string_view name, const math::Mat4& valu
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
     known_uniforms_.insert(norm_key);
     uniform_values_[exact_key] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform set: " << name << " (type=Mat4)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform set: {} (type=Mat4)", name);
     return {};
 }
 
@@ -120,16 +111,14 @@ auto MaterialHeadless::set_texture(std::string_view name, std::shared_ptr<Textur
     auto exact_key = std::string(name);
     auto norm_key = detail::normalize_uniform_name(name);
     if (known_uniforms_.count(norm_key) == 0 && uniform_values_.count(exact_key) == 0) {
-        std::cerr << "Uniform not found: " << name << "\n";
+        BUDDD_LOG_ERROR("Uniform not found: {}", name);
         return make_error(Error::Category::UniformNotFound,
             "Uniform '" + std::string(name) + "' not found");
     }
 
     known_uniforms_.insert(norm_key);
     texture_values_[exact_key] = std::move(texture);
-#ifndef NDEBUG
-    std::cerr << "Texture set (Headless): " << name << "\n";
-#endif
+    BUDDD_LOG_DEBUG("Texture set (Headless): {}", name);
     return {};
 }
 

@@ -2,8 +2,11 @@
 #include "render/shader_program_opengl.h"
 #include "render/shader_opengl.h"
 
-#include <iostream>
 #include <string>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:OpenGL");
 
 namespace buddd::engine {
 
@@ -51,9 +54,7 @@ auto ShaderProgramOpenGL::create(
     glDeleteShader(vs->handle());
     glDeleteShader(fs->handle());
 
-#ifndef NDEBUG
-    std::cerr << "Shader program linked (OpenGL, id=" << program << ")\n";
-#endif
+    BUDDD_LOG_DEBUG("Shader program linked (OpenGL, id={})", program);
 
     return std::unique_ptr<ShaderProgramOpenGL>(new ShaderProgramOpenGL(program));
 }

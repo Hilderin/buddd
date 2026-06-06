@@ -2,8 +2,11 @@
 #include "render/shader_headless.h"
 
 #include <cctype>
-#include <iostream>
 #include <vector>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:Headless");
 
 namespace buddd::engine {
 
@@ -108,9 +111,7 @@ auto ShaderProgramHeadless::create(
 
     auto gen = next_generation();
 
-#ifndef NDEBUG
-    std::cerr << "Shader program created (Headless, gen=" << gen << ")\n";
-#endif
+    BUDDD_LOG_DEBUG("Shader program created (Headless, gen={})", gen);
 
     return std::unique_ptr<ShaderProgramHeadless>(
         new ShaderProgramHeadless(gen, vs->source(), fs->source()));

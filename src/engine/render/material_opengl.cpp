@@ -2,7 +2,9 @@
 #include "material_opengl.h"
 #include "render/texture_opengl.h"
 
-#include <iostream>
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:OpenGL");
 
 namespace buddd::engine {
 
@@ -66,9 +68,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, float value) -> Result<v
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
     uniform_cache_[std::string(name)] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform cached: " << name << " (type=float)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform cached: {} (type=float)", name);
     return {};
 }
 
@@ -76,9 +76,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, int32_t value) -> Result
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
     uniform_cache_[std::string(name)] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform cached: " << name << " (type=int)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform cached: {} (type=int)", name);
     return {};
 }
 
@@ -86,9 +84,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, bool value) -> Result<vo
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
     uniform_cache_[std::string(name)] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform cached: " << name << " (type=bool)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform cached: {} (type=bool)", name);
     return {};
 }
 
@@ -96,9 +92,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec3& value)
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
     uniform_cache_[std::string(name)] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform cached: " << name << " (type=Vec3)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform cached: {} (type=Vec3)", name);
     return {};
 }
 
@@ -106,9 +100,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec4& value)
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
     uniform_cache_[std::string(name)] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform cached: " << name << " (type=Vec4)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform cached: {} (type=Vec4)", name);
     return {};
 }
 
@@ -116,9 +108,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Mat4& value)
     auto loc = get_uniform_location(name);
     if (!loc) return std::unexpected(loc.error());
     uniform_cache_[std::string(name)] = value;
-#ifndef NDEBUG
-    std::cerr << "Uniform cached: " << name << " (type=Mat4)\n";
-#endif
+    BUDDD_LOG_DEBUG("Uniform cached: {} (type=Mat4)", name);
     return {};
 }
 
@@ -147,9 +137,7 @@ auto MaterialOpenGL::set_texture(std::string_view name, std::shared_ptr<Texture>
     if (!loc) return std::unexpected(loc.error());
 
     texture_map_[std::string(name)] = std::move(texture);
-#ifndef NDEBUG
-    std::cerr << "Texture set: " << name << "\n";
-#endif
+    BUDDD_LOG_DEBUG("Texture set: {}", name);
     return {};
 }
 
@@ -169,9 +157,7 @@ auto MaterialOpenGL::bind() const -> void {
     GLuint prog = active_program();
     if (prog == 0) return;
     glUseProgram(prog);
-#ifndef NDEBUG
-    std::cerr << "Material bind: program " << prog << "\n";
-#endif
+    BUDDD_LOG_DEBUG("Material bind: program {}", prog);
 
     // 2. Apply cached uniforms
     for (const auto& [name, value] : uniform_cache_) {
@@ -198,9 +184,7 @@ auto MaterialOpenGL::bind() const -> void {
         if (loc != -1) {
             glUniform1i(loc, unit);
         }
-#ifndef NDEBUG
-        std::cerr << "Bind texture: " << name << " (unit=" << unit << ")\n";
-#endif
+        BUDDD_LOG_DEBUG("Bind texture: {} (unit={})", name, unit);
     }
 
     // 4. Reset unit counter for next bind() call

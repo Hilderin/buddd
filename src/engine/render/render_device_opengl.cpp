@@ -15,9 +15,12 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <iostream>
 #include <string>
 #include <tuple>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:OpenGL");
 
 namespace buddd::engine {
 
@@ -92,18 +95,15 @@ RenderDeviceOpenGL::RenderDeviceOpenGL(Window& window, SDL_Window* sdl_window, S
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-#ifndef NDEBUG
-    std::cerr << "Depth testing enabled (GL_LESS)\n";
+    BUDDD_LOG_DEBUG("Depth testing enabled (GL_LESS)");
 
     // Check for OpenGL errors after depth state setup (debug builds only).
     // Clear any prior error first, then check.
     glGetError();
     GLenum depth_err = glGetError();
     if (depth_err != GL_NO_ERROR) {
-        std::cerr << "Warning: OpenGL error during depth state setup: "
-                  << depth_err << "\n";
+        BUDDD_LOG_DEBUG("Warning: OpenGL error during depth state setup: {}", depth_err);
     }
-#endif
 }
 
 RenderDeviceOpenGL::~RenderDeviceOpenGL() {
@@ -158,13 +158,11 @@ auto RenderDeviceOpenGL::create_shader(ShaderType type, std::string_view source)
         glGetShaderInfoLog(shader_id, log_length, nullptr, log.data());
         glDeleteShader(shader_id);
 
-        std::cerr << "Shader compilation failed: " << log << "\n";
+        BUDDD_LOG_ERROR("Shader compilation failed: {}", log);
         return make_error(Error::Category::ShaderCompilationFailed, std::move(log));
     }
 
-    std::cerr << "Shader created (type="
-              << (type == ShaderType::Vertex ? "Vertex" : "Fragment")
-              << ")\n";
+    BUDDD_LOG_INFO("Shader created (type={})", (type == ShaderType::Vertex ? "Vertex" : "Fragment"));
 
     return std::unique_ptr<Shader>(new ShaderOpenGL(shader_id, type));
 }
@@ -206,7 +204,7 @@ auto RenderDeviceOpenGL::create_material(
         glGetProgramInfoLog(program, log_length, nullptr, log.data());
         glDeleteProgram(program);
 
-        std::cerr << "Material linking failed: " << log << "\n";
+        BUDDD_LOG_ERROR("Material linking failed: {}", log);
         return make_error(Error::Category::LinkingFailed, std::move(log));
     }
 
@@ -221,7 +219,7 @@ auto RenderDeviceOpenGL::create_material(
         (void)name;
     }
 
-    std::cerr << "Material created\n";
+    BUDDD_LOG_INFO("Material created");
     return std::unique_ptr<Material>(new MaterialOpenGL(program));
 }
 
@@ -231,7 +229,7 @@ auto RenderDeviceOpenGL::create_material(std::shared_ptr<ShaderProgram> program)
     if (!program || !program->is_valid()) {
         return make_error(Error::Category::InvalidArgument, "Invalid ShaderProgram");
     }
-    std::cerr << "Material created (from ShaderProgram)\n";
+    BUDDD_LOG_INFO("Material created (from ShaderProgram)");
     return std::unique_ptr<Material>(new MaterialOpenGL(std::move(program)));
 }
 
@@ -285,8 +283,7 @@ auto RenderDeviceOpenGL::create_vertex_buffer(
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     uint32_t vertex_count = static_cast<uint32_t>(data.size() / format.stride);
-    std::cerr << "Vertex buffer created (" << vertex_count
-              << " vertices, " << format.attributes.size() << " attributes)\n";
+    BUDDD_LOG_INFO("Vertex buffer created ({} vertices, {} attributes)", vertex_count, format.attributes.size());
 
     return std::unique_ptr<VertexBuffer>(
         new VertexBufferOpenGL(vao, vbo, format, data.size()));
@@ -308,8 +305,7 @@ auto RenderDeviceOpenGL::create_index_buffer(
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.size(), data.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    std::cerr << "Index buffer created (" << data.size() << " bytes, "
-              << (type == IndexType::Uint16 ? "Uint16" : "Uint32") << ")\n";
+    BUDDD_LOG_INFO("Index buffer created ({} bytes, {})", data.size(), (type == IndexType::Uint16 ? "Uint16" : "Uint32"));
 
     return std::unique_ptr<IndexBuffer>(
         new IndexBufferOpenGL(ibo, type, data.size()));
@@ -369,8 +365,7 @@ auto RenderDeviceOpenGL::create_texture(const Image& image) -> Result<std::uniqu
             + to_hex_string(gl_error));
     }
 
-    std::cerr << "Texture created (OpenGL, " << image.width() << "x"
-              << image.height() << ", " << ch << " channels)\n";
+    BUDDD_LOG_INFO("Texture created (OpenGL, {}x{}, {} channels)", image.width(), image.height(), ch);
 
     return std::unique_ptr<Texture>(new TextureOpenGL(tex, image.width(), image.height(), ch));
 }
@@ -393,10 +388,7 @@ auto RenderDeviceOpenGL::draw(
     glBindVertexArray(vb.vao());
     glDrawArrays(primitive_topology_to_gl(topology), static_cast<GLint>(start_vertex), static_cast<GLsizei>(vertex_count));
 
-#ifndef NDEBUG
-    std::cerr << "Draw: " << primitive_topology_to_string(topology)
-              << " " << vertex_count << " vertices\n";
-#endif
+    BUDDD_LOG_DEBUG("Draw: {} {} vertices", primitive_topology_to_string(topology), vertex_count);
 }
 
 auto RenderDeviceOpenGL::draw_indexed(
@@ -428,10 +420,7 @@ auto RenderDeviceOpenGL::draw_indexed(
         reinterpret_cast<const void*>(static_cast<uintptr_t>(start_index) * static_cast<uintptr_t>(index_byte_size))
     );
 
-#ifndef NDEBUG
-    std::cerr << "Draw indexed: " << primitive_topology_to_string(topology)
-              << " " << index_count << " indices\n";
-#endif
+    BUDDD_LOG_DEBUG("Draw indexed: {} {} indices", primitive_topology_to_string(topology), index_count);
 }
 
 // ============================================================================
@@ -457,20 +446,17 @@ auto RenderDeviceOpenGL::fallback_material() noexcept -> Material& {
 
         auto vs = create_shader(ShaderType::Vertex, vs_src);
         if (!vs) {
-            std::cerr << "FATAL: fallback vertex shader creation failed: "
-                      << to_string(vs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: fallback vertex shader creation failed: {}", to_string(vs.error()));
             std::terminate();
         }
         auto fs = create_shader(ShaderType::Fragment, fs_src);
         if (!fs) {
-            std::cerr << "FATAL: fallback fragment shader creation failed: "
-                      << to_string(fs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: fallback fragment shader creation failed: {}", to_string(fs.error()));
             std::terminate();
         }
         auto mat = create_material(std::move(*vs), std::move(*fs));
         if (!mat) {
-            std::cerr << "FATAL: fallback material creation failed: "
-                      << to_string(mat.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: fallback material creation failed: {}", to_string(mat.error()));
             std::terminate();
         }
         fallback_material_ = std::move(*mat);

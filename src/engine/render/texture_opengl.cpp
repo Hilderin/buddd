@@ -1,6 +1,8 @@
 #include "render/texture_opengl.h"
 
-#include <iostream>
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:OpenGL");
 
 namespace buddd::engine {
 
@@ -12,9 +14,7 @@ TextureOpenGL::TextureOpenGL(GLuint handle, int width, int height, int channels)
 {}
 
 TextureOpenGL::~TextureOpenGL() {
-#ifndef NDEBUG
-    std::cerr << "TextureOpenGL destroyed: " << texture_ << "\n";
-#endif
+    BUDDD_LOG_DEBUG("TextureOpenGL destroyed: {}", texture_);
     glDeleteTextures(1, &texture_);
 }
 

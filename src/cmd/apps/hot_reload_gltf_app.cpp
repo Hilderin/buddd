@@ -1,5 +1,7 @@
 #include "apps/hot_reload_gltf_app.h"
 
+#include "log/log.h"
+
 #include "asset/asset_manager.h"
 #include "asset/model_asset.h"
 #include "render/render_device.h"
@@ -20,6 +22,8 @@
 #include <iostream>
 #include <string>
 
+BUDDD_LOG_TAG("HotReload");
+
 namespace be = buddd::engine;
 namespace fs = std::filesystem;
 
@@ -36,7 +40,7 @@ auto write_yaml(float scale, const std::string& desc) -> void {
     file.close();
     auto now = fs::file_time_type::clock::now();
     fs::last_write_time(k_yaml_path, now);
-    std::cerr << "[HotReload] " << desc << " (scale=" << scale << ")\n";
+    BUDDD_LOG_INFO("{} (scale={})", desc, scale);
 }
 
 } // anonymous namespace
@@ -76,7 +80,7 @@ auto buddd::cmd::app::HotReloadGltfApp::setup(be::RenderDevice& device)
     reload_model();
 
     render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
-    std::cerr << "[HotReload] Started \u2014 will scale to 2.0 at frame 30\n";
+    BUDDD_LOG_INFO("Started \u2014 will scale to 2.0 at frame 30");
     return {};
 }
 
@@ -93,12 +97,12 @@ auto buddd::cmd::app::HotReloadGltfApp::reload_model() -> void {
 
     auto result = asset_manager_->create<be::ModelAsset>(k_yaml_id);
     if (!result) {
-        std::cerr << "[HotReload] Load failed: " << be::to_string(result.error()) << "\n";
+        BUDDD_LOG_ERROR("Load failed: {}", be::to_string(result.error()));
         return;
     }
 
     create_entities((*result)->root_node());
-    std::cerr << "[HotReload] Reloaded: " << model_entities_.size() << " entities\n";
+    BUDDD_LOG_INFO("Reloaded: {} entities", model_entities_.size());
 }
 
 auto buddd::cmd::app::HotReloadGltfApp::create_entities(be::ModelNode& node) -> void {
@@ -123,7 +127,7 @@ auto buddd::cmd::app::HotReloadGltfApp::on_frame_begin() -> void {
         // timing issues — just clear and reload from the updated file).
         asset_manager_->poll_file_events();
         reload_model();
-        std::cerr << "[HotReload] \u2192 Box is now 2x bigger (scale=2.0)\n";
+        BUDDD_LOG_INFO("\u2192 Box is now 2x bigger (scale=2.0)");
     }
 
     ++frame_count_;

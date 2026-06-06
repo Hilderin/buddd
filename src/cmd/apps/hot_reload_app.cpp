@@ -1,5 +1,7 @@
 #include "apps/hot_reload_app.h"
 
+#include "log/log.h"
+
 #include "asset/asset_manager.h"
 #include "asset/material_asset.h"
 #include "asset/texture_asset.h"
@@ -27,6 +29,8 @@
 #include <string_view>
 #include <utility>
 
+BUDDD_LOG_TAG("HotReload");
+
 namespace be = buddd::engine;
 
 buddd::cmd::app::HotReloadApp::HotReloadApp() = default;
@@ -40,21 +44,21 @@ auto buddd::cmd::app::HotReloadApp::setup(be::RenderDevice& device)
         "assets/textures/hot_reload_a.png",
         "assets/textures/hot_reload_live.png",
         std::filesystem::copy_options::overwrite_existing);
-    std::fprintf(stderr, "[HotReload] Initial texture: hot_reload_a.png -> hot_reload_live.png\n");
+    BUDDD_LOG_INFO("Initial texture: hot_reload_a.png -> hot_reload_live.png");
 
     // 2. Create AssetManager
     auto am = be::AssetManager::create(device, "assets");
     if (!am) {
-        std::fprintf(stderr, "FATAL: could not create AssetManager: %s\n",
-                     be::to_string(am.error()).c_str());
+        BUDDD_LOG_ERROR("FATAL: could not create AssetManager: {}",
+                        be::to_string(am.error()));
         return std::unexpected(am.error());
     }
 
     // 3. Load material from YAML (will load hot_reload_live.png = texture A)
     auto mat_asset = (*am)->create<be::MaterialAsset>("materials/hot_reload_test");
     if (!mat_asset) {
-        std::fprintf(stderr, "FATAL: could not load material: %s\n",
-                     be::to_string(mat_asset.error()).c_str());
+        BUDDD_LOG_ERROR("FATAL: could not load material: {}",
+                        be::to_string(mat_asset.error()));
         return std::unexpected(mat_asset.error());
     }
     auto material = (*mat_asset)->material();
@@ -136,7 +140,7 @@ auto buddd::cmd::app::HotReloadApp::setup(be::RenderDevice& device)
         { material }
     );
     if (!model) {
-        std::fprintf(stderr, "FATAL: could not create cube model\n");
+        BUDDD_LOG_ERROR("FATAL: could not create cube model");
         return std::unexpected(model.error());
     }
 
@@ -147,7 +151,7 @@ auto buddd::cmd::app::HotReloadApp::setup(be::RenderDevice& device)
     render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
     entity_ = std::make_unique<be::Entity>(std::move(entity));
 
-    std::fprintf(stderr, "[HotReload] Setup complete. Will swap texture at frame 30.\n");
+    BUDDD_LOG_INFO("Setup complete. Will swap texture at frame 30.");
     return {};
 }
 
@@ -159,7 +163,7 @@ auto buddd::cmd::app::HotReloadApp::render(be::RenderDevice& /*device*/, int fra
     // At frame 30: swap texture B over the live file.
     // on_frame_begin() will call poll_file_events() before render.
     if (frame == 30) {
-        std::fprintf(stderr, "[HotReload] Frame 30: swapping texture...\n");
+        BUDDD_LOG_INFO("Frame 30: swapping texture...");
         std::filesystem::copy(
             "assets/textures/hot_reload_b.png",
             "assets/textures/hot_reload_live.png",
@@ -168,7 +172,7 @@ auto buddd::cmd::app::HotReloadApp::render(be::RenderDevice& /*device*/, int fra
         // so poll_file_events() will be called NEXT frame.
         // We call it manually now to trigger immediate reload.
         asset_manager_->poll_file_events();
-        std::fprintf(stderr, "[HotReload] Texture swapped and poll_file_events() called.\n");
+        BUDDD_LOG_INFO("Texture swapped and poll_file_events() called.");
     }
 
     // Rotate cube

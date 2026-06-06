@@ -48,17 +48,17 @@
 
 | Signal | Stream | Format |
 |---|---|---|
-| Window opened | stdout | `"Window opened: WxH\n"` |
-| Scene started (limited) | stderr | `"Scene started: <title> (N frames)\n"` |
-| Scene started (interactive) | stderr | `"Scene started: <title> (interactive)\n"` |
-| Scene aborted (ESC) | stderr | `"Scene aborted by user (frame N)\n"` (N 1-based) |
-| Scene aborted (window close) | stderr | `"Scene aborted by user\n"` |
-| Scene completed | stderr | `"Scene complete: <title> (N frames rendered)\n"` |
-| Capture saved | stdout | `"Captured: <path>\n"` |
-| Window shutdown | stdout | `"Window closed, shutting down.\n"` |
-| Unknown scene | stderr | `"Unknown scene: '<name>'\n\n"` + scene usage |
-| Unknown command | stderr | `"Unknown command: '<cmd>'\n\n"` + usage |
-| Error (parse, setup, etc.) | stderr | `"Error: <description>\n"` |
+| Window opened | stderr | `BUDDD_LOG_INFO` → `"Window opened: WxH"` |
+| Scene started (limited) | stderr | `BUDDD_LOG_INFO` → `"Scene started: <title> (N frames)"` |
+| Scene started (interactive) | stderr | `BUDDD_LOG_INFO` → `"Scene started: <title> (interactive)"` |
+| Scene aborted (ESC) | stderr | `BUDDD_LOG_INFO` → `"Scene aborted by user (frame N)"` (N 1-based) |
+| Scene aborted (window close) | stderr | `BUDDD_LOG_INFO` → `"Scene aborted by user"` |
+| Scene completed | stderr | `BUDDD_LOG_INFO` → `"Scene complete: <title> (N frames rendered)"` |
+| Capture saved | stderr | `BUDDD_LOG_INFO` → `"Captured: <path>"` |
+| Window shutdown | stderr | `BUDDD_LOG_INFO` → `"Window closed, shutting down."` |
+| Unknown scene | stderr | `BUDDD_LOG_ERROR` → `"Unknown scene: '<name>'"` + `fprintf(stderr)` scene usage |
+| Unknown command | stderr | `BUDDD_LOG_ERROR` → `"Unknown command: '<cmd>'"` + `fprintf(stderr)` usage |
+| Error (parse, setup, etc.) | stderr | `BUDDD_LOG_ERROR` → `"Error: <description>"` |
 
 ### Structured logging (new system as of SPEC-021)
 

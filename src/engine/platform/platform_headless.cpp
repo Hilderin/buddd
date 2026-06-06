@@ -1,7 +1,9 @@
 #include "platform_headless.h"
 #include "window/window_headless.h"
 
-#include <iostream>
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Platform:Headless");
 
 namespace buddd::engine {
 
@@ -23,7 +25,7 @@ auto PlatformHeadless::create_window(const WindowConfig& config) -> Result<std::
         return make_error(Error::Category::WindowCreationFailed, "Invalid window dimensions");
     }
 
-    std::cerr << "Window created (Headless): " << config.width << "x" << config.height << "\n";
+    BUDDD_LOG_INFO("Window created (Headless): {}x{}", config.width, config.height);
     return std::unique_ptr<Window>(new WindowHeadless(config.width, config.height, *this));
 }
 

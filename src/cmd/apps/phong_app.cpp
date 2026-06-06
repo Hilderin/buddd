@@ -1,5 +1,7 @@
 #include "apps/phong_app.h"
 
+#include "log/log.h"
+
 #include "input/input_system.h"
 #include "math/camera.h"
 #include "math/math.h"
@@ -33,6 +35,8 @@
 #include <span>
 #include <vector>
 
+BUDDD_LOG_TAG("Phong");
+
 namespace be = buddd::engine;
 
 // ============================================================================
@@ -63,15 +67,15 @@ static auto make_checkerboard_texture(be::RenderDevice& device) -> std::shared_p
 
     auto image = be::Image::create(buf);
     if (!image) {
-        std::cerr << "FATAL: Failed to create checkerboard image: "
-                  << be::to_string(image.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create checkerboard image: {}",
+                        be::to_string(image.error()));
         std::exit(EXIT_FAILURE);
     }
 
     auto tex = device.create_texture(*image);
     if (!tex) {
-        std::cerr << "FATAL: Failed to create checkerboard texture: "
-                  << be::to_string(tex.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create checkerboard texture: {}",
+                        be::to_string(tex.error()));
         std::exit(EXIT_FAILURE);
     }
 
@@ -96,15 +100,15 @@ static auto make_solid_texture(be::RenderDevice& device, uint8_t r, uint8_t g, u
 
     auto image = be::Image::create(buf);
     if (!image) {
-        std::cerr << "FATAL: Failed to create solid image: "
-                  << be::to_string(image.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create solid image: {}",
+                        be::to_string(image.error()));
         std::exit(EXIT_FAILURE);
     }
 
     auto tex = device.create_texture(*image);
     if (!tex) {
-        std::cerr << "FATAL: Failed to create solid texture: "
-                  << be::to_string(tex.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create solid texture: {}",
+                        be::to_string(tex.error()));
         std::exit(EXIT_FAILURE);
     }
 
@@ -164,8 +168,8 @@ static auto create_phong_cube(be::RenderDevice& device,
         { be::SubMesh{0, 36, 0} },
         { std::move(material) });
     if (!model) {
-        std::cerr << "FATAL: Failed to create phong cube model: "
-                  << be::to_string(model.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create phong cube model: {}",
+                        be::to_string(model.error()));
         std::exit(EXIT_FAILURE);
     }
 
@@ -226,28 +230,28 @@ auto buddd::cmd::app::PhongApp::setup(be::RenderDevice& device)
         auto res_spec = mat->set_uniform("u_material_specular",
             be::math::Vec4{spec.specular.x, spec.specular.y, spec.specular.z, 1.0f});
         if (!res_spec) {
-            std::cerr << "Warning: set_uniform(u_material_specular) failed: "
-                      << be::to_string(res_spec.error()) << "\n";
+            BUDDD_LOG_WARN("set_uniform(u_material_specular) failed: {}",
+                           be::to_string(res_spec.error()));
         }
 
         auto res_shiny = mat->set_uniform("u_material_shininess", spec.shininess);
         if (!res_shiny) {
-            std::cerr << "Warning: set_uniform(u_material_shininess) failed: "
-                      << be::to_string(res_shiny.error()) << "\n";
+            BUDDD_LOG_WARN("set_uniform(u_material_shininess) failed: {}",
+                           be::to_string(res_shiny.error()));
         }
 
         auto res_tint = mat->set_uniform("u_material_diffuse_tint",
             be::math::Vec4{spec.diffuse_tint.x, spec.diffuse_tint.y, spec.diffuse_tint.z, 1.0f});
         if (!res_tint) {
-            std::cerr << "Warning: set_uniform(u_material_diffuse_tint) failed: "
-                      << be::to_string(res_tint.error()) << "\n";
+            BUDDD_LOG_WARN("set_uniform(u_material_diffuse_tint) failed: {}",
+                           be::to_string(res_tint.error()));
         }
 
         auto tex = spec.textured ? checkerboard_tex : white_tex;
         auto res_tex = mat->set_texture("u_diffuse_texture", tex);
         if (!res_tex) {
-            std::cerr << "Warning: set_texture failed: "
-                      << be::to_string(res_tex.error()) << "\n";
+            BUDDD_LOG_WARN("set_texture failed: {}",
+                           be::to_string(res_tex.error()));
         }
 
         auto model = create_phong_cube(device, mat);

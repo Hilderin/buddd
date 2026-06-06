@@ -12,7 +12,10 @@
 
 #include <array>
 #include <cmath>
-#include <iostream>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render");
 
 namespace buddd::engine {
 
@@ -28,7 +31,7 @@ auto RenderSystem::render() -> void {
 auto RenderSystem::render_scene() -> void {
     auto cam_opt = world_->active_camera();
     if (!cam_opt.has_value()) {
-        std::cerr << "RenderSystem: no active camera — rendering skipped\n";
+        BUDDD_LOG_WARN("RenderSystem: no active camera — rendering skipped");
         return;
     }
     auto& cam_comp = *cam_opt;
@@ -100,11 +103,9 @@ auto RenderSystem::render_scene() -> void {
         return true;
     });
 
-#ifndef NDEBUG
     if (light_count > 0) {
-        std::cerr << "RenderSystem: collected " << light_count << " lights\n";
+        BUDDD_LOG_DEBUG("RenderSystem: collected {} lights", light_count);
     }
-#endif
 
     // --- 2. Iterate MeshRenderers ---
     world_->each<MeshRenderer>([&](Entity entity, MeshRenderer& mr) -> bool {
@@ -117,9 +118,7 @@ auto RenderSystem::render_scene() -> void {
         // Always set u_mvp (backward compat)
         auto r = material.set_uniform("u_mvp", mvp);
         if (!r) {
-            std::cerr << "RenderSystem: set_uniform(u_mvp) failed for entity "
-                      << entity.id().index << ": "
-                      << to_string(r.error()) << "\n";
+            BUDDD_LOG_ERROR("RenderSystem: set_uniform(u_mvp) failed for entity {}: {}", entity.id().index, to_string(r.error()));
             return true;
         }
 

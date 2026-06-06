@@ -1,5 +1,7 @@
 #include "apps/textured_cube_app.h"
 
+#include "log/log.h"
+
 #include "image/image.h"
 #include "math/camera.h"
 #include "math/math.h"
@@ -23,6 +25,8 @@
 #include <string_view>
 #include <utility>
 
+BUDDD_LOG_TAG("TexturedCube");
+
 namespace be = buddd::engine;
 
 auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
@@ -31,16 +35,16 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
     // 1. Load texture
     auto image_result = be::Image::load("assets/brick.png");
     if (!image_result) {
-        std::cerr << "FATAL: could not load assets/brick.png: "
-                  << be::to_string(image_result.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: could not load assets/brick.png: {}",
+                        be::to_string(image_result.error()));
         return std::unexpected(image_result.error());
     }
 
     // 2. Create texture
     auto texture_result = device.create_texture(*image_result);
     if (!texture_result) {
-        std::cerr << "FATAL: could not create texture: "
-                  << be::to_string(texture_result.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: could not create texture: {}",
+                        be::to_string(texture_result.error()));
         return std::unexpected(texture_result.error());
     }
     std::shared_ptr<be::Texture> texture(std::move(*texture_result));
@@ -144,20 +148,20 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
 
     auto vs = device.create_shader(be::ShaderType::Vertex, k_vertex_source);
     if (!vs) {
-        std::cerr << "FATAL: " << be::to_string(vs.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: {}", be::to_string(vs.error()));
         return std::unexpected(vs.error());
     }
 
     auto fs = device.create_shader(be::ShaderType::Fragment, k_fragment_source);
     if (!fs) {
-        std::cerr << "FATAL: " << be::to_string(fs.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: {}", be::to_string(fs.error()));
         return std::unexpected(fs.error());
     }
 
     // 6. Create material
     auto mat = device.create_material(std::move(*vs), std::move(*fs));
     if (!mat) {
-        std::cerr << "FATAL: " << be::to_string(mat.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: {}", be::to_string(mat.error()));
         return std::unexpected(mat.error());
     }
     std::shared_ptr<be::Material> shared_mat(std::move(*mat));
@@ -165,8 +169,8 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
     // 7. Set texture on material
     auto tex_result = shared_mat->set_texture("u_tex", texture);
     if (!tex_result) {
-        std::cerr << "FATAL: set_texture failed: "
-                  << be::to_string(tex_result.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: set_texture failed: {}",
+                        be::to_string(tex_result.error()));
         return std::unexpected(tex_result.error());
     }
 
@@ -180,8 +184,8 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
         { shared_mat }
     );
     if (!model) {
-        std::cerr << "FATAL: Failed to create textured cube model: "
-                  << be::to_string(model.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create textured cube model: {}",
+                        be::to_string(model.error()));
         return std::unexpected(model.error());
     }
 

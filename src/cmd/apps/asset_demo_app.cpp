@@ -1,5 +1,7 @@
 #include "apps/asset_demo_app.h"
 
+#include "log/log.h"
+
 #include "asset/asset_manager.h"
 #include "asset/material_asset.h"
 #include "asset/texture_asset.h"
@@ -26,6 +28,8 @@
 #include <string_view>
 #include <utility>
 
+BUDDD_LOG_TAG("AssetDemo");
+
 namespace be = buddd::engine;
 
 buddd::cmd::app::AssetDemoApp::AssetDemoApp() = default;
@@ -37,8 +41,8 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::RenderDevice& device)
     // 1. Create AssetManager (keep alive for hot-reload)
     auto am = be::AssetManager::create(device, "assets");
     if (!am) {
-        std::cerr << "FATAL: could not create AssetManager: "
-                  << be::to_string(am.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: could not create AssetManager: {}",
+                        be::to_string(am.error()));
         return std::unexpected(am.error());
     }
     asset_manager_ = std::move(*am);
@@ -46,8 +50,8 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::RenderDevice& device)
     // 2. Load material from YAML
     auto mat_asset = asset_manager_->create<be::MaterialAsset>("materials/demo_cube");
     if (!mat_asset) {
-        std::cerr << "FATAL: could not load material: "
-                  << be::to_string(mat_asset.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: could not load material: {}",
+                        be::to_string(mat_asset.error()));
         return std::unexpected(mat_asset.error());
     }
     auto material = (*mat_asset)->material();
@@ -136,8 +140,8 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::RenderDevice& device)
         { material }
     );
     if (!model) {
-        std::cerr << "FATAL: Failed to create textured cube model: "
-                  << be::to_string(model.error()) << "\n";
+        BUDDD_LOG_ERROR("FATAL: Failed to create textured cube model: {}",
+                        be::to_string(model.error()));
         return std::unexpected(model.error());
     }
 

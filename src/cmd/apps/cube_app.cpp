@@ -1,5 +1,7 @@
 #include "apps/cube_app.h"
 
+#include "log/log.h"
+
 #include "math/math.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
@@ -11,6 +13,8 @@
 #include <iostream>
 #include <memory>
 #include <string_view>
+
+BUDDD_LOG_TAG("CubeApp");
 
 namespace be = buddd::engine;
 
@@ -81,8 +85,8 @@ auto buddd::cmd::app::CubeApp::render(be::RenderDevice& device, int) -> void {
 
     auto uniform_result = material_->set_uniform("u_mvp", mvp);
     if (!uniform_result) {
-        std::cerr << "Failed to set u_mvp uniform: "
-                  << be::to_string(uniform_result.error()) << "\n";
+        BUDDD_LOG_ERROR("Failed to set u_mvp uniform: {}",
+                        be::to_string(uniform_result.error()));
     }
     model_.draw(device);
 }

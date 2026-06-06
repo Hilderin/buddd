@@ -3,6 +3,8 @@
 > **API reference, conventions, and CLI usage guide.**
 >
 > Reference: [SPEC-021](/.specs/sprint-2026-06/logging-system/spec.md), [IMPL-021](/.specs/sprint-2026-06/logging-system/implementation-contract.md), [ADR-020](/docs/adr/ADR-020-custom-logging-system.md)
+>
+> **Adoption status**: All ad-hoc `std::cerr`, `fprintf(stderr)`, and `printf` diagnostic output across the production codebase (`src/engine/` and `src/cmd/`) has been migrated to `BUDDD_LOG_*` macros. See [SPEC-022](/.specs/sprint-2026-06/logging-system-adoption/spec.md) for the full migration specification.
 
 ## Quick start
 
@@ -57,13 +59,28 @@ Source tags use a hierarchical `Module:SubComponent` format:
 
 - **`Engine`** — general engine startup/shutdown messages
 - **`Log`** — internal logger diagnostics (tag truncation warnings, etc.)
-- **`Render:OpenGL`** — OpenGL backend operations
-- **`Render:Vulkan`** — future Vulkan backend operations
+- **`App`** — CLI app lifecycle, capture diagnostics (`app.cpp`, `main.cpp`)
+- **`HotReload`** — hot-reload demo apps
+- **`GltfDemo`** — glTF demo app
+- **`TexturedCube`** — textured cube demo app
+- **`AssetDemo`** — asset pipeline demo app
+- **`Phong`** — Phong lighting demo app
+- **`Cube`** — cube demo app
+- **`MultiMaterial`** — multi-material cube demo app
+- **`Asset`** — asset manager (loading, caching, hot-reload)
 - **`Asset:ModelLoader`** — model loading from glTF files
-- **`Asset:Texture`** — texture loading and caching
 - **`Asset:FileWatcher`** — file system monitoring events
-- **`Scene`** — scene graph operations (World, Entity, Component)
-- **`Input`** — input system events
+- **`Render`** — render device factory and render system
+- **`Render:OpenGL`** — OpenGL backend operations
+- **`Render:Headless`** — Headless backend operations
+- **`Render:Phong`** — Phong material
+- **`Render:Pbr`** — PBR material
+- **`Render:Vulkan`** — future Vulkan backend operations
+- **`Scene:ECSCamera`** — ECS camera component
+- **`Input`** — input system factory
+- **`Input:SDL3`** — SDL3 input system
+- **`Platform`** — platform factory
+- **`Platform:Headless`** — headless platform
 - **`Platform:SDL3`** — SDL3 platform operations
 - **`Cmd`** — CLI command execution
 
@@ -220,7 +237,7 @@ Compiled only in test builds (`#ifdef BUDDD_TESTING`). Accumulates messages in a
 
 1. **Declare `BUDDD_LOG_TAG` in every `.cpp` file** — this is enforced by the compiler, so it's not optional. Use a descriptive `Module:Sub` format.
 
-2. **Use `BUDDD_LOG_*` macros, not `std::cerr` or `printf`** — new code should always use the structured logger. A future feature will migrate existing ad-hoc output.
+2. **Use `BUDDD_LOG_*` macros, not `std::cerr` or `printf`** — all code should use the structured logger. Existing ad-hoc diagnostic output has been migrated to `BUDDD_LOG_*` macros (see SPEC-022).
 
 3. **Choose the right level** — `info` for normal operational messages, `warn` for recoverable issues, `error` for failures. Use `debug`/`trace` sparingly (high volume).
 
@@ -233,6 +250,10 @@ Compiled only in test builds (`#ifdef BUDDD_TESTING`). Accumulates messages in a
 7. **Use `--log-filter` for debugging specific subsystems** — rather than enabling `--log-level=trace` globally (which floods the output), target specific tags: `--log-filter=Asset:ModelLoader=trace`.
 
 8. **File sink for headless/stress runs** — always use `--log-file` when running headless or batch tests to capture diagnostic output for post-mortem analysis.
+
+### Migration note (stdout → stderr)
+
+As part of the logging system adoption (SPEC-022), window lifecycle messages that previously printed to stdout (`printf("Window opened: ...")`, `printf("Captured: ...")`, `printf("Window closed, shutting down.")`) now go to stderr via `BUDDD_LOG_INFO`. This ensures all diagnostic output is under the control of `--log-level`, `--log-file`, and `--log-filter` flags.
 
 ## Test helpers
 

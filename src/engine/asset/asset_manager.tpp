@@ -5,6 +5,8 @@
 
 #include <type_traits>
 
+#include "log/log.h"
+
 namespace buddd::engine {
 
 template<typename T>
@@ -27,9 +29,7 @@ auto AssetManager::create(std::string_view id) -> Result<std::shared_ptr<T>> {
             return make_error(Error::Category::InvalidArgument,
                 "Cached asset type mismatch for '" + std::string(id) + "'");
         }
-#ifndef NDEBUG
-        std::cerr << "[Asset] Cache hit: " << id << "\n";
-#endif
+        BUDDD_LOG_TAGGED_DEBUG("Asset", "Cache hit: {}", id);
         return std::shared_ptr<T>(it->second, ptr);
     }
 

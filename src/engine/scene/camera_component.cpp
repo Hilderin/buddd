@@ -2,7 +2,9 @@
 #include "scene/entity.h"     // Component::entity(), Entity::world()
 #include "scene/world.h"      // World::register_camera(), unregister_camera()
 
-#include <iostream>           // std::cerr (debug logging)
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Scene:ECSCamera");
 
 namespace buddd::engine {
 
@@ -19,20 +21,15 @@ auto CameraComponent::camera() const noexcept -> const math::Camera& {
 
 auto CameraComponent::on_attach() -> void {
     entity().world().register_camera(*this);
-#ifndef NDEBUG
-    std::cerr << "CameraComponent: registered entity "
-              << entity().id().index << " as active camera\n";
-
-#endif
+    BUDDD_LOG_DEBUG("CameraComponent: registered entity {} as active camera",
+        entity().id().index);
 }
 
 CameraComponent::~CameraComponent() {
     if (world_) {
         world_->unregister_camera(*this);
-#ifndef NDEBUG
-        std::cerr << "CameraComponent: unregistered entity "
-                  << entity_id_.index << "\n";
-#endif
+        BUDDD_LOG_DEBUG("CameraComponent: unregistered entity {}",
+            entity_id_.index);
     }
 }
 

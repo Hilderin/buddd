@@ -13,9 +13,12 @@
 
 #include <algorithm>
 #include <cctype>
-#include <iostream>
 #include <sstream>
 #include <unordered_set>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:Headless");
 
 namespace buddd::engine {
 
@@ -153,16 +156,14 @@ auto RenderDeviceHeadless::create_shader(ShaderType type, std::string_view sourc
 
     // Simulate compilation error if source contains "#error"
     if (source.find("#error") != std::string_view::npos) {
-        std::cerr << "Shader compilation failed (simulated)\n";
+        BUDDD_LOG_ERROR("Shader compilation failed (simulated)");
         return make_error(Error::Category::ShaderCompilationFailed,
             "Simulated compilation error: #error directive found in source");
     }
 
     ++shader_count_;
 
-    std::cerr << "Shader created (Headless, type="
-              << (type == ShaderType::Vertex ? "Vertex" : "Fragment")
-              << ")\n";
+    BUDDD_LOG_INFO("Shader created (Headless, type={})", (type == ShaderType::Vertex ? "Vertex" : "Fragment"));
 
     return std::unique_ptr<Shader>(new ShaderHeadless(type, std::string(source)));
 }
@@ -206,8 +207,7 @@ auto RenderDeviceHeadless::create_material(
     }
 
     if (!fs_inputs.empty() && !has_matching) {
-        std::cerr << "Material linking failed (simulated: no matching "
-                     "vertex output / fragment input variables)\n";
+        BUDDD_LOG_ERROR("Material linking failed (simulated: no matching vertex output / fragment input variables)");
         return make_error(Error::Category::LinkingFailed,
             "Simulated linking error: vertex shader outputs ("
             + join(vs_outputs, ", ") + ") do not match fragment shader inputs ("
@@ -226,7 +226,7 @@ auto RenderDeviceHeadless::create_material(
         uniform_names.insert(name);
     }
 
-    std::cerr << "Material created (Headless)\n";
+    BUDDD_LOG_INFO("Material created (Headless)");
 
     return std::unique_ptr<Material>(
         new MaterialHeadless(std::move(uniform_names)));
@@ -247,7 +247,7 @@ auto RenderDeviceHeadless::create_material(std::shared_ptr<ShaderProgram> progra
     uniform_names.insert(vs_uniforms.begin(), vs_uniforms.end());
     uniform_names.insert(fs_uniforms.begin(), fs_uniforms.end());
 
-    std::cerr << "Material created (Headless, from ShaderProgram)\n";
+    BUDDD_LOG_INFO("Material created (Headless, from ShaderProgram)");
     return std::unique_ptr<Material>(
         new MaterialHeadless(std::move(uniform_names)));
 }
@@ -273,8 +273,7 @@ auto RenderDeviceHeadless::create_vertex_buffer(
     ++vertex_buffer_count_;
 
     uint32_t vertex_count = static_cast<uint32_t>(data.size() / format.stride);
-    std::cerr << "Vertex buffer created (Headless, " << vertex_count
-              << " vertices)\n";
+    BUDDD_LOG_INFO("Vertex buffer created (Headless, {} vertices)", vertex_count);
 
     return std::unique_ptr<VertexBuffer>(
         new VertexBufferHeadless(format, data));
@@ -292,8 +291,7 @@ auto RenderDeviceHeadless::create_index_buffer(
 
     ++index_buffer_count_;
 
-    std::cerr << "Index buffer created (Headless, " << data.size()
-              << " bytes)\n";
+    BUDDD_LOG_INFO("Index buffer created (Headless, {} bytes)", data.size());
 
     return std::unique_ptr<IndexBuffer>(
         new IndexBufferHeadless(type, data));
@@ -326,8 +324,7 @@ auto RenderDeviceHeadless::create_texture(const Image& image) -> Result<std::uni
             + " bytes, got " + std::to_string(image.data().size()));
     }
 
-    std::cerr << "Texture created (Headless, " << image.width() << "x"
-              << image.height() << ", " << ch << " channels)\n";
+    BUDDD_LOG_INFO("Texture created (Headless, {}x{}, {} channels)", image.width(), image.height(), ch);
 
     return std::unique_ptr<Texture>(
         new TextureHeadless(image.width(), image.height(), ch,
@@ -349,10 +346,7 @@ auto RenderDeviceHeadless::draw(
     material.bind();
     ++draw_call_count_;
 
-#ifndef NDEBUG
-    std::cerr << "Draw (Headless, " << /*vertex_count*/ "?"
-              << ")\n";
-#endif
+    BUDDD_LOG_DEBUG("Draw (Headless)");
 }
 
 auto RenderDeviceHeadless::draw_indexed(
@@ -367,10 +361,7 @@ auto RenderDeviceHeadless::draw_indexed(
     material.bind();
     ++draw_call_count_;
 
-#ifndef NDEBUG
-    std::cerr << "Draw indexed (Headless, " << /*index_count*/ "?"
-              << ")\n";
-#endif
+    BUDDD_LOG_DEBUG("Draw indexed (Headless)");
 }
 
 auto RenderDeviceHeadless::fallback_material() noexcept -> Material& {
@@ -392,20 +383,17 @@ auto RenderDeviceHeadless::fallback_material() noexcept -> Material& {
 
         auto vs = create_shader(ShaderType::Vertex, vs_src);
         if (!vs) {
-            std::cerr << "FATAL: fallback vertex shader creation failed: "
-                      << to_string(vs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: fallback vertex shader creation failed: {}", to_string(vs.error()));
             std::terminate();
         }
         auto fs = create_shader(ShaderType::Fragment, fs_src);
         if (!fs) {
-            std::cerr << "FATAL: fallback fragment shader creation failed: "
-                      << to_string(fs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: fallback fragment shader creation failed: {}", to_string(fs.error()));
             std::terminate();
         }
         auto mat = create_material(std::move(*vs), std::move(*fs));
         if (!mat) {
-            std::cerr << "FATAL: fallback material creation failed: "
-                      << to_string(mat.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: fallback material creation failed: {}", to_string(mat.error()));
             std::terminate();
         }
         fallback_material_ = std::move(*mat);

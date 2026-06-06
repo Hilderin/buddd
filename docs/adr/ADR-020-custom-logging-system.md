@@ -116,7 +116,7 @@ The logger is fully independent of the engine's `Error` and `Result<T>` types. N
 
 ### Negative
 
-- Existing `std::cerr`/`printf` calls (~25 files) are not migrated — this is deferred to a future feature, creating a transitional period with two logging approaches in the codebase.
+- Existing `std::cerr`/`printf`/`fprintf` calls (~190 statements across 31 files) have been migrated to `BUDDD_LOG_*` macros (see SPEC-022). The transitional period with two logging approaches is resolved.
 - Custom logger development and maintenance effort replaces using an off-the-shelf solution (though the logger is small, ~500 lines).
 - Mutex-based synchronization blocks sink writes, which could become a bottleneck under very high log volume (> 100K messages/second). If this becomes a problem, async logging can be introduced behind the sink abstraction.
 - No color output in the console sink, which some developers may find less readable during development. This is a deliberate simplification that can be added later.
@@ -134,3 +134,5 @@ The logger is fully independent of the engine's `Error` and `Result<T>` types. N
 ---
 
 *Derived from SPEC-021 and the accepted implementation contract IMPL-021.*
+
+> **Migration complete**: All ad-hoc `std::cerr`, `fprintf(stderr)`, and `printf` diagnostic output across the production codebase (`src/engine/` and `src/cmd/`) has been migrated to `BUDDD_LOG_*` macros. See [SPEC-022](/.specs/sprint-2026-06/logging-system-adoption/spec.md) for the full migration specification.

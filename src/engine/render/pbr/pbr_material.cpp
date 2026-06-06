@@ -6,9 +6,12 @@
 #include "render/glsl_util.h"
 
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <vector>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:Pbr");
 
 namespace buddd::engine {
 
@@ -61,16 +64,14 @@ struct PbrMaterial::Impl {
         auto vs = device.create_shader(
             ShaderType::Vertex, detail::k_pbr_vertex_shader_source);
         if (!vs) {
-            std::cerr << "FATAL: Failed to create PBR vertex shader: "
-                      << to_string(vs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: Failed to create PBR vertex shader: {}", to_string(vs.error()));
             std::exit(EXIT_FAILURE);
         }
 
         auto fs = device.create_shader(
             ShaderType::Fragment, detail::k_pbr_fragment_shader_source);
         if (!fs) {
-            std::cerr << "FATAL: Failed to create PBR fragment shader: "
-                      << to_string(fs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: Failed to create PBR fragment shader: {}", to_string(fs.error()));
             std::exit(EXIT_FAILURE);
         }
 
@@ -78,8 +79,7 @@ struct PbrMaterial::Impl {
             std::move(*vs), std::move(*fs),
             std::span<const std::string>(known_uniform_names()));
         if (!mat) {
-            std::cerr << "FATAL: Failed to create PBR material: "
-                      << to_string(mat.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: Failed to create PBR material: {}", to_string(mat.error()));
             std::exit(EXIT_FAILURE);
         }
 

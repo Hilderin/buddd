@@ -32,7 +32,7 @@ TEST_CASE("buddd run unknownscene prints error and exits 1", "[cli][app]") {
     const auto res = run_buddd("run unknownscene");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown scene: 'unknownscene'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown scene: 'unknownscene'") != std::string::npos);
 }
 
 TEST_CASE("buddd demo is now unknown command", "[cli][app]") {
@@ -40,14 +40,14 @@ TEST_CASE("buddd demo is now unknown command", "[cli][app]") {
     const auto res = run_buddd("demo triangle");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown command: 'demo'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown command: 'demo'") != std::string::npos);
 }
 
 TEST_CASE("buddd capture cube is unknown command", "[cli][app]") {
     const auto res = run_buddd("capture cube");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown command: 'capture'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown command: 'capture'") != std::string::npos);
 }
 
 TEST_CASE("buddd version prints version", "[cli][app]") {
@@ -91,8 +91,9 @@ TEST_CASE("buddd run with no args runs empty window", "[cli][app]") {
     };
 
     const auto stdout_str = read_file(out_file);
+    const auto stderr_str = read_file(err_file);
     std::remove(out_file.c_str());
     std::remove(err_file.c_str());
 
-    REQUIRE(stdout_str.find("Window opened: 1024x768") != std::string::npos);
+    REQUIRE(stderr_str.find("[INFO] [App] Window opened: 1024x768") != std::string::npos);
 }

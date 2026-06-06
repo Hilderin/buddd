@@ -1,4 +1,7 @@
 #include "apps/multi_material_app.h"
+
+#include "log/log.h"
+
 #include "math/math.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
@@ -9,6 +12,8 @@
 #include <cstdio>
 #include <iostream>
 #include <memory>
+
+BUDDD_LOG_TAG("MultiMaterial");
 
 namespace be = buddd::engine;
 
@@ -159,7 +164,7 @@ auto buddd::cmd::app::MultiMaterialApp::render(be::RenderDevice& device, int) ->
         if (mat) {
             auto r = mat->set_uniform("u_mvp", mvp);
             if (!r) {
-                std::cerr << "u_mvp set failed: " << be::to_string(r.error()) << "\n";
+                BUDDD_LOG_ERROR("u_mvp set failed: {}", be::to_string(r.error()));
             }
         }
     }

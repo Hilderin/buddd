@@ -6,8 +6,11 @@
 #include "render/glsl_util.h"
 
 #include <cstdlib>
-#include <iostream>
 #include <sstream>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render:Phong");
 #include <string>
 #include <vector>
 
@@ -60,16 +63,14 @@ struct PhongMaterial::Impl {
         auto vs = device.create_shader(
             ShaderType::Vertex, detail::k_phong_vertex_shader_source);
         if (!vs) {
-            std::cerr << "FATAL: Failed to create Phong vertex shader: "
-                      << to_string(vs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: Failed to create Phong vertex shader: {}", to_string(vs.error()));
             std::exit(EXIT_FAILURE);
         }
 
         auto fs = device.create_shader(
             ShaderType::Fragment, detail::k_phong_fragment_shader_source);
         if (!fs) {
-            std::cerr << "FATAL: Failed to create Phong fragment shader: "
-                      << to_string(fs.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: Failed to create Phong fragment shader: {}", to_string(fs.error()));
             std::exit(EXIT_FAILURE);
         }
 
@@ -84,8 +85,7 @@ struct PhongMaterial::Impl {
             std::move(*vs), std::move(*fs),
             std::span<const std::string>(all_uniforms));
         if (!mat) {
-            std::cerr << "FATAL: Failed to create Phong material: "
-                      << to_string(mat.error()) << "\n";
+            BUDDD_LOG_ERROR("FATAL: Failed to create Phong material: {}", to_string(mat.error()));
             std::exit(EXIT_FAILURE);
         }
 
@@ -162,15 +162,14 @@ auto PhongMaterial::inner_material() noexcept -> Material& {
 auto PhongMaterial::set_camera_position(const math::Vec3& position) -> void {
     auto r = impl_->inner->set_uniform("u_camera_pos", position);
     if (!r) {
-        std::cerr << "PhongMaterial: set_uniform(u_camera_pos) failed: "
-                  << to_string(r.error()) << "\n";
+        BUDDD_LOG_WARN("PhongMaterial: set_uniform(u_camera_pos) failed: {}", to_string(r.error()));
     }
 }
 
 auto PhongMaterial::set_lights(const detail::LightData* lights, int count) -> void {
     auto r = impl_->inner->set_uniform("u_light_count", count);
     if (!r) {
-        std::cerr << "PhongMaterial: set_uniform(u_light_count) failed\n";
+        BUDDD_LOG_WARN("PhongMaterial: set_uniform(u_light_count) failed");
         return;
     }
 

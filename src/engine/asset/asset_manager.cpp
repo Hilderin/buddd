@@ -3,6 +3,7 @@
 #include "render/render_device.h"
 #include "render/pbr/pbr_material.h"
 #include "image/image.h"
+#include "log/log.h"
 
 #include <yaml-cpp/yaml.h>
 
@@ -13,9 +14,10 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <utility>
+
+BUDDD_LOG_TAG("Asset");
 
 namespace buddd::engine {
 
@@ -48,8 +50,7 @@ auto AssetManager::create(RenderDevice& device, std::string_view base_path)
         mgr->file_watcher_ = std::move(*watcher);
         mgr->file_watcher_->start();
     } else {
-        std::cerr << "[FileWatcher] Failed to create: "
-                  << watcher.error().message << " \u2014 falling back to NullFileWatcher\n";
+        BUDDD_LOG_WARN("FileWatcher failed to create: {} \u2014 falling back to NullFileWatcher", watcher.error().message);
         mgr->file_watcher_ = std::make_unique<NullFileWatcher>();
     }
 #else
@@ -80,9 +81,7 @@ auto AssetManager::clear() -> void {
     cache_.clear();
     shader_programs_.clear();
     dependency_map_.clear();
-#ifndef NDEBUG
-    std::cerr << "[Asset] Cache cleared (" << count << " assets)\n";
-#endif
+    BUDDD_LOG_DEBUG("Cache cleared ({} assets)", count);
 }
 
 auto AssetManager::base_path() const noexcept -> std::string_view {
@@ -239,10 +238,7 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     // 1. Parse YAML
     auto yaml_result = parse_yaml_file(yaml_path);
     if (!yaml_result) {
-#ifndef NDEBUG
-        std::cerr << "[Asset] YAML error: " << yaml_path << " - "
-                  << yaml_result.error().message << "\n";
-#endif
+        BUDDD_LOG_DEBUG("YAML error: {} - {}", yaml_path, yaml_result.error().message);
         return std::unexpected(yaml_result.error());
     }
     auto yaml = std::move(*yaml_result);
@@ -252,9 +248,7 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     if (type != "Texture") {
         auto err = make_error(Error::Category::InvalidArgument,
             "Expected type 'Texture', got '" + type + "'");
-#ifndef NDEBUG
-        std::cerr << "[Asset] Type mismatch: " << id << " (expected Texture, got " << type << ")\n";
-#endif
+        BUDDD_LOG_DEBUG("Type mismatch: {} (expected Texture, got {})", id, type);
         return std::unexpected(err);
     }
 
@@ -317,11 +311,7 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     dependency_map_.add_dependency(id, std::string(id) + ".yaml");
     dependency_map_.add_dependency(id, source_path);
 
-#ifndef NDEBUG
-    std::cerr << "[Asset] Texture created: " << id << " ("
-              << image->width() << "x" << image->height() << ", "
-              << image->channels() << "ch)\n";
-#endif
+    BUDDD_LOG_DEBUG("Texture created: {} ({}x{}, {}ch)", id, image->width(), image->height(), image->channels());
 
     return asset;
 }
@@ -345,9 +335,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     if (type != "Material") {
         auto err = make_error(Error::Category::InvalidArgument,
             "Expected type 'Material', got '" + type + "'");
-#ifndef NDEBUG
-        std::cerr << "[Asset] Type mismatch: " << id << " (expected Material, got " << type << ")\n";
-#endif
+        BUDDD_LOG_DEBUG("Type mismatch: {} (expected Material, got {})", id, type);
         return std::unexpected(err);
     }
 
@@ -395,9 +383,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     auto program_iter = shader_programs_.find(program_key);
     if (program_iter != shader_programs_.end()) {
         shader_program = program_iter->second;
-#ifndef NDEBUG
-        std::cerr << "[Asset] Shader program cache hit: (" << vert_path << ", " << frag_path << ")\n";
-#endif
+        BUDDD_LOG_DEBUG("Shader program cache hit: ({}, {})", vert_path, frag_path);
     } else {
         // Compile new shader program
         auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
@@ -412,9 +398,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
         shader_program = std::move(*program);
         shader_programs_[program_key] = shader_program;
 
-#ifndef NDEBUG
-        std::cerr << "[Asset] Shader program compiled: (" << vert_path << ", " << frag_path << ")\n";
-#endif
+        BUDDD_LOG_DEBUG("Shader program compiled: ({}, {})", vert_path, frag_path);
     }
 
     // 7. Create a fresh Material for THIS asset
@@ -437,10 +421,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
 
                 auto set_tex_result = shared_material->set_texture(tex_name, (*tex_asset)->texture());
                 if (!set_tex_result) {
-#ifndef NDEBUG
-                    std::cerr << "[Asset] Warning: could not set texture '" << tex_name
-                              << "' on material " << id << "\n";
-#endif
+                    BUDDD_LOG_DEBUG("Warning: could not set texture '{}' on material {}", tex_name, id);
                 }
             }
         }
@@ -460,16 +441,10 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
                         float float_val = value.as<float>();
                         auto set_result = shared_material->set_uniform(name, float_val);
                         if (!set_result) {
-#ifndef NDEBUG
-                            std::cerr << "[Asset] Constant '" << name << "' not found in material "
-                                      << id << "\n";
-#endif
+                            BUDDD_LOG_DEBUG("Constant '{}' not found in material {}", name, id);
                         }
                     } catch (const YAML::TypedBadConversion<float>&) {
-#ifndef NDEBUG
-                        std::cerr << "[Asset] Warning: constant '" << name
-                                  << "' is not a valid float, skipping\n";
-#endif
+                        BUDDD_LOG_DEBUG("Warning: constant '{}' is not a valid float, skipping", name);
                     }
                 }
             }
@@ -488,9 +463,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     dependency_map_.add_dependency(id, vert_path);
     dependency_map_.add_dependency(id, frag_path);
 
-#ifndef NDEBUG
-    std::cerr << "[Asset] Material created: " << id << " (" << vert_path << ", " << frag_path << ")\n";
-#endif
+    BUDDD_LOG_DEBUG("Material created: {} ({}, {})", id, vert_path, frag_path);
 
     return asset;
 }
@@ -514,9 +487,7 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
     if (type != "Model") {
         auto err = make_error(Error::Category::InvalidArgument,
             "Expected type 'Model', got '" + type + "'");
-#ifndef NDEBUG
-        std::cerr << "[Asset] Type mismatch: " << id << " (expected Model, got " << type << ")\n";
-#endif
+        BUDDD_LOG_DEBUG("Type mismatch: {} (expected Model, got {})", id, type);
         return std::unexpected(err);
     }
 
@@ -545,15 +516,13 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
     } catch (...) {}
 
     if (scale == 0.0f) {
-        std::cerr << "[Asset] Warn: Model '" << id << "' scale is 0.0\n";
+        BUDDD_LOG_WARN("Model '{}' scale is 0.0", id);
     }
 
     // 6. Load glTF model
     auto load_result = detail::load_gltf_model(device_, make_full_path(source_path), scale);
     if (!load_result) {
-#ifndef NDEBUG
-        std::cerr << "[Asset] Model load failed: " << id << " \u2014 " << load_result.error().message << "\n";
-#endif
+        BUDDD_LOG_DEBUG("Model load failed: {} \u2014 {}", id, load_result.error().message);
         return std::unexpected(load_result.error());
     }
 
@@ -579,11 +548,7 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
     dependency_map_.add_dependency(id, std::string(id) + ".yaml");
     dependency_map_.add_dependency(id, source_path);
 
-#ifndef NDEBUG
-    std::cerr << "[Asset] Model loaded: " << id << " ("
-              << vertex_count << " verts, "
-              << root_children_count << " root nodes)\n";
-#endif
+    BUDDD_LOG_DEBUG("Model loaded: {} ({} verts, {} root nodes)", id, vertex_count, root_children_count);
 
     return asset;
 }
@@ -605,7 +570,7 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         // Texture YAML change: reload image and swap GPU handles
         auto yaml_result = parse_yaml_file(full_changed_path);
         if (!yaml_result) {
-            std::cerr << "[Asset] Hot-reload YAML parse error: " << full_changed_path << "\n";
+            BUDDD_LOG_ERROR("Hot-reload YAML parse error: {}", full_changed_path);
             return;
         }
         auto yaml = std::move(*yaml_result);
@@ -614,7 +579,7 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         std::string source;
         try { source = yaml["source"].as<std::string>(""); } catch (...) {}
         if (source.empty()) {
-            std::cerr << "[Asset] Hot-reload: missing source in " << full_changed_path << "\n";
+            BUDDD_LOG_ERROR("Hot-reload: missing source in {}", full_changed_path);
             return;
         }
         auto source_path = resolve_path(source);
@@ -622,14 +587,14 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         // Load new image (source_path is relative to base_path_, prepend for I/O)
         auto image = Image::load(make_full_path(source_path));
         if (!image) {
-            std::cerr << "[Asset] Hot-reload: image load failed: " << source_path << "\n";
+            BUDDD_LOG_ERROR("Hot-reload: image load failed: {}", source_path);
             return;
         }
 
         // Create new GPU texture
         auto new_tex = device_.create_texture(*image);
         if (!new_tex) {
-            std::cerr << "[Asset] Hot-reload: texture creation failed\n";
+            BUDDD_LOG_ERROR("Hot-reload: texture creation failed");
             return;
         }
 
@@ -643,13 +608,13 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         dependency_map_.add_dependency(asset_id, std::string(asset_id) + ".yaml");
         dependency_map_.add_dependency(asset_id, source_path);
 
-        std::cerr << "[Asset] Hot-reloaded: " << asset_id << " (YAML change)\n";
+        BUDDD_LOG_INFO("Hot-reloaded: {} (YAML change)", asset_id);
 
     } else if (auto mat_asset = std::dynamic_pointer_cast<MaterialAsset>(cache_it->second)) {
         // Material YAML change: re-parse and update bindings
         auto yaml_result = parse_yaml_file(full_changed_path);
         if (!yaml_result) {
-            std::cerr << "[Asset] Hot-reload YAML parse error: " << full_changed_path << "\n";
+            BUDDD_LOG_ERROR("Hot-reload YAML parse error: {}", full_changed_path);
             return;
         }
         auto yaml = std::move(*yaml_result);
@@ -679,7 +644,7 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
             auto vert_source = read_file(make_full_path(vert_path));
             auto frag_source = read_file(make_full_path(frag_path));
             if (!vert_source || !frag_source) {
-                std::cerr << "[Asset] Hot-reload: failed to read shader sources\n";
+                BUDDD_LOG_ERROR("Hot-reload: failed to read shader sources");
                 return;
             }
             auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
@@ -692,7 +657,7 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         }
 
         // V1 limitation: cannot change Material's shader program after creation
-        std::cerr << "[Asset] Hot-reload: material " << asset_id << " YAML changed (textures/constants will update, shader changes require re-creation)\n";
+        BUDDD_LOG_INFO("Hot-reload: material {} YAML changed (textures/constants will update, shader changes require re-creation)", asset_id);
 
         // Update texture bindings
         try {
@@ -729,22 +694,21 @@ auto AssetManager::handle_yaml_change(const std::string& changed_path, const std
         dependency_map_.add_dependency(asset_id, vert_path);
         dependency_map_.add_dependency(asset_id, frag_path);
 
-        std::cerr << "[Asset] Hot-reloaded: " << asset_id << " (YAML change)\n";
+        BUDDD_LOG_INFO("Hot-reloaded: {} (YAML change)", asset_id);
 
     } else if (auto model_asset = std::dynamic_pointer_cast<ModelAsset>(cache_it->second)) {
         // Model YAML changed — reload entirely
-        std::cerr << "[Asset] Hot-reload: " << asset_id << " (Model YAML changed)\n";
+        BUDDD_LOG_INFO("Hot-reload: {} (Model YAML changed)", asset_id);
         auto result = load_model(asset_id, full_changed_path);
         if (!result) {
-            std::cerr << "[Asset] Hot-reload: model reload failed: " << asset_id
-                      << " \u2014 retaining old model (" << result.error().message << ")\n";
+            BUDDD_LOG_ERROR("Hot-reload: model reload failed: {} \u2014 retaining old model ({})", asset_id, result.error().message);
             return;
         }
         // The new asset is already cached by load_model. Remove the old one.
         // Note: load_model calls cache_[id] = asset, overwriting the old entry.
         // The old ModelNode tree is destroyed when the old shared_ptr goes out of scope.
         // Old shared_ptr<Material> references held by external code remain valid.
-        std::cerr << "[Asset] Hot-reload: model reloaded: " << asset_id << "\n";
+        BUDDD_LOG_INFO("Hot-reload: model reloaded: {}", asset_id);
     }
 }
 
@@ -758,17 +722,17 @@ auto AssetManager::handle_source_change(const std::string& changed_path, const s
         // changed_path is relative to base_path_, reconstruct for I/O
         auto image = Image::load(make_full_path(changed_path));
         if (!image) {
-            std::cerr << "[Asset] Hot-reload: image load failed: " << changed_path << "\n";
+            BUDDD_LOG_ERROR("Hot-reload: image load failed: {}", changed_path);
             return;
         }
         auto new_tex = device_.create_texture(*image);
         if (!new_tex) {
-            std::cerr << "[Asset] Hot-reload: texture creation failed\n";
+            BUDDD_LOG_ERROR("Hot-reload: texture creation failed");
             return;
         }
         auto new_handle = (*new_tex)->release_gl_handle();
         tex_asset->texture()->replace_gl_handle(new_handle);
-        std::cerr << "[Asset] Hot-reloaded texture: " << asset_id << " (source: " << changed_path << ")\n";
+        BUDDD_LOG_INFO("Hot-reloaded texture: {} (source: {})", asset_id, changed_path);
 
     } else if (auto mat_asset = std::dynamic_pointer_cast<MaterialAsset>(cache_it->second)) {
         // Shader source file changed — find and update ShaderProgram
@@ -779,19 +743,19 @@ auto AssetManager::handle_source_change(const std::string& changed_path, const s
                 auto vert_source = read_file(make_full_path(key.vertex_path));
                 auto frag_source = read_file(make_full_path(key.fragment_path));
                 if (!vert_source || !frag_source) {
-                    std::cerr << "[Asset] Hot-reload: failed to read shader sources\n";
+                    BUDDD_LOG_ERROR("Hot-reload: failed to read shader sources");
                     return;
                 }
 
                 // Recompile
                 auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
-                if (!vs) { std::cerr << "[Asset] Hot-reload: vertex shader compile failed\n"; return; }
+                if (!vs) { BUDDD_LOG_ERROR("Hot-reload: vertex shader compile failed"); return; }
                 auto fs = device_.create_shader(ShaderType::Fragment, *frag_source);
-                if (!fs) { std::cerr << "[Asset] Hot-reload: fragment shader compile failed\n"; return; }
+                if (!fs) { BUDDD_LOG_ERROR("Hot-reload: fragment shader compile failed"); return; }
 
                 auto new_program = device_.create_shader_program(std::move(*vs), std::move(*fs));
                 if (!new_program) {
-                    std::cerr << "[Asset] Hot-reload: shader program link failed \u2014 keeping old program\n";
+                    BUDDD_LOG_ERROR("Hot-reload: shader program link failed \u2014 keeping old program");
                     return;
                 }
 
@@ -799,22 +763,22 @@ auto AssetManager::handle_source_change(const std::string& changed_path, const s
                 auto new_handle = (*new_program)->release_handle();
                 program->replace_handle(new_handle);
 
-                std::cerr << "[Asset] Hot-reloaded shaders: (" << key.vertex_path << ", " << key.fragment_path << ")\n";
+                BUDDD_LOG_INFO("Hot-reloaded shaders: ({}, {})", key.vertex_path, key.fragment_path);
                 return; // Found and updated
             }
         }
 
-        std::cerr << "[Asset] Hot-reload: no shader program uses " << changed_path << "\n";
+        BUDDD_LOG_INFO("Hot-reload: no shader program uses {}", changed_path);
 
     } else if (auto model_asset = std::dynamic_pointer_cast<ModelAsset>(cache_it->second)) {
         // glTF source file changed — reload and replace in-place
-        std::cerr << "[Asset] Hot-reload: " << asset_id << " (glTF source changed)\n";
+        BUDDD_LOG_INFO("Hot-reload: {} (glTF source changed)", asset_id);
 
         // Re-read YAML to get scale setting
         auto yaml_path = base_path_ + "/" + asset_id + ".yaml";
         auto yaml_result = parse_yaml_file(yaml_path);
         if (!yaml_result) {
-            std::cerr << "[Asset] Hot-reload: YAML parse error for " << asset_id << "\n";
+            BUDDD_LOG_ERROR("Hot-reload: YAML parse error for {}", asset_id);
             return;
         }
         auto yaml = std::move(*yaml_result);
@@ -824,14 +788,13 @@ auto AssetManager::handle_source_change(const std::string& changed_path, const s
         // Reload the model
         auto result = detail::load_gltf_model(device_, make_full_path(changed_path), scale);
         if (!result) {
-            std::cerr << "[Asset] Hot-reload: model reload failed: " << asset_id
-                      << " \u2014 retaining old model\n";
+            BUDDD_LOG_ERROR("Hot-reload: model reload failed: {} \u2014 retaining old model", asset_id);
             return;
         }
 
         // Replace in-place
         model_asset->replace_root(std::move(result->root));
-        std::cerr << "[Asset] Hot-reload: model reloaded: " << asset_id << "\n";
+        BUDDD_LOG_INFO("Hot-reload: model reloaded: {}", asset_id);
     }
 }
 

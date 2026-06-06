@@ -40,7 +40,7 @@ TEST_CASE("buddd unknowncommand exits with code 1", "[cli]") {
     const auto res = run_buddd("unknowncommand");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown command: 'unknowncommand'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown command: 'unknowncommand'") != std::string::npos);
     REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
@@ -66,7 +66,7 @@ TEST_CASE("buddd demo is unknown command", "[cli]") {
     const auto res = run_buddd("demo unknown");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown command: 'demo'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown command: 'demo'") != std::string::npos);
 }
 
 TEST_CASE("buddd capture prints unknown command", "[cli]") {
@@ -74,7 +74,7 @@ TEST_CASE("buddd capture prints unknown command", "[cli]") {
     const auto res = run_buddd("capture cube");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown command: 'capture'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown command: 'capture'") != std::string::npos);
     REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
@@ -82,7 +82,7 @@ TEST_CASE("buddd run unknownscene prints error", "[cli]") {
     const auto res = run_buddd("run unknownscene");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown scene: 'unknownscene'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown scene: 'unknownscene'") != std::string::npos);
     REQUIRE(res.stderr_str.find("Usage: buddd run") != std::string::npos);
 }
 
@@ -90,7 +90,7 @@ TEST_CASE("buddd test is unknown command", "[cli]") {
     const auto res = run_buddd("test");
 
     REQUIRE(res.exit_code == 1);
-    REQUIRE(res.stderr_str.find("Unknown command: 'test'") != std::string::npos);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown command: 'test'") != std::string::npos);
     REQUIRE(res.stderr_str.find("Usage: buddd <command> [<args>]") != std::string::npos);
 }
 
@@ -119,10 +119,11 @@ TEST_CASE("buddd with no arguments defaults to run command", "[cli]") {
     };
 
     const auto stdout_str = read_file(out_file);
+    const auto stderr_str = read_file(err_file);
     std::remove(out_file.c_str());
     std::remove(err_file.c_str());
 
-    REQUIRE(stdout_str.find("Window opened: 1024x768") != std::string::npos);
+    REQUIRE(stderr_str.find("[INFO] [App] Window opened: 1024x768") != std::string::npos);
 }
 
 // ---------------------------------------------------------------------------

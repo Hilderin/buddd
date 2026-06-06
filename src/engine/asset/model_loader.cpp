@@ -13,7 +13,10 @@
 #include "render/texture.h"
 #include "image/image.h"
 #include "image/image_buffer.h"
+#include "log/log.h"
 #include "math/quat.h"
+
+BUDDD_LOG_TAG("Asset:ModelLoader");
 
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -24,7 +27,6 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -417,7 +419,7 @@ auto load_gltf_texture(RenderDevice& device,
         std::string resolved_path;
         if (image.uri.find("://") != std::string::npos) {
             // Data URI — skip (tinygltf already decoded if possible)
-            std::cerr << "[Asset] Warn: data URI in glTF texture not supported\n";
+            BUDDD_LOG_WARN("data URI in glTF texture not supported");
             return nullptr;
         }
 
@@ -433,8 +435,7 @@ auto load_gltf_texture(RenderDevice& device,
             }
         }
 
-        std::cerr << "[Asset] Warn: texture load failed for " << image.uri
-                  << " \u2014 using magenta fallback\n";
+        BUDDD_LOG_WARN("texture load failed for {} \u2014 using magenta fallback", image.uri);
     }
 
     return nullptr;
@@ -494,7 +495,7 @@ auto create_pbr_material(RenderDevice& device,
         // Base color texture
         if (pbr.baseColorTexture.index >= 0) {
             if (pbr.baseColorTexture.texCoord > 0) {
-                std::cerr << "[Asset] Warn: texture texCoord > 0 not supported in V1\n";
+                BUDDD_LOG_WARN("texture texCoord > 0 not supported in V1");
             }
             data.base_color_texture = load_tex(pbr.baseColorTexture.index);
             ensure_texture(data.base_color_texture);
@@ -503,7 +504,7 @@ auto create_pbr_material(RenderDevice& device,
         // Metallic-roughness texture
         if (pbr.metallicRoughnessTexture.index >= 0) {
             if (pbr.metallicRoughnessTexture.texCoord > 0) {
-                std::cerr << "[Asset] Warn: texture texCoord > 0 not supported in V1\n";
+                BUDDD_LOG_WARN("texture texCoord > 0 not supported in V1");
             }
             data.metallic_roughness_texture = load_tex(pbr.metallicRoughnessTexture.index);
             ensure_texture(data.metallic_roughness_texture);
@@ -512,7 +513,7 @@ auto create_pbr_material(RenderDevice& device,
         // Normal texture
         if (gltf_mat.normalTexture.index >= 0) {
             if (gltf_mat.normalTexture.texCoord > 0) {
-                std::cerr << "[Asset] Warn: texture texCoord > 0 not supported in V1\n";
+                BUDDD_LOG_WARN("texture texCoord > 0 not supported in V1");
             }
             data.normal_texture = load_tex(gltf_mat.normalTexture.index);
             ensure_texture(data.normal_texture);
@@ -521,7 +522,7 @@ auto create_pbr_material(RenderDevice& device,
         // Occlusion texture
         if (gltf_mat.occlusionTexture.index >= 0) {
             if (gltf_mat.occlusionTexture.texCoord > 0) {
-                std::cerr << "[Asset] Warn: texture texCoord > 0 not supported in V1\n";
+                BUDDD_LOG_WARN("texture texCoord > 0 not supported in V1");
             }
             data.occlusion_texture = load_tex(gltf_mat.occlusionTexture.index);
             ensure_texture(data.occlusion_texture);
@@ -530,7 +531,7 @@ auto create_pbr_material(RenderDevice& device,
         // Emissive texture
         if (gltf_mat.emissiveTexture.index >= 0) {
             if (gltf_mat.emissiveTexture.texCoord > 0) {
-                std::cerr << "[Asset] Warn: texture texCoord > 0 not supported in V1\n";
+                BUDDD_LOG_WARN("texture texCoord > 0 not supported in V1");
             }
             data.emissive_texture = load_tex(gltf_mat.emissiveTexture.index);
             ensure_texture(data.emissive_texture);
@@ -539,9 +540,7 @@ auto create_pbr_material(RenderDevice& device,
         // Check for unsupported extensions
         for (const auto& ext : gltf_mat.extensions) {
             if (ext.first == "KHR_materials_pbrSpecularGlossiness") {
-                std::cerr << "[Asset] Warn: material ext not supported: "
-                          << gltf_mat.name << " (KHR_materials_pbrSpecularGlossiness)"
-                          << " \u2014 using default PBR factors\n";
+                BUDDD_LOG_WARN("material ext not supported: {} (KHR_materials_pbrSpecularGlossiness) \u2014 using default PBR factors", gltf_mat.name);
                 // Reset to default since we can't convert
                 data.base_color_factor = math::Vec4{1.0f, 1.0f, 1.0f, 1.0f};
                 data.metallic_factor = 0.0f;
@@ -551,21 +550,17 @@ auto create_pbr_material(RenderDevice& device,
 
         // Check alpha mode
         if (!gltf_mat.alphaMode.empty() && gltf_mat.alphaMode != "OPAQUE") {
-            std::cerr << "[Asset] Warn: alphaMode '"
-                      << gltf_mat.alphaMode << "' not supported in V1"
-                      << " \u2014 treating as opaque\n";
+            BUDDD_LOG_WARN("alphaMode '{}' not supported in V1 \u2014 treating as opaque", gltf_mat.alphaMode);
         }
     }
 
     pbr_mat->set_data(data);
 
-#ifndef NDEBUG
     if (material_idx >= 0 && material_idx < static_cast<int>(model.materials.size())) {
-        std::cerr << "[Asset] PbrMaterial created: " << model.materials[material_idx].name << "\n";
+        BUDDD_LOG_DEBUG("PbrMaterial created: {}", model.materials[material_idx].name);
     } else {
-        std::cerr << "[Asset] PbrMaterial created: (default material, no glTF material)\n";
+        BUDDD_LOG_DEBUG("PbrMaterial created: (default material, no glTF material)");
     }
-#endif
 
     return pbr_mat;
 }
@@ -608,8 +603,7 @@ auto build_model_from_mesh(RenderDevice& device,
 
         // Check primitive mode
         if (prim.mode != 4) { // TRIANGLES
-            std::cerr << "[Asset] Warn: unsupported primitive mode " << prim.mode
-                      << " in mesh " << mesh.name << " \u2014 skipping\n";
+            BUDDD_LOG_WARN("unsupported primitive mode {} in mesh {} \u2014 skipping", prim.mode, mesh.name);
             continue;
         }
 
@@ -902,7 +896,7 @@ auto load_gltf_model(RenderDevice& device,
     }
 
     if (!warn.empty()) {
-        std::cerr << "[Asset] glTF warning: " << warn << "\n";
+        BUDDD_LOG_WARN("glTF warning: {}", warn);
     }
 
     if (!success) {
@@ -911,7 +905,7 @@ auto load_gltf_model(RenderDevice& device,
     }
 
     if (!err.empty()) {
-        std::cerr << "[Asset] glTF error: " << err << "\n";
+        BUDDD_LOG_ERROR("glTF error: {}", err);
     }
 
     // Compute base directory for resolving relative texture paths

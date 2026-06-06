@@ -15,9 +15,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "log/log.h"
+#include "log/memory_sink.h"
+
 #include <iostream>
 #include <memory>
-#include <sstream>
 #include <span>
 #include <string>
 #include <type_traits>
@@ -525,22 +527,23 @@ TEST_CASE("RenderSystem no camera warning", "[scene_rendering]") {
     World world;
     RenderSystem render_system(device, world);
 
-    // Capture std::cerr
-    auto old_buf = std::cerr.rdbuf();
-    std::ostringstream captured;
-    std::cerr.rdbuf(captured.rdbuf());
+    // Set up MemorySink to capture log output
+    auto mem_sink = std::make_shared<buddd::log::MemorySink>();
+    buddd::log::LogConfig config;
+    config.sinks.push_back(mem_sink);
+    buddd::log::Logger::init(std::move(config));
 
     render_system.render();
 
-    // Restore std::cerr
-    std::cerr.rdbuf(old_buf);
+    // Restore logger to avoid interfering with other tests
+    buddd::log::Logger::reset();
 
     // Verify begin_frame was still called
     REQUIRE(device.frame_begin_count() == 1);
 
     // Verify warning message
-    auto output = captured.str();
-    REQUIRE(output.find("no active camera") != std::string::npos);
+    REQUIRE(mem_sink->messages().size() == 1);
+    REQUIRE(mem_sink->messages()[0].message.find("no active camera") != std::string::npos);
 }
 
 // ===========================================================================

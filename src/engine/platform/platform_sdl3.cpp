@@ -1,14 +1,17 @@
 #include "platform_sdl3.h"
 #include "window/window_sdl3.h"
 
+#include "log/log.h"
+
 #include <SDL3/SDL.h>
-#include <iostream>
+
+BUDDD_LOG_TAG("Platform:SDL3");
 
 namespace buddd::engine {
 
 PlatformSDL3::~PlatformSDL3() {
     SDL_Quit();
-    std::cerr << "Platform shutdown (SDL3)\n";
+    BUDDD_LOG_INFO("Platform shutdown (SDL3)");
 }
 
 auto PlatformSDL3::poll_events() -> bool {
@@ -61,7 +64,7 @@ auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::uniq
             "SDL_CreateWindow failed: " + std::string(SDL_GetError()));
     }
 
-    std::cerr << "Window created: " << config.width << "x" << config.height << "\n";
+    BUDDD_LOG_INFO("Window created: {}x{}", config.width, config.height);
     return std::unique_ptr<Window>(new WindowSDL3(sdl_window, config.width, config.height, *this));
 }
 

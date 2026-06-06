@@ -1,6 +1,8 @@
 #include "input_system_sdl3.h"
 
-#include <iostream>
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Input:SDL3");
 
 namespace buddd::engine {
 
@@ -100,11 +102,9 @@ void InputSystemSDL3::on_sdl_event(const SDL_Event& event) {
                 auto idx = static_cast<size_t>(scancode);
                 current_keys_[idx] = true;
             }
-#ifndef NDEBUG
             else {
-                std::cerr << "InputSystemSDL3: unrecognised scancode " << static_cast<int>(scancode) << "\n";
+                BUDDD_LOG_DEBUG("InputSystemSDL3: unrecognised scancode {}", static_cast<int>(scancode));
             }
-#endif
             break;
         }
         case SDL_EVENT_KEY_UP: {
@@ -113,11 +113,9 @@ void InputSystemSDL3::on_sdl_event(const SDL_Event& event) {
                 auto idx = static_cast<size_t>(scancode);
                 current_keys_[idx] = false;
             }
-#ifndef NDEBUG
             else {
-                std::cerr << "InputSystemSDL3: unrecognised scancode " << static_cast<int>(scancode) << "\n";
+                BUDDD_LOG_DEBUG("InputSystemSDL3: unrecognised scancode {}", static_cast<int>(scancode));
             }
-#endif
             break;
         }
         case SDL_EVENT_MOUSE_MOTION: {

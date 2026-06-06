@@ -4,7 +4,10 @@
 #include "window/window.h"
 
 #include <SDL3/SDL.h>
-#include <iostream>
+
+#include "log/log.h"
+
+BUDDD_LOG_TAG("Render");
 
 namespace buddd::engine {
 
@@ -12,7 +15,7 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
     auto* native = window.native_handle();
 
     if (native == nullptr) {
-        std::cerr << "Render device created (Headless)\n";
+        BUDDD_LOG_INFO("Render device created (Headless)");
         return std::unique_ptr<RenderDevice>(
             new RenderDeviceHeadless(window));
     }
@@ -29,9 +32,7 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
 
     // Request a 24-bit depth buffer for correct 3D occlusion.
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-#ifndef NDEBUG
-    std::cerr << "Depth buffer requested: 24-bit\n";
-#endif
+    BUDDD_LOG_DEBUG("Depth buffer requested: 24-bit");
 
     auto* gl_context = SDL_GL_CreateContext(sdl_window);
     if (gl_context == nullptr) {
@@ -41,7 +42,7 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
 
     SDL_GL_MakeCurrent(sdl_window, gl_context);
 
-    std::cerr << "Render device created (OpenGL 4.5 Core)\n";
+    BUDDD_LOG_INFO("Render device created (OpenGL 4.5 Core)");
     return std::unique_ptr<RenderDevice>(
         new RenderDeviceOpenGL(window, sdl_window, gl_context));
 }

@@ -2,8 +2,11 @@
 #include "platform_sdl3.h"
 #include "platform_headless.h"
 
+#include "log/log.h"
+
 #include <SDL3/SDL.h>
-#include <iostream>
+
+BUDDD_LOG_TAG("Platform");
 
 namespace buddd::engine {
 
@@ -11,18 +14,18 @@ auto Platform::create(Backend backend) -> Result<std::unique_ptr<Platform>> {
     switch (backend) {
         case Backend::SDL3: {
             if (!SDL_Init(SDL_INIT_VIDEO)) {
-                std::cerr << "Platform init failed: SDL_Init failed: "
-                          << SDL_GetError() << "\n";
+                BUDDD_LOG_ERROR("Platform init failed: SDL_Init failed: {}",
+                    SDL_GetError());
                 return make_error(Error::Category::InitFailed,
                     "SDL_Init failed: " + std::string(SDL_GetError()));
             }
-            std::cerr << "Platform backend: SDL3\n";
-            std::cerr << "Platform initialized\n";
+            BUDDD_LOG_INFO("Platform backend: SDL3");
+            BUDDD_LOG_INFO("Platform initialized");
             return std::unique_ptr<Platform>(new PlatformSDL3());
         }
         case Backend::Headless: {
-            std::cerr << "Platform backend: Headless\n";
-            std::cerr << "Platform initialized\n";
+            BUDDD_LOG_INFO("Platform backend: Headless");
+            BUDDD_LOG_INFO("Platform initialized");
             return std::unique_ptr<Platform>(new PlatformHeadless());
         }
     }

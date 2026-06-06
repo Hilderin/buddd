@@ -1,5 +1,7 @@
 #include "apps/gltf_demo_app.h"
 
+#include "log/log.h"
+
 #include "asset/asset_manager.h"
 #include "asset/model_asset.h"
 #include "render/render_device.h"
@@ -21,6 +23,8 @@
 #include <memory>
 #include <string>
 
+BUDDD_LOG_TAG("GltfDemo");
+
 namespace be = buddd::engine;
 
 buddd::cmd::app::GltfDemoApp::GltfDemoApp() = default;
@@ -34,8 +38,8 @@ auto buddd::cmd::app::GltfDemoApp::setup(be::RenderDevice& device)
     std::string base_path = "assets";
     auto am_result = be::AssetManager::create(device, base_path);
     if (!am_result) {
-        std::cerr << "Failed to create AssetManager: "
-                  << be::to_string(am_result.error()) << "\n";
+        BUDDD_LOG_ERROR("Failed to create AssetManager: {}",
+                        be::to_string(am_result.error()));
         return std::unexpected(am_result.error());
     }
     asset_manager_ = std::move(*am_result);
@@ -70,8 +74,8 @@ auto buddd::cmd::app::GltfDemoApp::setup(be::RenderDevice& device)
     // ── Load model ──
     auto model_asset = asset_manager_->create<be::ModelAsset>("models/box/Box");
     if (!model_asset) {
-        std::cerr << "Failed to load model: "
-                  << be::to_string(model_asset.error()) << "\n";
+        BUDDD_LOG_ERROR("Failed to load model: {}",
+                        be::to_string(model_asset.error()));
         // Return error to abort
         return std::unexpected(model_asset.error());
     }

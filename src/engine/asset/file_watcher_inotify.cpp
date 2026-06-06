@@ -1,12 +1,16 @@
 #include "asset/file_watcher_inotify.h"
+#include "log/log.h"
 
 #ifdef __linux__
+
+BUDDD_LOG_TAG("Asset:FileWatcher");
+
+
 
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
-#include <iostream>
 #include <system_error>
 #include <vector>
 
@@ -23,8 +27,7 @@ InotifyFileWatcher::InotifyFileWatcher(std::string_view watch_path)
 {
     inotify_fd_ = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (inotify_fd_ == -1) {
-        std::cerr << "[FileWatcher] inotify_init1 failed: "
-                  << std::strerror(errno) << "\n";
+        BUDDD_LOG_ERROR("inotify_init1 failed: {}", strerror(errno));
         // Mark as invalid; start() will detect this.
         return;
     }
@@ -36,7 +39,7 @@ InotifyFileWatcher::InotifyFileWatcher(std::string_view watch_path)
     if (pipe2(self_pipe_, O_CLOEXEC | O_NONBLOCK) == -1) {
         self_pipe_[0] = -1;
         self_pipe_[1] = -1;
-        std::cerr << "[FileWatcher] pipe2 failed: " << std::strerror(errno) << "\n";
+        BUDDD_LOG_ERROR("pipe2 failed: {}", strerror(errno));
     }
 }
 
@@ -80,7 +83,7 @@ auto InotifyFileWatcher::add_watch_recursive(const std::string& dir_path, const 
 
 auto InotifyFileWatcher::start() -> void {
     if (inotify_fd_ == -1) {
-        std::cerr << "[FileWatcher] Cannot start: inotify fd invalid\n";
+        BUDDD_LOG_ERROR("Cannot start: inotify fd invalid");
         return;
     }
     if (running_.exchange(true)) {
@@ -89,9 +92,7 @@ auto InotifyFileWatcher::start() -> void {
 
     watcher_thread_ = std::thread(&InotifyFileWatcher::watcher_thread_func, this);
 
-#ifndef NDEBUG
-    std::cerr << "[FileWatcher] Monitoring: " << watch_path_ << "\n";
-#endif
+    BUDDD_LOG_DEBUG("Monitoring: {}", watch_path_);
 }
 
 auto InotifyFileWatcher::stop() -> void {
@@ -109,9 +110,7 @@ auto InotifyFileWatcher::stop() -> void {
         watcher_thread_.join();
     }
 
-#ifndef NDEBUG
-    std::cerr << "[FileWatcher] Stopped\n";
-#endif
+    BUDDD_LOG_DEBUG("Stopped");
 }
 
 auto InotifyFileWatcher::poll_events() -> std::vector<FileEvent> {
@@ -140,7 +139,7 @@ auto InotifyFileWatcher::watcher_thread_func() -> void {
 
         if (ret < 0) {
             if (errno == EINTR) continue;
-            std::cerr << "[FileWatcher] poll failed: " << std::strerror(errno) << "\n";
+            BUDDD_LOG_ERROR("poll failed: {}", strerror(errno));
             break;
         }
 
