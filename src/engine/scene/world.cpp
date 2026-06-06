@@ -1,5 +1,8 @@
 #include "scene/world.h"
 #include "scene/camera_component.h"
+#include "scene/updatable.h"
+
+#include <algorithm>
 
 namespace buddd::engine {
 
@@ -76,6 +79,12 @@ void World::flush_destroyed() noexcept {
             for (auto sit = siblings.begin(); sit != siblings.end(); ++sit) {
                 if (sit->get() == node) {
                     auto owned = std::move(*sit);
+                    // Clean up Updatable pointers before the component unique_ptrs are destroyed
+                    for (auto& c : owned->components_) {
+                        if (auto* upd = dynamic_cast<Updatable*>(c.get())) {
+                            std::erase(updatables_, upd);
+                        }
+                    }
                     siblings.erase(sit);
                     // owned goes out of scope here, destroying the node
                     // and recursively its remaining children
@@ -87,6 +96,12 @@ void World::flush_destroyed() noexcept {
             for (auto rit = roots_.begin(); rit != roots_.end(); ++rit) {
                 if (rit->get() == node) {
                     auto owned = std::move(*rit);
+                    // Clean up Updatable pointers before the component unique_ptrs are destroyed
+                    for (auto& c : owned->components_) {
+                        if (auto* upd = dynamic_cast<Updatable*>(c.get())) {
+                            std::erase(updatables_, upd);
+                        }
+                    }
                     roots_.erase(rit);
                     // owned goes out of scope here, destroying the node
                     break;
@@ -257,6 +272,16 @@ void World::reparent(EntityId id, EntityId new_parent_id) {
     } else {
         roots_.push_back(std::move(owned));
         node->parent_ = nullptr;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Updatable dispatch
+// ---------------------------------------------------------------------------
+
+void World::update_updatables(const EngineContext& ctx) {
+    for (auto* upd : updatables_) {
+        upd->update(ctx);
     }
 }
 

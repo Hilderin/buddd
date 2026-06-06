@@ -1,5 +1,6 @@
 #include "apps/triangle_app.h"
 
+#include "engine_service.h"
 #include "render/primitives.h"
 #include "render/render_device.h"
 #include "render/shader.h"
@@ -9,9 +10,11 @@
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::TriangleApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::TriangleApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
+
     // --- Create material ---
     constexpr std::string_view k_vs = R"(
         #version 450 core

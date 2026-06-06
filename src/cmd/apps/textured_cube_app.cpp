@@ -2,6 +2,7 @@
 
 #include "log/log.h"
 
+#include "engine_service.h"
 #include "image/image.h"
 #include "math/camera.h"
 #include "math/math.h"
@@ -29,9 +30,10 @@ BUDDD_LOG_TAG("TexturedCube");
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::TexturedCubeApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
     // 1. Load texture
     auto image_result = be::Image::load("assets/brick.png");
     if (!image_result) {

@@ -36,6 +36,10 @@
 | phong | Phong lighting demo (5 cubes + 5 lights) | Interactive, ESC to exit |
 | asset-demo | Asset pipeline demo: textured cube loaded via YAML metadata | Runs until window close (120 frames) |
 | hot-reload | Hot-reload test: swaps texture source at frame 30 to trigger `poll_file_events()` reload | Runs until window close (60 frames) |
+| gltf-demo | Loads glTF model (Box or DamagedHelmet) with PBR materials, orbit camera | Interactive until window close |
+| gltf-helmet | Loads DamagedHelmet model with free-camera controls (FreeCameraMovement via Updatable system) | Interactive, ESC to exit |
+| hot-reload-gltf | Hot-reload verification for glTF models: swaps model file at frame N | Runs until window close (60+ frames) |
+| multi-material | Cube with 3 submeshes (red/green/blue face pairs) using Model::create_indexed() | Runs until window close (120 frames) |
 
 ### Flags for `buddd run`
 
@@ -64,7 +68,7 @@
 
 Engine internal logging now uses the structured logger (`src/engine/log/`) instead of raw `std::cerr`/`printf`. The logger is a C++26 lightweight framework with five levels, hierarchical source tags, mutex-based thread safety, and multiple sinks.
 
-**Console format** (stderr): `[LEVEL] [Tag] message\n`
+**Console format** (stderr): `[HH:MM:SS.fff] [LEVEL] [Tag] message\n`
 **File format** (with `--log-file`): `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n`
 
 **New CLI flags** (available on all `buddd run <scene>` invocations):
@@ -103,23 +107,23 @@ See the full API reference in [docs/wiki/domain/logging.md](/docs/wiki/domain/lo
 ### App lifecycle (from `run_app()`)
 
 1. `app.config()` → `AppConfig`
-2. `Platform::create(backend)`
-3. `window = platform->create_window(AppConfig)`
-4. print "Window opened: WxH"
-5. `device = RenderDevice::create(window)`
-6. `app.setup(device)` → if error, `shutdown()` and exit 1
-7. print start message
-8. Loop until frame limit or window close or ESC:
-   a. `poll_events()`
-   b. `device->begin_frame()`
-   c. `app.on_frame_begin()` — per-frame hook (default no-op, overridden by apps like `AssetDemoApp` and `HotReloadApp` for hot-reload polling)
-   d. `app.render(device, frame)`
-   e. capture injection
-   f. `device->end_frame()`
-9. print completion/abort message
-10. `app.shutdown()`
-11. print "Window closed, shutting down."
-12. return exit code
+2. `EngineService::create(backend, WindowConfig)` → creates Platform, Window, RenderDevice, AssetManager in one call
+3. print "Window opened: WxH"
+4. `app.setup(engine_service)` (EngineService&) → if error, `shutdown()` and exit 1
+5. print start message
+6. Loop until frame limit or window close or ESC or app exit request:
+   a. `poll_events()` — if returns false (window closed), break
+   b. If `!app.is_running()`, break (exit requested via Updatable)
+   c. `device->begin_frame()`
+   d. `app.on_frame_begin()` — per-frame hook (default no-op, overridden by apps like `AssetDemoApp` and `HotReloadApp` for hot-reload polling)
+   e. **Updatable auto-dispatch**: `World::update_updatables(EngineContext{services, window, delta_time})` — all updatable components run; if any called `request_exit()`, `app.set_running(false)` is called
+   f. `app.render(device, frame)`
+   g. capture injection
+   h. `device->end_frame()`
+7. print completion/abort message
+8. `app.shutdown()`
+9. print "Window closed, shutting down."
+10. return exit code
 
 ### Driver quirk
 

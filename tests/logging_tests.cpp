@@ -121,13 +121,63 @@ TEST_CASE("Console sink format", "[logging]") {
     buf[n] = '\0';
     std::string captured(buf);
 
-    // Check format: [WARN] [TestTag] console test\n
+    // Check format: [HH:MM:SS.fff] [WARN] [TestTag] console test\n
+    // Verify timestamp format [HH:MM:SS.fff] is present
+    std::regex ts_regex(R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\])");
+    REQUIRE(std::regex_search(captured, ts_regex));
     REQUIRE(captured.find("[WARN]") != std::string::npos);
     REQUIRE(captured.find("[TestTag]") != std::string::npos);
     REQUIRE(captured.find("console test") != std::string::npos);
-    // No date-like prefix (no ISO 8601 timestamp)
+    // No ISO 8601 date prefix
     std::regex date_regex(R"(\d{4}-\d{2}-\d{2})");
     REQUIRE_FALSE(std::regex_search(captured, date_regex));
+}
+
+// ---------------------------------------------------------------------------
+// T-04b: Console sink timestamp format
+// ---------------------------------------------------------------------------
+TEST_CASE("Console sink timestamp format", "[logging]") {
+    buddd::log::ConsoleSink sink;
+
+    // Use pipe + dup2 to capture stderr
+    int pipefd[2];
+    int pipe_ret = ::pipe(pipefd);
+    REQUIRE(pipe_ret == 0);
+
+    int old_stderr = ::dup(STDERR_FILENO);
+    REQUIRE(old_stderr != -1);
+
+    int dup2_ret = ::dup2(pipefd[1], STDERR_FILENO);
+    REQUIRE(dup2_ret != -1);
+    ::close(pipefd[1]);
+
+    // Write messages
+    buddd::log::LogMessage msg;
+    msg.level = buddd::log::LogLevel::Info;
+    msg.tag = "TimestampTest";
+    msg.message = "timestamp check";
+    msg.file = __FILE__;
+    msg.line = __LINE__;
+    msg.function = __FUNCTION__;
+
+    sink.write(msg);
+
+    // Restore stderr
+    ::fflush(stderr);
+    ::dup2(old_stderr, STDERR_FILENO);
+    ::close(old_stderr);
+
+    // Read captured output
+    char buf[4096];
+    auto n = ::read(pipefd[0], buf, sizeof(buf) - 1);
+    ::close(pipefd[0]);
+    REQUIRE(n > 0);
+    buf[n] = '\0';
+    std::string captured(buf);
+
+    // Verify the full pattern: [HH:MM:SS.fff] [INFO] [TimestampTest] timestamp check
+    std::regex full_regex(R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[INFO\] \[TimestampTest\] timestamp check)");
+    REQUIRE(std::regex_search(captured, full_regex));
 }
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@
 #include "apps/cube_scene_app.h"
 #include "apps/free_camera_app.h"
 #include "apps/phong_app.h"
+#include "apps/gltf_helmet_app.h"
 #include "apps/run_app.h"
 #include "apps/textured_cube_app.h"
 #include "apps/triangle_app.h"
@@ -100,6 +101,8 @@ auto main(int argc, char* argv[]) -> int {
             app = std::make_unique<bc::app::MultiMaterialApp>();
         else if (scene == "gltf")
             app = std::make_unique<bc::app::GltfDemoApp>();
+        else if (scene == "gltf-helmet")
+            app = std::make_unique<bc::app::GltfHelmetApp>();
         else if (scene == "hot-reload-gltf")
             app = std::make_unique<bc::app::HotReloadGltfApp>();
         else {
@@ -119,6 +122,7 @@ auto main(int argc, char* argv[]) -> int {
                 "  hot-reload   Hot-reload test: swaps texture at frame 30, use --capture 30 and 60 to verify\n"
                 "  hot-reload-gltf  Hot-reload test for glTF models\n"
                 "  gltf         glTF model loading demo (Box model with orbit camera)\n"
+                "  gltf-helmet  Interactive DamagedHelmet inspection with free camera\n"
                 "  multi-material  Multi-material cube: 3 submeshes with red, green, blue materials (120 frames)\n"
                 "\n"
                 "Flags:\n"

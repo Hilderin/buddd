@@ -51,7 +51,7 @@ A single `Logger` singleton is configured via `Logger::init(LogConfig)`, where `
 
 An abstract `Sink` interface with a single `write(const LogMessage&)` method supports:
 
-- **ConsoleSink** — Always present, writes `[LEVEL] [Tag] message\n` to stderr. No timestamp, no color.
+- **ConsoleSink** — Always present, writes `[HH:MM:SS.fff] [LEVEL] [Tag] message\n` to stderr. Wall-clock timestamp with millisecond precision, no color.
 - **FileSink** — Created on demand via a static factory `FileSink::create(path)`. Returns `nullptr` on failure (writes a raw warning to stderr via POSIX `write(2)`, since the logger may not be initialised yet). Uses append mode (`std::ios::app`). Output format: `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp.
 - **MemorySink** — Header-only, always compiled. Accumulates messages in a `std::vector<LogMessage>` for unit test assertions and diagnostic use. A `ScopedMemoryLogger` RAII helper automates its lifecycle.
 

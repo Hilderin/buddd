@@ -12,9 +12,18 @@
 | ADR-008 | `docs/adr/ADR-008-ci-docker-infrastructure.md` — Docker-based CI infrastructure | Accepted |
 | ADR-009 | `docs/adr/ADR-009-test-file-naming-convention.md` — Plural `_tests.cpp` suffix for test files | Accepted |
 | ADR-010 | `docs/adr/ADR-010-no-raw-pointers-in-public-api.md` — Raw pointers prohibited in public API signatures; prefer `T&`, `std::optional<T&>`, `std::reference_wrapper<T>`, `std::span<T>` | Accepted |
-| ADR-012 | `docs/adr/ADR-012-navigable-object-graph-engine-service.md` — Navigable object graph (RenderDevice→Window→Platform), EngineService lifecycle owner, virtual diagnostic accessors on RenderDevice, mouse capture on Window abstract interface | Accepted |
-| ADR-014 | `docs/adr/ADR-014-cli-app-system.md` — CLI App System: centralised render loop with App lifecycle, unified `run` command, removal of `demo`/`capture` commands. Partially supersedes ADR-004. | Accepted |
-| ADR-016 | `docs/adr/ADR-016-yaml-cpp-dependency.md` — yaml-cpp as FetchContent dependency for YAML asset metadata parsing, PRIVATE linkage, exception-safety wrappers. | Accepted |
+| ADR-011 | `docs/adr/ADR-011-owner-ship-nullability-lifetime-nodiscard.md` — Ownership, nullability, lifetime, and `[[nodiscard]]` conventions | Accepted |
+| ADR-012 | `docs/adr/ADR-012-navigable-object-graph-engine-service.md` — Navigable object graph (RenderDevice→Window→Platform), EngineService lifecycle owner, virtual diagnostic accessors, mouse capture | Accepted |
+| ADR-013 | `docs/adr/ADR-013-standard-vertex-format.md` — Standard vertex format (72B stride, 6 attributes) | Accepted |
+| ADR-014 | `docs/adr/ADR-014-cli-app-system.md` — CLI App System: centralised render loop with App lifecycle, unified `run` command | Accepted |
+| ADR-015 | `docs/adr/ADR-015-ci-docker-image-pre-publishing.md` — Pre-publish CI docker image for faster build times | Accepted |
+| ADR-016 | `docs/adr/ADR-016-yaml-cpp-dependency.md` — yaml-cpp as FetchContent dependency for YAML asset metadata parsing, PRIVATE linkage | Accepted |
+| ADR-017 | `docs/adr/ADR-017-multi-material-model.md` — Multi-material Model, unified `create_indexed` factory, primitive helpers | Accepted |
+| ADR-018 | `docs/adr/ADR-018-tinygltf-dependency.md` — tinygltf dependency for glTF 2.0 model loading | Accepted |
+| ADR-019 | `docs/adr/ADR-019-architecture-boundaries.md` — Architecture boundaries, src/engine/ encapsulation rules | Accepted |
+| ADR-020 | `docs/adr/ADR-020-custom-logging-system.md` — Custom logging system (structured logger, macro API, singleton, sinks) | Accepted |
+| ADR-021 | `docs/adr/ADR-021-developer-assertions.md` — Developer assertions (Fatal level, five macros, debug break, NDEBUG-only detection) | Accepted |
+| ADR-023 | `docs/adr/ADR-023-updatable-components.md` — Updatable Components & EngineContext (Updatable interface, EngineContext, World auto-registration, App::setup(EngineService&), run_app auto-dispatch) | Accepted |
 
 The current project state was established via:
 

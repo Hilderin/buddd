@@ -1,5 +1,6 @@
 #include "apps/cube_scene_app.h"
 
+#include "engine_service.h"
 #include "math/camera.h"
 #include "math/math.h"
 #include "math/quat.h"
@@ -20,9 +21,11 @@
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::CubeSceneApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::CubeSceneApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
+
     world_ = std::make_unique<be::World>();
 
     // Create entity

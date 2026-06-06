@@ -65,6 +65,7 @@ Source tags use a hierarchical `Module:SubComponent` format:
 - **`App`** — CLI app lifecycle, capture diagnostics (`app.cpp`, `main.cpp`)
 - **`HotReload`** — hot-reload demo apps
 - **`GltfDemo`** — glTF demo app
+- **`GltfHelmet`** — glTF Helmet demo app
 - **`TexturedCube`** — textured cube demo app
 - **`AssetDemo`** — asset pipeline demo app
 - **`Phong`** — Phong lighting demo app
@@ -144,7 +145,7 @@ All macros use `std::format`-style formatting with `{}` placeholders:
 
 ```cpp
 BUDDD_LOG_INFO("int {} str {}", 42, "hello");
-// Output: [INFO] [Tag] int 42 str hello
+// Output: [14:32:05.123] [INFO] [Tag] int 42 str hello
 ```
 
 ### Underlying function (advanced use)
@@ -207,13 +208,13 @@ buddd run cube --log-level=warn --log-filter=Engine=debug --log-filter=Render:Op
 
 ### Console sink (always present)
 
-Format: `[LEVEL] [Tag] message\n` — written to stderr. No timestamp, no colour.
+Format: `[HH:MM:SS.fff] [LEVEL] [Tag] message\n` — written to stderr. Wall-clock timestamp with millisecond precision, no colour.
 
 ```
-[INFO] [Engine] hello world
-[WARN] [Asset:Texture] texture not found, using fallback
-[ERROR] [Render:OpenGL] shader compilation failed
-[FATAL] [Assert] Assertion failed: entity.IsValid()
+[14:32:05.123] [INFO] [Engine] hello world
+[14:32:05.456] [WARN] [Asset:Texture] texture not found, using fallback
+[14:32:05.789] [ERROR] [Render:OpenGL] shader compilation failed
+[14:32:05.790] [FATAL] [Assert] Assertion failed: entity.IsValid()
        Message: Tried to access destroyed entity
        Location: src/ecs/EntityManager.cpp:123
        Function: EntityManager::GetComponent

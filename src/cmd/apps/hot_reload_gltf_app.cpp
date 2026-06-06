@@ -4,6 +4,7 @@
 
 #include "asset/asset_manager.h"
 #include "asset/model_asset.h"
+#include "engine_service.h"
 #include "render/render_device.h"
 #include "render/render_system.h"
 #include "render/model_node.h"
@@ -48,9 +49,10 @@ auto write_yaml(float scale, const std::string& desc) -> void {
 buddd::cmd::app::HotReloadGltfApp::HotReloadGltfApp() = default;
 buddd::cmd::app::HotReloadGltfApp::~HotReloadGltfApp() = default;
 
-auto buddd::cmd::app::HotReloadGltfApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::HotReloadGltfApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
     auto am_result = be::AssetManager::create(device, "assets");
     if (!am_result) return std::unexpected(am_result.error());
     asset_manager_ = std::move(*am_result);

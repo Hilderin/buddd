@@ -14,6 +14,7 @@ The engine library is the core of the project. It provides a version API, a math
 |---|---|
 | `engine_service.h` | Public header: `EngineService` class — owns the `Platform` → `Window` → `RenderDevice` → `AssetManager` chain via `unique_ptr`. Factory: `EngineService::create(Backend, WindowConfig) -> Result<unique_ptr<EngineService>>`. Accessors: `platform() -> Platform&`, `window() -> Window&`, `device() -> RenderDevice&`, `assets() -> AssetManager&`. Member declaration order (`platform_`, `window_`, `device_`, `asset_manager_`) guarantees correct destruction ordering. |
 | `engine_service.cpp` | Factory implementation: creates `Platform`, then `Window` (via `platform->create_window()`), then `RenderDevice` (via `RenderDevice::create()`), wrapping them in an `EngineService`. Then creates `AssetManager` via `AssetManager::create(engine_service.device(), "assets")` and stores it in `asset_manager_`. |
+| `engine_context.h` | Public header: `EngineContext` struct — bundles `EngineService& services`, `Window& window`, `float delta_time` with `request_exit()` (mutable) and `is_exit_requested()` methods. Used by `Updatable::update(const EngineContext&)` to provide per-frame context to all updatable components. See ADR-023. |
 
 See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) for the architectural rationale.
 
@@ -45,8 +46,8 @@ See [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) for architectural deci
 | `log/log_filter.cpp` | LogFilter implementation — tag override matching, prefix-based lookup with last-match-wins semantics. |
 | `log/logger.h` | **Internal header.** `Logger` singleton class declaration — `init(LogConfig)`, `shutdown()`, `reset()`, `instance()`, `log(...)`, `is_enabled(...)`. |
 | `log/logger.cpp` | Logger implementation — pimpl pattern (`unique_ptr<Impl>` hiding mutex, filter, sink list, lifecycle flags), `init()`/`shutdown()`/`reset()` lifecycle, mutex-guarded `write_to_sinks()`, tag truncation at 255 chars, message truncation at 32 KB. |
-| `log/console_sink.h` | `ConsoleSink` class declaration — writes `[LEVEL] [Tag] message\n` to stderr. |
-| `log/console_sink.cpp` | ConsoleSink implementation — `std::fprintf(stderr, ...)`, no timestamp, no colour. |
+| `log/console_sink.h` | `ConsoleSink` class declaration — writes `[HH:MM:SS.fff] [LEVEL] [Tag] message\n` to stderr. |
+| `log/console_sink.cpp` | ConsoleSink implementation — `std::fprintf(stderr, ...)`, wall-clock timestamp `HH:MM:SS.fff`. |
 | `log/file_sink.h` | `FileSink` class declaration — static factory `FileSink::create(path) -> unique_ptr<FileSink>`. Private constructor. Returns `nullptr` on failure with raw `write(2)` stderr warning. |
 | `log/file_sink.cpp` | FileSink implementation — opens file in append mode (`std::ios::app`), writes `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp, flushed after every write. |
 | `log/memory_sink.h` | `MemorySink` header-only class (inherits `Sink`). Always compiled. Stores messages in `std::vector<LogMessage>`, provides `messages()` and `clear()`. |
@@ -119,6 +120,9 @@ Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieva
 | `world.h` | `World` class — top-level container managing entity lifecycle, tree hierarchy, deferred destruction. Template methods for component dispatch (`add_component`, `get_component`, `remove_component`) and type-based iteration (`each<T>()`) defined inline. Camera registration API (`register_camera`, `unregister_camera`, `active_camera`) stores a `CameraComponent&` reference in an `std::optional<CameraComponent&>` member. |
 | `world.cpp` | World implementation including internal `EntityNode` type, slot-based storage, `flush_destroyed()` logic, and `mark_for_destroy()` iterative traversal. |
 | `camera_component.h` | `CameraComponent` ECS component class — wraps `math::Camera`, inherits `Component`. Auto-registers with `World` via `on_attach()` and unregisters on destruction (address-based comparison). |
+| `updatable.h` | `Updatable` pure abstract interface — orthogonal to `Component`. Provides `virtual update(const EngineContext& ctx) -> void`. Components can inherit from both via multiple inheritance. Auto-registered via `World::add_component<T>()` when `std::is_base_of_v<Updatable, T>`. Auto-dispatched in `run_app()` before `app.render()`. |
+| `free_camera_movement.h` | `FreeCameraMovement` component class — inherits both `Component` and `Updatable`. Encapsulates free-camera controls: WASD movement, mouse look, right-click capture toggle, ESC to exit. Configurable `move_speed`, `mouse_sensitivity`, `pitch_clamp_degrees`, `invert_yaw`, `invert_pitch`. |
+| `free_camera_movement.cpp` | FreeCameraMovement implementation — input handling, camera state (yaw/pitch), component lifecycle. |
 | `camera_component.cpp` | CameraComponent implementation: `on_attach()` calls `world().register_camera(*this)`, destructor calls `world_->unregister_camera(*this)` (with null guard). |
 | `directional_light_component.h` | `DirectionalLightComponent` — infinite parallel light. Direction from entity rotation (-Z forward). Properties: `colour` (Vec3), `intensity` (float). `on_attach()` no-op. |
 | `directional_light_component.cpp` | Constructor and accessor implementations. |
@@ -273,7 +277,7 @@ Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) de
 |---|---|
 | `main.cpp` | Dispatcher: parse first positional argument, dispatch to matching handler. If no arg or arg is `run`: parse `<scene>`, create the appropriate `App` subclass, call `run_app()`. Also handles `version` and `help` commands. No engine header includes beyond those needed for forward declarations. Error/parse diagnostics use `BUDDD_LOG_ERROR`/`BUDDD_LOG_WARN` via tag `App`; pre-init bootstrap error and usage/help text blocks remain as `fprintf(stderr)` (exempted per SPEC-022). |
 | `app.h` | Declares `AppConfig` struct (title, width, height), `App` base class with virtual lifecycle (`config()`, `setup()`, `on_frame_begin()` (default no-op), `render()`, `shutdown()`), and `run_app()` free function. |
-| `app.cpp` | Implementation of `run_app()`: creates `Platform` / `Window` / `RenderDevice`, calls `app.setup()`, runs the central render loop (calling `begin_frame()` → `app.on_frame_begin()` → `app.render()` → capture injection → `end_frame()` with frame limiting via `--frame` and capture injection via `--capture`), then calls `app.shutdown()`. Lifecycle messages (window opened, capture confirmation, window closed) use `BUDDD_LOG_INFO` via tag `App` instead of `printf`/`std::cerr`. |
+| `app.cpp` | Implementation of `run_app()`: creates `EngineService` via `EngineService::create()` (owns Platform/Window/RenderDevice/AssetManager chain), calls `app.setup(eng)` with `EngineService&`, runs the central render loop (`poll_events()` → `begin_frame()` → `on_frame_begin()` → `World::update_updatables(EngineContext{...})` → `app.render()` → capture injection → `end_frame()` with frame limiting via `--frame` and capture injection via `--capture`), then calls `app.shutdown()`. Creates `EngineContext` per frame with `EngineService&`, `Window&`, and `delta_time`. Exit is signalled via `EngineContext::request_exit()`, checked after all updatables run. Lifecycle messages use `BUDDD_LOG_INFO` via tag `App`. |
 | `app_config.h` | Declares `CaptureSpec` struct (frame number + path) and `RunningArgs` struct (frame limit + capture specs), plus `parse_running_args()` to parse `--frame N` and `--capture N:path` from argv. |
 | `app_config.cpp` | Implementation of `parse_running_args()`. |
 
@@ -300,6 +304,7 @@ Each scene is an `App` subclass whose `render()` method contains **only** the pe
 | `hot_reload_app.h` / `hot_reload_app.cpp` | `HotReloadApp` — hot-reload verification test. Loads a material from YAML, swaps texture at frame 30 via `poll_file_events()`. Use with `--capture 30:before.png --capture 60:after.png` to verify before/after. Overrides `on_frame_begin()` to call `asset_manager_->poll_file_events()`. |
 | `multi_material_app.h` / `multi_material_app.cpp` | `MultiMaterialApp` — 120-frame multi-material demo. Creates a cube with 3 submeshes (red/green/blue face pairs) using `Model::create_indexed()` directly. Each submesh references a different material index. Demonstrates multi-material draw call batching. |
 | `gltf_demo_app.h` / `gltf_demo_app.cpp` | `GltfDemoApp` — loads a glTF model (Box or DamagedHelmet) from YAML via `AssetManager::create<ModelAsset>()`, traverses the `ModelNode` tree using `add_model_to_world()`, and renders with orbit camera and PBR materials. Continuous Y rotation. See glTF model loading spec. |
+| `gltf_helmet_app.h` / `gltf_helmet_app.cpp` | `GltfHelmetApp` — loads DamagedHelmet model with free-camera controls. Camera auto-updated via `FreeCameraMovement` (Updatable system). 1280×720 window, directional light (white, 1.5, -45° pitch, 45° yaw). |
 | `hot_reload_gltf_app.h` / `hot_reload_gltf_app.cpp` | `HotReloadGltfApp` — hot-reload verification for glTF models. Loads a model, swaps source file at frame N, triggers `poll_file_events()`, validates the model updates in-place. Uses same camera system as `gltf_demo_app`. Extends the hot-reload pattern from `HotReloadApp`. |
 
 ### Demo helpers (`src/cmd/demo/`)
@@ -393,3 +398,4 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - ADR: [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
 - ADR: [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)
 - ADR: [ADR-021](/docs/adr/ADR-021-developer-assertions.md) — Developer Assertions (Fatal level, five macros, debug break, fixed Assert tag)
+- ADR: [ADR-023](/docs/adr/ADR-023-updatable-components.md) — Updatable Components & EngineContext (Updatable interface, EngineContext struct, World auto-registration, App::setup(EngineService&), run_app auto-dispatch)

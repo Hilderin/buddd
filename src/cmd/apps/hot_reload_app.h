@@ -30,7 +30,7 @@ public:
         return {"Buddd Engine \u2014 hot-reload test", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::RenderDevice& device)
+    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
         -> buddd::engine::Result<void> override;
 
     auto on_frame_begin() -> void override;

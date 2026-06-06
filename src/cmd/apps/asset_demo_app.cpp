@@ -5,6 +5,7 @@
 #include "asset/asset_manager.h"
 #include "asset/material_asset.h"
 #include "asset/texture_asset.h"
+#include "engine_service.h"
 #include "image/image.h"
 #include "math/camera.h"
 #include "math/math.h"
@@ -35,9 +36,10 @@ namespace be = buddd::engine;
 buddd::cmd::app::AssetDemoApp::AssetDemoApp() = default;
 buddd::cmd::app::AssetDemoApp::~AssetDemoApp() = default;
 
-auto buddd::cmd::app::AssetDemoApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::AssetDemoApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
     // 1. Create AssetManager (keep alive for hot-reload)
     auto am = be::AssetManager::create(device, "assets");
     if (!am) {

@@ -12,7 +12,7 @@ public:
         return {};  // defaults: "Buddd Engine", 1024x768
     }
 
-    [[nodiscard]] auto setup(buddd::engine::RenderDevice&) -> buddd::engine::Result<void> override {
+    [[nodiscard]] auto setup(buddd::engine::EngineService&) -> buddd::engine::Result<void> override {
         return {};
     }
 

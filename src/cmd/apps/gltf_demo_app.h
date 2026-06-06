@@ -25,7 +25,7 @@ public:
         return {"Buddd Engine \u2014 glTF Demo", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::RenderDevice& device)
+    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
         -> buddd::engine::Result<void> override;
 
     auto render(buddd::engine::RenderDevice& device, int frame) -> void override;

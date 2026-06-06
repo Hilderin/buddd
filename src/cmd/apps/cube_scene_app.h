@@ -10,7 +10,7 @@
 #include <memory>
 
 namespace buddd::engine {
-class RenderDevice;
+class EngineService;
 } // namespace buddd::engine
 
 namespace buddd::cmd::app {
@@ -22,7 +22,7 @@ public:
         return {"Buddd Engine \u2014 cube-scene", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::RenderDevice& device)
+    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
         -> buddd::engine::Result<void> override;
 
     auto render(buddd::engine::RenderDevice& device, int frame) -> void override;

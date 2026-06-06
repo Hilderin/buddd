@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <span>
@@ -11,6 +12,8 @@
 #include "scene/entity.h"
 #include "scene/transform.h"
 #include "scene/component.h"
+#include "scene/updatable.h"
+#include "engine_context.h"
 
 namespace buddd::engine {
 
@@ -64,6 +67,10 @@ public:
 
     template<typename T>
     auto remove_component(EntityId id) -> bool;
+
+    // -- Updatable auto-dispatch --
+    /// Iterates all registered Updatable components, calling update() on each.
+    auto update_updatables(const EngineContext& ctx) -> void;
 
     // -- Type-based iteration --
     template<typename T, typename Func>
@@ -132,6 +139,9 @@ private:
     std::vector<uint32_t> free_slots_;
     uint32_t next_slot_ = 0;
 
+    // -- Updatable registry (raw pointers, non-owning) --
+    std::vector<Updatable*> updatables_;
+
     // ADR-011: raw pointer allowed as private data member (implementation detail).
     // Non-owning observer; must not be stored across frames or after
     // the pointed-to CameraComponent is destroyed.
@@ -150,6 +160,12 @@ inline auto World::add_component(EntityId id, Args&&... args) -> T& {
     ptr->entity_id_ = id;
     node->components_.push_back(std::move(component));
     ptr->on_attach();
+
+    // Auto-register Updatable components
+    if constexpr (std::is_base_of_v<Updatable, T>) {
+        updatables_.push_back(static_cast<Updatable*>(ptr));
+    }
+
     return *ptr;
 }
 
@@ -189,6 +205,11 @@ inline auto World::remove_component(EntityId id) -> bool {
     // UB if node is null or pending_destroy_.
     for (auto it = node->components_.begin(); it != node->components_.end(); ++it) {
         if (dynamic_cast<T*>(it->get())) {
+            // If this component derives from Updatable, remove its raw pointer
+            // from updatables_ before destroying the component.
+            if (auto* upd = dynamic_cast<Updatable*>(it->get())) {
+                std::erase(updatables_, upd);
+            }
             node->components_.erase(it);
             return true;
         }

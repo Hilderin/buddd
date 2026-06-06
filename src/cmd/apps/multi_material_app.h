@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-namespace buddd::engine { class RenderDevice; }
+namespace buddd::engine { class EngineService; }
 namespace buddd::cmd::app {
 
 class MultiMaterialApp : public App {
@@ -14,7 +14,7 @@ public:
     auto config() const -> AppConfig override {
         return {"Buddd Engine — multi-material", 1024, 768};
     }
-    [[nodiscard]] auto setup(engine::RenderDevice& device) -> engine::Result<void> override;
+    [[nodiscard]] auto setup(engine::EngineService& engine) -> engine::Result<void> override;
     auto render(engine::RenderDevice& device, int frame) -> void override;
 private:
     engine::Model model_;

@@ -2,6 +2,7 @@
 
 #include "log/log.h"
 
+#include "engine_service.h"
 #include "math/math.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
@@ -58,9 +59,10 @@ auto multi_mat_format() -> be::VertexFormat {
 
 } // anonymous namespace
 
-auto buddd::cmd::app::MultiMaterialApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
     // Create 3 materials (red, green, blue)
     auto red_vs = device.create_shader(be::ShaderType::Vertex, R"(
         #version 450 core

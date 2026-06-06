@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace buddd::engine { class RenderDevice; }
+namespace buddd::engine { class EngineService; class RenderDevice; class World; }
 
 namespace buddd::cmd {
 
@@ -28,7 +28,7 @@ public:
 
     /// Called once before the render loop.
     /// Return error to abort (loop skipped, shutdown() still called).
-    [[nodiscard]] virtual auto setup(buddd::engine::RenderDevice& device)
+    [[nodiscard]] virtual auto setup(buddd::engine::EngineService& engine)
         -> buddd::engine::Result<void> = 0;
 
     /// Called once per frame, before render(), between begin_frame() and end_frame().
@@ -44,6 +44,13 @@ public:
 
     /// Returns false if the app has requested the render loop to stop.
     [[nodiscard]] auto is_running() const noexcept -> bool { return running_; }
+
+    /// Returns a pointer to the app's World if one exists, nullptr otherwise.
+    /// Override in apps that have a World (for Updatable auto-dispatch).
+    [[nodiscard]] virtual auto world() noexcept -> buddd::engine::World* { return nullptr; }
+
+    /// Public setter to allow run_app() to stop the render loop.
+    void set_running(bool v) { running_ = v; }
 
 protected:
     /// Set to false to stop the render loop early (for interactive scenes).

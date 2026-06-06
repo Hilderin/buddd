@@ -33,6 +33,11 @@ For `run`, the scene dispatch is:
 ├── argv[2] == "free-camera"               → FreeCameraApp
 ├── argv[2] == "phong"                     → PhongApp
 ├── argv[2] == "asset-demo"               → AssetDemoApp
+├── argv[2] == "hot-reload"               → HotReloadApp
+├── argv[2] == "multi-material"           → MultiMaterialApp
+├── argv[2] == "gltf-demo"               → GltfDemoApp
+├── argv[2] == "gltf-helmet"             → GltfHelmetApp
+├── argv[2] == "hot-reload-gltf"         → HotReloadGltfApp
 └── Unknown scene                          → BUDDD_LOG_ERROR("Unknown scene: '{}'", scene_name)
                                              fwrite(scene_usage, stderr)  // usage text remains as fprintf(stderr)
                                              exit 1
@@ -160,16 +165,23 @@ RenderDevice& device
     [Frame loop: run_app() orchestrates rendering each frame]
     - Each frame:
         1. poll_events() — dispatches SDL events, computes delta_time, calls
-           InputSystem::begin_frame() to advance input state.
-        2. device->begin_frame() — clears buffers, starts GPU frame.
-        3. app.on_frame_begin() — per-frame hook (default no-op, apps override
+           InputSystem::begin_frame() to advance input state. Returns false
+           on window close.
+        2. Check app.is_running() — false if exit was requested via Updatable.
+        3. device->begin_frame() — clears buffers, starts GPU frame.
+        4. app.on_frame_begin() — per-frame hook (default no-op, apps override
            for tasks like hot-reload polling via asset_manager->poll_file_events()).
-        4. app.render(device, frame) — application rendering logic.
-        5. Capture injection (if --capture matches current frame).
-        6. device->end_frame() — swap buffers, finalize GPU frame.
-    - Application queries input state via device.window().platform().input_system()
-      and delta time via device.window().platform().delta_time() between
-      poll_events() and render/update logic.
+        5. Updatable auto-dispatch:
+           World::update_updatables(EngineContext{services, window, delta_time})
+           — all registered Updatable components run. If any calls
+           EngineContext::request_exit(), app.set_running(false) is called
+           after the iteration (no short-circuit — all updatables run each frame).
+        6. app.render(device, frame) — application rendering logic.
+        7. Capture injection (if --capture matches current frame).
+        8. device->end_frame() — swap buffers, finalize GPU frame.
+    - Updatable components receive EngineContext containing EngineService&,
+      Window&, and delta_time — they do not need to query the navigable graph
+      directly for these.
 ```
 
 ### Texture data flow

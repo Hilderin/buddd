@@ -5,6 +5,7 @@
 #include "asset/asset_manager.h"
 #include "asset/material_asset.h"
 #include "asset/texture_asset.h"
+#include "engine_service.h"
 #include "image/image.h"
 #include "math/camera.h"
 #include "math/math.h"
@@ -36,9 +37,10 @@ namespace be = buddd::engine;
 buddd::cmd::app::HotReloadApp::HotReloadApp() = default;
 buddd::cmd::app::HotReloadApp::~HotReloadApp() = default;
 
-auto buddd::cmd::app::HotReloadApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::HotReloadApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
     // 1. Initialize live texture as copy of texture A (red checker)
     std::filesystem::copy(
         "assets/textures/hot_reload_a.png",

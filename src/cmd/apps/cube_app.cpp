@@ -2,6 +2,7 @@
 
 #include "log/log.h"
 
+#include "engine_service.h"
 #include "math/math.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
@@ -18,9 +19,11 @@ BUDDD_LOG_TAG("CubeApp");
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::CubeApp::setup(be::RenderDevice& device)
+auto buddd::cmd::app::CubeApp::setup(be::EngineService& engine)
     -> be::Result<void>
 {
+    auto& device = engine.device();
+
     // --- Create material ---
     constexpr std::string_view k_vs = R"(
         #version 450 core

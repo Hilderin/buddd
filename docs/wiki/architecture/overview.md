@@ -58,6 +58,7 @@ buddd2/
 src/engine/
 ├── CMakeLists.txt           # GLOB_RECURSE collects all .h/.cpp (includes GLM FetchContent)
 ├── engine_service.h/.cpp   # EngineService — owns Platform→Window→RenderDevice chain
+├── engine_context.h         # EngineContext — per-frame context (EngineService&, Window&, delta_time, request_exit)
 ├── version.h / version.cpp  # Version API
 ├── error.h                  # Error struct, Result<T>, make_error, to_string
 ├── math/                    # Math foundations
@@ -81,7 +82,9 @@ src/engine/
 │   ├── world.cpp             # World implementation (internal EntityNode storage)
 │   ├── directional_light_component.h/.cpp  # DirectionalLightComponent — infinite parallel light from entity rotation
 │   ├── point_light_component.h/.cpp        # PointLightComponent — omni-directional light with position and range
-│   └── spot_light_component.h/.cpp         # SpotLightComponent — conical light with position, direction, and cone angles
+│   ├── spot_light_component.h/.cpp         # SpotLightComponent — conical light with position, direction, and cone angles
+│   ├── updatable.h                         # Updatable — pure abstract interface orthogonal to Component, `update(const EngineContext&) -> void`. See ADR-023.
+│   └── free_camera_movement.h/.cpp         # FreeCameraMovement — component inheriting Component + Updatable, free-camera controls (WASD, mouse, ESC exit)
 ├── platform/
 │   ├── platform.h           # Abstract Platform class, Backend enum
 │   ├── platform.cpp         # Platform::create() factory
