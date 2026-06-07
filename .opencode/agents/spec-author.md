@@ -31,7 +31,7 @@ The spec follows the template at `docs/templates/spec-template.md`.
 1. **Load the template** at `docs/templates/spec-template.md` — it defines the required structure.
 2. **Understand the human intent** — clarify with the orchestrator if ambiguous.
 3. **Review existing specs** in `.specs/` to avoid contradictions.
-4. **Search the wiki** — Use wiki search tools (`wiki_wiki_search`, `wiki_wiki_search_exact`, `wiki_wiki_read_section`) to find relevant architecture context, domain definitions, business rules, and existing decisions that bear on the feature.
+4. **Search the wiki** — Use wiki search tools (`wiki_search`, `wiki_search_exact`, `wiki_read_section`) to find relevant architecture context, domain definitions, business rules, and existing decisions that bear on the feature.
 5. **Check spec-critic files** — if a `spec-critic.md` exists in the feature directory, read it and ensure all blocking issues (`- [ ]` unchecked items) are addressed before editing.
 
 ## Spec structure

@@ -30,7 +30,7 @@ You may modify only:
 
 ### 1. Detect
 
-- Use `wiki_wiki_search`, `wiki_wiki_search_exact`, and `wiki_wiki_read_section` to understand the current state of the wiki.
+- Use `wiki_search`, `wiki_search_exact`, and `wiki_read_section` to understand the current state of the wiki.
 - Read recent specs in `.specs/` to understand what was delivered.
 - Read recent ADRs in `docs/adr/` for architectural decisions.
 - Check the actual codebase for structural changes (new modules, renamed packages, removed features, etc.).
