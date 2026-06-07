@@ -1,6 +1,8 @@
 #pragma once
 #include "app.h"
-#include "math/camera.h"
+#include "scene/camera_component.h"
+#include "scene/entity.h"
+#include "scene/world.h"
 #include "render/model.h"
 #include <chrono>
 
@@ -15,7 +17,7 @@ public:
     auto on_render(engine::EngineContext const& ctx) -> void override;
 private:
     engine::Model model_;
-    engine::math::Camera camera_;
+    engine::Entity camera_entity_;
     std::chrono::steady_clock::time_point start_time_;
 };
 

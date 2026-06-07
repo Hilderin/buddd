@@ -9,7 +9,6 @@
 #include "scene/world.h"
 #include "render/render_device.h"
 #include "render/model_utils.h"
-#include "math/camera.h"
 #include "math/math.h"
 #include "math/quat.h"
 #include "math/vec3.h"
@@ -38,17 +37,14 @@ auto buddd::cmd::app::GltfDemoApp::setup(be::EngineContext const& ctx)
     // AssetManager is available from EngineService via ctx.services.assets()
     std::string base_path = "assets";
 
-    // ── Camera ──
+    // ── Camera — position/rotation from Transform, projection from CameraComponent ──
     camera_entity_ = ctx.world.add_entity();
-    be::math::Camera camera;
-    camera_entity_.add_component<be::CameraComponent>(camera);
-
-    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
-    cam.set_position(be::math::Vec3{0.0f, 1.0f, 3.0f});
-    cam.set_orientation(be::math::Quat::from_euler(0.0f, be::math::radians(180.0f), 0.0f));
-    cam.set_perspective(be::math::radians(55.0f),
-                        static_cast<float>(config().width) / static_cast<float>(config().height),
-                        0.1f, 100.0f);
+    camera_entity_.transform().position = be::math::Vec3{0.0f, 1.0f, 3.0f};
+    camera_entity_.transform().rotation = be::math::Quat::from_euler(0.0f, be::math::radians(180.0f), 0.0f);
+    auto& cam_comp = camera_entity_.add_component<be::CameraComponent>();
+    cam_comp.set_perspective(be::math::radians(55.0f),
+                             static_cast<float>(config().width) / static_cast<float>(config().height),
+                             0.1f, 100.0f);
 
     // ── Directional light (from above-right) ──
     {
@@ -79,12 +75,12 @@ auto buddd::cmd::app::GltfDemoApp::setup(be::EngineContext const& ctx)
 
 auto buddd::cmd::app::GltfDemoApp::on_frame_begin(be::EngineContext const& ctx) -> void {
     // Y-rotation animation
-    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
+    auto& cam_comp = *camera_entity_.get_component<be::CameraComponent>();
     float angle = static_cast<float>(ctx.frame) * 0.02f;
-    cam.set_position(be::math::Vec3{
+    camera_entity_.transform().position = be::math::Vec3{
         3.0f * std::sin(angle),
         1.0f,
         3.0f * std::cos(angle)
-    });
-    cam.look_at(be::math::Vec3{0.0f, 0.0f, 0.0f});
+    };
+    cam_comp.look_at(be::math::Vec3{0.0f, 0.0f, 0.0f});
 }

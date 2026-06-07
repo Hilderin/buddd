@@ -9,7 +9,6 @@
 #include "engine_service.h"
 #include "scene/world.h"
 #include "image/image.h"
-#include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/quat.h"
@@ -52,19 +51,19 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::EngineContext const& ctx)
     // 2. Create Entity, Camera
     auto entity = ctx.world.add_entity();
 
-    be::math::Camera camera;
-    camera.look_at(
+    entity.transform().position = be::math::Vec3{3.0f, 2.0f, 3.0f};
+    auto& cam_comp = entity.add_component<be::CameraComponent>();
+    cam_comp.look_at(
         be::math::Vec3{3.0f, 2.0f, 3.0f},
         be::math::Vec3{0.0f, 0.0f, 0.0f},
         be::math::Vec3::unit_y()
     );
-    camera.set_perspective(
+    cam_comp.set_perspective(
         be::math::radians(60.0f),
         static_cast<float>(config().width) / static_cast<float>(config().height),
         0.1f,
         100.0f
     );
-    entity.add_component<be::CameraComponent>(camera);
 
     // 3. Create vertex buffer with texture coordinates
     struct TexturedCubeVertex {

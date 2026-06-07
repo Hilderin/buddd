@@ -137,12 +137,15 @@ auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineContext const& ctx)
     if (!model_result) return make_error(model_result);
     model_ = std::move(*model_result);
 
-    camera_.look_at(
+    camera_entity_ = ctx.world.add_entity();
+    camera_entity_.transform().position = be::math::Vec3{3.0f, 2.0f, 3.0f};
+    auto& cam_comp = camera_entity_.add_component<be::CameraComponent>();
+    cam_comp.look_at(
         be::math::Vec3{3.0f, 2.0f, 3.0f},
         be::math::Vec3{0.0f, 0.0f, 0.0f},
         be::math::Vec3::unit_y()
     );
-    camera_.set_perspective(
+    cam_comp.set_perspective(
         be::math::radians(60.0f),
         static_cast<float>(config().width) / static_cast<float>(config().height),
         0.1f, 100.0f
@@ -157,8 +160,8 @@ auto buddd::cmd::app::MultiMaterialApp::on_render(be::EngineContext const& ctx) 
     float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
     float angle = elapsed_seconds * 0.5f;
 
-    be::math::Mat4 mvp = camera_.projection_matrix()
-        * camera_.view_matrix()
+    auto& cam_comp = *camera_entity_.get_component<be::CameraComponent>();
+    be::math::Mat4 mvp = cam_comp.view_projection_matrix()
         * be::math::Mat4::rotate(angle, be::math::Vec3::unit_y());
 
     // Set u_mvp on all materials

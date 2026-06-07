@@ -636,80 +636,16 @@ TEST_CASE("Quat normalize matches GLM", "[math][quat]") {
 }
 
 // ===========================================================================
-// Camera tests (T-49 to T-56)
+// Free function view_matrix / look_at_rotation tests (replaces old Camera tests)
 // ===========================================================================
 
-TEST_CASE("Camera default constructor", "[math][camera]") {
-    const Camera cam;
-    const Vec3 pos = cam.position();
-    REQUIRE(pos.x == 0.0f);
-    REQUIRE(pos.y == 0.0f);
-    REQUIRE(pos.z == 0.0f);
-
-    const Quat orient = cam.orientation();
-    REQUIRE(orient.w == 1.0f);
-    REQUIRE(orient.x == 0.0f);
-    REQUIRE(orient.y == 0.0f);
-    REQUIRE(orient.z == 0.0f);
-
-    REQUIRE(cam.fov_y() == Approx(1.0471975512f).margin(TOL));
-    REQUIRE(cam.aspect() == Approx(16.0f / 9.0f).margin(TOL));
-    REQUIRE(cam.near_plane() == Approx(0.1f).margin(TOL));
-    REQUIRE(cam.far_plane() == Approx(100.0f).margin(TOL));
-}
-
-TEST_CASE("Camera parameterized constructor", "[math][camera]") {
-    const Vec3 pos{1.0f, 2.0f, 3.0f};
-    const Quat orient = Quat::angle_axis(pi / 4.0f, Vec3::unit_y());
-    const float fov = 1.2f;
-    const float aspect = 4.0f / 3.0f;
-    const float near_p = 0.5f;
-    const float far_p = 500.0f;
-
-    const Camera cam(pos, orient, fov, aspect, near_p, far_p);
-
-    REQUIRE(cam.position().x == Approx(1.0f).margin(TOL));
-    REQUIRE(cam.position().y == Approx(2.0f).margin(TOL));
-    REQUIRE(cam.position().z == Approx(3.0f).margin(TOL));
-
-    require_approx(cam.orientation(), orient.glm());
-
-    REQUIRE(cam.fov_y() == Approx(fov).margin(TOL));
-    REQUIRE(cam.aspect() == Approx(aspect).margin(TOL));
-    REQUIRE(cam.near_plane() == Approx(near_p).margin(TOL));
-    REQUIRE(cam.far_plane() == Approx(far_p).margin(TOL));
-}
-
-TEST_CASE("Camera position/orientation getters/setters", "[math][camera]") {
-    Camera cam;
-
-    const Vec3 new_pos{5.0f, 10.0f, 15.0f};
-    cam.set_position(new_pos);
-    REQUIRE(cam.position().x == 5.0f);
-    REQUIRE(cam.position().y == 10.0f);
-    REQUIRE(cam.position().z == 15.0f);
-
-    const Quat new_orient = Quat::angle_axis(pi / 3.0f, Vec3::unit_z());
-    cam.set_orientation(new_orient);
-    require_approx(cam.orientation(), new_orient.glm());
-}
-
-TEST_CASE("Camera projection_matrix matches GLM", "[math][camera]") {
-    Camera cam;
-    cam.set_perspective(1.2f, 2.0f, 0.2f, 50.0f);
-
-    const Mat4 proj = cam.projection_matrix();
-    const glm::mat4 gproj = glm::perspective(1.2f, 2.0f, 0.2f, 50.0f);
-    require_approx(proj, gproj);
-}
-
-TEST_CASE("Camera view_matrix matches GLM", "[math][camera]") {
-    Camera cam;
-    cam.set_position(Vec3{0.0f, 2.0f, 5.0f});
+TEST_CASE("view_matrix matches GLM lookAt", "[math][camera]") {
+    const Vec3 pos{0.0f, 2.0f, 5.0f};
+    const Quat orient{Quat::identity()};
     // Identity orientation → forward = (0,0,-1), up = (0,1,0)
     // So lookAt center is position + forward = (0,2,4)
 
-    const Mat4 view = cam.view_matrix();
+    const Mat4 view = view_matrix(pos, orient);
     const glm::mat4 gview = glm::lookAt(
         glm::vec3(0, 2, 5),
         glm::vec3(0, 2, 4),
@@ -717,44 +653,63 @@ TEST_CASE("Camera view_matrix matches GLM", "[math][camera]") {
     require_approx(view, gview);
 }
 
-TEST_CASE("Camera view_projection_matrix order", "[math][camera]") {
-    Camera cam;
-    cam.set_position(Vec3{0.0f, 2.0f, 5.0f});
-    cam.set_perspective(1.2f, 2.0f, 0.2f, 50.0f);
+TEST_CASE("view_matrix non-identity orientation", "[math][camera]") {
+    const Vec3 pos{0.0f, 0.0f, 5.0f};
+    const Quat orient = Quat::angle_axis(pi / 4.0f, Vec3::unit_y());
 
-    const Mat4 vp = cam.view_projection_matrix();
-    const Mat4 expected = cam.projection_matrix() * cam.view_matrix();
-    require_approx(vp, expected.glm());
+    const Mat4 view = view_matrix(pos, orient);
+
+    // Compute expected: lookAt from pos to pos + rot*(0,0,-1) with up = rot*(0,1,0)
+    const Vec3 forward = orient * Vec3(0.0f, 0.0f, -1.0f);
+    const Vec3 up = orient * Vec3(0.0f, 1.0f, 0.0f);
+    const glm::mat4 gview = glm::lookAt(
+        pos.glm(),
+        (pos + forward).glm(),
+        up.glm());
+    require_approx(view, gview);
 }
 
-TEST_CASE("Camera look_at orients correctly", "[math][camera]") {
-    Camera cam;
-    cam.look_at(Vec3{5.0f, 0.0f, 0.0f});
+TEST_CASE("look_at_rotation basic", "[math][camera]") {
+    const Vec3 eye{0.0f, 0.0f, 0.0f};
+    const Vec3 center{5.0f, 0.0f, 0.0f};
+    const Vec3 up{0.0f, 1.0f, 0.0f};
 
-    // After look_at at target (5,0,0) from origin (0,0,0),
-    // forward = orientation * (0,0,-1) should point toward target
-    const Vec3 forward = cam.orientation() * Vec3(0.0f, 0.0f, -1.0f);
+    const Quat rot = look_at_rotation(eye, center, up);
+    const Vec3 forward = rot * Vec3(0.0f, 0.0f, -1.0f);
 
-    // Forward should be approximately toward (5,0,0), i.e., (1,0,0)
+    // Forward should point toward (5,0,0), i.e., (1,0,0)
     REQUIRE(forward.x == Approx(1.0f).margin(TOL));
     REQUIRE(forward.y == Approx(0.0f).margin(TOL));
     REQUIRE(forward.z == Approx(0.0f).margin(TOL));
 }
 
-TEST_CASE("Camera look_at(eye,center,up) sets position and orientation", "[math][camera]") {
-    Camera cam;
-    cam.look_at(Vec3{0.0f, 0.0f, 0.0f}, Vec3{5.0f, 0.0f, 0.0f}, Vec3{0.0f, 1.0f, 0.0f});
+TEST_CASE("look_at_rotation from offset", "[math][camera]") {
+    const Vec3 eye{3.0f, 2.0f, 3.0f};
+    const Vec3 center{0.0f, 0.0f, 0.0f};
+    const Vec3 up{0.0f, 1.0f, 0.0f};
 
-    // Position should be (0,0,0)
-    REQUIRE(cam.position().x == 0.0f);
-    REQUIRE(cam.position().y == 0.0f);
-    REQUIRE(cam.position().z == 0.0f);
+    const Quat rot = look_at_rotation(eye, center, up);
+    const Vec3 forward = rot * Vec3(0.0f, 0.0f, -1.0f);
+    const Vec3 expected_dir = (center - eye).normalized();
 
-    // Orientation should rotate (0,0,-1) toward (5,0,0)
-    const Vec3 forward = cam.orientation() * Vec3(0.0f, 0.0f, -1.0f);
-    REQUIRE(forward.x == Approx(1.0f).margin(TOL));
-    REQUIRE(forward.y == Approx(0.0f).margin(TOL));
-    REQUIRE(forward.z == Approx(0.0f).margin(TOL));
+    REQUIRE(forward.x == Approx(expected_dir.x).margin(1e-4f));
+    REQUIRE(forward.y == Approx(expected_dir.y).margin(1e-4f));
+    REQUIRE(forward.z == Approx(expected_dir.z).margin(1e-4f));
+}
+
+TEST_CASE("look_at_rotation identity", "[math][camera]") {
+    // When eye + forward = center, rotation should be identity
+    // forward = (0,0,-1), so eye (0,0,1) looking at center (0,0,0)
+    const Vec3 eye{0.0f, 0.0f, 1.0f};
+    const Vec3 center{0.0f, 0.0f, 0.0f};
+    const Vec3 up{0.0f, 1.0f, 0.0f};
+
+    const Quat rot = look_at_rotation(eye, center, up);
+    const Quat identity;
+    REQUIRE(rot.w == Approx(identity.w).margin(TOL));
+    REQUIRE(rot.x == Approx(identity.x).margin(TOL));
+    REQUIRE(rot.y == Approx(identity.y).margin(TOL));
+    REQUIRE(rot.z == Approx(identity.z).margin(TOL));
 }
 
 // ===========================================================================
@@ -908,8 +863,9 @@ TEST_CASE("Convenience header math.h includes all types", "[math][integration]")
     const Quat q;
     REQUIRE(q.w == 1.0f);
 
-    const Camera cam;
-    REQUIRE(cam.fov_y() == Approx(1.0471975512f).margin(TOL));
+    // Camera class was removed in ADR-024; view_matrix free function is tested
+    // in the math::view_matrix / look_at_rotation test cases above
+    REQUIRE(true);
 }
 
 TEST_CASE("GLM types not in public API", "[math][interop]") {

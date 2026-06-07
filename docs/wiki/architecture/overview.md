@@ -18,8 +18,8 @@ buddd2/
 ├── src/
 │   ├── engine/              # Engine library (static lib)
 │   │   ├── error.h          # Project-wide Error/Result types
-│   │   ├── math/            # Math foundations (Vec2, Vec3, Vec4, Mat4, Quat, Camera)
-│   │   ├── scene/           # Scene graph (World, Entity, Transform, Component, light components)
+│   │   ├── math/            # Math foundations (Vec2, Vec3, Vec4, Mat4, Quat, view_matrix, look_at_rotation)
+│   │   ├── scene/           # Scene graph (World, Entity, Transform, Component, CameraComponent, light components)
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
 │   │   ├── image/           # Image I/O (ImageBuffer, Image, stb_image)
@@ -67,15 +67,13 @@ src/engine/
 │   ├── vec3.h               # Vec3 — 3D vector wrapper around glm::vec3
 │   ├── vec4.h               # Vec4 — 4D vector wrapper around glm::vec4
 │   ├── mat4.h               # Mat4 — 4×4 column-major matrix wrapper around glm::mat4
-│   ├── quat.h               # Quat — quaternion wrapper around glm::quat
-│   ├── camera.h             # Camera — perspective camera (declarations)
-│   └── camera.cpp           # Camera — method implementations
+│   └── quat.h               # Quat — quaternion wrapper around glm::quat
 ├── scene/                    # Scene graph (World, Entity, Transform, Component, CameraComponent)
 │   ├── entity_id.h           # EntityId — 8-byte handle (index + generation)
 │   ├── transform.h           # Transform — position/rotation/scale with matrix computation
 │   ├── component.h           # Component — polymorphic base class with entity awareness (world_, entity_id_, entity(), on_attach())
-│   ├── camera_component.h    # CameraComponent — ECS component wrapping math::Camera, auto-registers with World
-│   ├── camera_component.cpp  # CameraComponent lifecycle (register/unregister via on_attach/destructor)
+│   ├── camera_component.h    # CameraComponent — projection-only ECS component, position/orientation from entity Transform, auto-registers with World
+│   ├── camera_component.cpp  # CameraComponent lifecycle + projection/view matrix computation (register/unregister via on_attach/destructor)
 │   ├── entity.h              # Entity — 16-byte lightweight handle
 │   ├── entity.cpp            # Entity method implementations (delegates to World)
 │   ├── world.h               # World — top-level container, entity lifecycle, deferred destruction
@@ -227,7 +225,7 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Implementation contract: [IMPL-002](/.specs/sprint-2026-05/platform-abstraction/implementation-contract.md)
 - Spec: [SPEC-003](/.specs/sprint-2026-05/sdl3-backend-tests/spec.md)
 - Implementation contract: [IMPL-003](/.specs/sprint-2026-05/sdl3-backend-tests/implementation-contract.md)
-- Spec: [SPEC-004](/.specs/sprint-2026-05/math-foundations/spec.md) — Math Foundations (Vec2, Vec3, Vec4, Mat4, Quat, Camera)
+- Spec: [SPEC-004](/.specs/sprint-2026-05/math-foundations/spec.md) — Math Foundations (Vec2, Vec3, Vec4, Mat4, Quat, Camera [removed in ADR-024])
 - Implementation contract: [IMPL-004](/.specs/sprint-2026-05/math-foundations/implementation-contract.md)
 - Spec: [SPEC-005](/.specs/sprint-2026-05/render-pipeline/spec.md) — Render Pipeline (Shader, Material, VertexBuffer, IndexBuffer, PrimitiveTopology, CLI modes)
 - Implementation contract: [IMPL-005](/.specs/sprint-2026-05/render-pipeline/implementation-contract.md)

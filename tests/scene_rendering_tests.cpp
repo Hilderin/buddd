@@ -212,23 +212,17 @@ TEST_CASE("CameraComponent auto-registers", "[scene_rendering]") {
     World world;
     auto entity = world.add_entity();
 
-    math::Camera cam;
-    cam.set_perspective(math::radians(90.0f), 1.0f, 0.1f, 50.0f);
-
     // AC-015: Adding CameraComponent auto-registers with world
-    auto& cc = entity.add_component<CameraComponent>(cam);
+    auto& cc = entity.add_component<CameraComponent>();
+    cc.set_perspective(math::radians(90.0f), 1.0f, 0.1f, 50.0f);
     REQUIRE(world.active_camera().has_value());
     REQUIRE(&*world.active_camera() == &cc);
 
-    // AC-014: camera() accessor returns mutable reference
-    REQUIRE(cc.camera().fov_y() == Approx(math::radians(90.0f)).margin(TOL));
-    cc.camera().set_perspective(math::radians(45.0f), 2.0f, 0.5f, 200.0f);
-    REQUIRE(cc.camera().fov_y() == Approx(math::radians(45.0f)).margin(TOL));
-    REQUIRE(cc.camera().aspect() == Approx(2.0f).margin(TOL));
-
-    // Const accessor
-    const auto& ccc = cc;
-    REQUIRE(ccc.camera().fov_y() == Approx(math::radians(45.0f)).margin(TOL));
+    // AC-014: Access projection parameters via CameraComponent directly
+    REQUIRE(cc.fov_y() == Approx(math::radians(90.0f)).margin(TOL));
+    cc.set_perspective(math::radians(45.0f), 2.0f, 0.5f, 200.0f);
+    REQUIRE(cc.fov_y() == Approx(math::radians(45.0f)).margin(TOL));
+    REQUIRE(cc.aspect() == Approx(2.0f).margin(TOL));
 }
 
 // ===========================================================================
@@ -238,8 +232,7 @@ TEST_CASE("CameraComponent destructor unregisters", "[scene_rendering]") {
     World world;
     auto entity = world.add_entity();
 
-    math::Camera cam;
-    entity.add_component<CameraComponent>(cam);
+    entity.add_component<CameraComponent>();
     REQUIRE(world.active_camera().has_value());
 
     // Remove the component — destructor should unregister
@@ -360,9 +353,8 @@ TEST_CASE("RenderSystem draw call count", "[scene_rendering]") {
 
     // Create camera entity
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Create a model for mesh renderer
     auto vs = device.create_shader(ShaderType::Vertex, R"(
@@ -426,10 +418,8 @@ TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
 
     // Camera at origin looking down -Z (default camera)
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    // Default camera is at (0,0,0) looking down -Z
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Create a model with a material that has u_mvp
     auto vs = device.create_shader(ShaderType::Vertex, R"(
@@ -556,9 +546,8 @@ TEST_CASE("RenderSystem set_uniform failure skip", "[scene_rendering]") {
 
     // Camera entity
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Create material WITH u_mvp (valid)
     auto vs_valid = device.create_shader(ShaderType::Vertex, R"(
@@ -773,7 +762,7 @@ TEST_CASE("Multiple camera components on different entities", "[scene_rendering]
 }
 
 // ===========================================================================
-// const-correctness of active_camera() and camera() accessors
+// const-correctness of active_camera()
 // ===========================================================================
 TEST_CASE("Const-correctness of accessors", "[scene_rendering]") {
     World world;
@@ -784,10 +773,129 @@ TEST_CASE("Const-correctness of accessors", "[scene_rendering]") {
     const auto& const_world = world;
     auto opt = const_world.active_camera();
     REQUIRE(opt.has_value());
+}
 
-    // camera() has const overload
-    const auto& const_cc = *opt;
-    (void)const_cc.camera(); // const overload
+// ===========================================================================
+// New CameraComponent projection/view/look_at tests
+// ===========================================================================
+TEST_CASE("CameraComponent projection matrix", "[scene_rendering]") {
+    CameraComponent cc(math::radians(60.0f), 16.0f / 9.0f, 0.1f, 100.0f);
+    auto proj = cc.projection_matrix();
+    auto expected = math::Mat4::perspective(math::radians(60.0f), 16.0f / 9.0f, 0.1f, 100.0f);
+    for (int c = 0; c < 4; ++c) {
+        for (int r = 0; r < 4; ++r) {
+            REQUIRE(proj[c][r] == Approx(expected[c][r]).margin(TOL));
+        }
+    }
+}
+
+TEST_CASE("CameraComponent two-arg constructor", "[scene_rendering]") {
+    CameraComponent cc(math::radians(45.0f), 2.0f, 0.5f, 200.0f);
+    REQUIRE(cc.fov_y() == Approx(math::radians(45.0f)).margin(TOL));
+    REQUIRE(cc.aspect() == Approx(2.0f).margin(TOL));
+    REQUIRE(cc.near_plane() == Approx(0.5f).margin(TOL));
+    REQUIRE(cc.far_plane() == Approx(200.0f).margin(TOL));
+}
+
+TEST_CASE("CameraComponent view matrix", "[scene_rendering]") {
+    World world;
+    auto entity = world.add_entity();
+    entity.transform().position = math::Vec3(3.0f, 2.0f, 3.0f);
+    entity.transform().rotation = math::Quat::identity();
+    auto& cc = entity.add_component<CameraComponent>();
+    auto view = cc.view_matrix();
+    // View matrix should not be identity when camera is not at origin
+    math::Mat4 identity;
+    bool is_identity = true;
+    for (int c = 0; c < 4 && is_identity; ++c) {
+        for (int r = 0; r < 4 && is_identity; ++r) {
+            if (std::abs(view[c][r] - identity[c][r]) > TOL) {
+                is_identity = false;
+            }
+        }
+    }
+    REQUIRE_FALSE(is_identity);
+}
+
+TEST_CASE("CameraComponent view_projection matrix", "[scene_rendering]") {
+    World world;
+    auto entity = world.add_entity();
+    entity.transform().position = math::Vec3(0.0f, 0.0f, 3.0f);
+    auto& cc = entity.add_component<CameraComponent>();
+    auto vp = cc.view_projection_matrix();
+    auto expected = cc.projection_matrix() * cc.view_matrix();
+    for (int c = 0; c < 4; ++c) {
+        for (int r = 0; r < 4; ++r) {
+            REQUIRE(vp[c][r] == Approx(expected[c][r]).margin(TOL));
+        }
+    }
+}
+
+TEST_CASE("CameraComponent look_at(Vec3)", "[scene_rendering]") {
+    World world;
+    auto entity = world.add_entity();
+    entity.transform().position = math::Vec3(3.0f, 2.0f, 3.0f);
+    auto& cc = entity.add_component<CameraComponent>();
+    // Store position before look_at
+    auto pos_before = entity.transform().position;
+    cc.look_at(math::Vec3(0.0f, 0.0f, 0.0f));
+    // Position should be unchanged
+    REQUIRE(entity.transform().position.x == Approx(pos_before.x).margin(TOL));
+    REQUIRE(entity.transform().position.y == Approx(pos_before.y).margin(TOL));
+    REQUIRE(entity.transform().position.z == Approx(pos_before.z).margin(TOL));
+    // Rotation should have been updated (not identity anymore since position is not at origin)
+    auto identity = math::Quat::identity();
+    REQUIRE(entity.transform().rotation != identity);
+}
+
+TEST_CASE("CameraComponent look_at(eye,center,up)", "[scene_rendering]") {
+    World world;
+    auto entity = world.add_entity();
+    auto& cc = entity.add_component<CameraComponent>();
+    cc.look_at(
+        math::Vec3(3.0f, 2.0f, 3.0f),
+        math::Vec3(0.0f, 0.0f, 0.0f),
+        math::Vec3::unit_y()
+    );
+    // Position should be set to eye
+    REQUIRE(entity.transform().position.x == Approx(3.0f).margin(TOL));
+    REQUIRE(entity.transform().position.y == Approx(2.0f).margin(TOL));
+    REQUIRE(entity.transform().position.z == Approx(3.0f).margin(TOL));
+    // Rotation should be non-identity
+    auto identity = math::Quat::identity();
+    REQUIRE(entity.transform().rotation != identity);
+}
+
+TEST_CASE("math::view_matrix free function", "[scene_rendering]") {
+    math::Vec3 pos(3.0f, 2.0f, 3.0f);
+    math::Quat orient = math::Quat::identity();
+    auto view = math::view_matrix(pos, orient);
+    math::Mat4 identity;
+    bool is_identity = true;
+    for (int c = 0; c < 4 && is_identity; ++c) {
+        for (int r = 0; r < 4 && is_identity; ++r) {
+            if (std::abs(view[c][r] - identity[c][r]) > TOL) {
+                is_identity = false;
+            }
+        }
+    }
+    REQUIRE_FALSE(is_identity);
+}
+
+TEST_CASE("math::look_at_rotation free function", "[scene_rendering]") {
+    math::Vec3 eye(3.0f, 2.0f, 3.0f);
+    math::Vec3 center(0.0f, 0.0f, 0.0f);
+    math::Vec3 up(0.0f, 1.0f, 0.0f);
+    auto rot = math::look_at_rotation(eye, center, up);
+    // Result should be a non-identity quaternion
+    auto identity = math::Quat::identity();
+    REQUIRE(rot != identity);
+    // Forward direction (0,0,-1) rotated by the result should point toward center
+    math::Vec3 forward = rot * math::Vec3(0.0f, 0.0f, -1.0f);
+    math::Vec3 expected_dir = (center - eye).normalized();
+    REQUIRE(forward.x == Approx(expected_dir.x).margin(1e-4f));
+    REQUIRE(forward.y == Approx(expected_dir.y).margin(1e-4f));
+    REQUIRE(forward.z == Approx(expected_dir.z).margin(1e-4f));
 }
 
 // ===========================================================================

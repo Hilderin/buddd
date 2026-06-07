@@ -373,9 +373,8 @@ TEST_CASE("RenderSystem collects directional lights", "[lighting]") {
 
     // Camera
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // 3 directional lights at different rotations
     auto dl1 = world.add_entity();
@@ -423,9 +422,8 @@ TEST_CASE("RenderSystem collects point lights", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Point light at (5, 3, 1)
     auto pl = world.add_entity();
@@ -458,9 +456,8 @@ TEST_CASE("RenderSystem collects spot lights", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Spot light at (0, 2, 0) looking down (-Y)
     auto sl = world.add_entity();
@@ -512,9 +509,8 @@ TEST_CASE("RenderSystem caps at 8 lights", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // 4 directional + 4 point + 2 spot = 10 total, should cap at 8
     for (int i = 0; i < 4; ++i) {
@@ -553,9 +549,8 @@ TEST_CASE("Light colour * intensity premultiplied", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Directional light with colour (0.5, 0.5, 0.5), intensity 2.0
     auto dl = world.add_entity();
@@ -588,9 +583,8 @@ TEST_CASE("Normal matrix computation", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     auto phong_mat = std::make_shared<PhongMaterial>(device);
 
@@ -644,9 +638,8 @@ TEST_CASE("Backward compat: unlit material", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Unlit material: no u_model
     auto unlit_mat = make_unlit_material(device);
@@ -682,10 +675,9 @@ TEST_CASE("RenderSystem sets u_camera_pos", "[lighting]") {
 
     // Camera at known position
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_position(math::Vec3(10.0f, 5.0f, -3.0f));
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    cam_entity.transform().position = math::Vec3(10.0f, 5.0f, -3.0f);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     auto phong_mat = std::make_shared<PhongMaterial>(device);
     make_mesh_entity(world, device, phong_mat);
@@ -712,9 +704,8 @@ TEST_CASE("RenderSystem does not overwrite material properties", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Set custom material properties before rendering
     auto phong_mat = std::make_shared<PhongMaterial>(device);
@@ -760,9 +751,8 @@ TEST_CASE("Light component entity destruction", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // 2 lights
     auto dl1 = world.add_entity();
@@ -803,9 +793,8 @@ TEST_CASE("Zero lights renders with ambient only", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     auto phong_mat = std::make_shared<PhongMaterial>(device);
     make_mesh_entity(world, device, phong_mat);
@@ -848,9 +837,8 @@ TEST_CASE("RenderSystem sets u_model", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     auto phong_mat = std::make_shared<PhongMaterial>(device);
 
@@ -1046,9 +1034,8 @@ TEST_CASE("Spot light cone uniforms", "[lighting]") {
     World world;
 
     auto cam_entity = world.add_entity();
-    math::Camera cam;
-    cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    cam_entity.add_component<CameraComponent>(cam);
+    auto& cam_comp = cam_entity.add_component<CameraComponent>();
+    cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
     // Spot light with known angles
     float inner_rad = math::radians(30.0f);

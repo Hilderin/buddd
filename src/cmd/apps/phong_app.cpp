@@ -4,7 +4,6 @@
 
 #include "engine_context.h"
 #include "scene/world.h"
-#include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/vec4.h"
@@ -203,18 +202,15 @@ auto buddd::cmd::app::PhongApp::setup(be::EngineContext const& ctx)
 {
     auto& device = ctx.device;
 
-    // ── Camera ──
+    // ── Camera — position/rotation from Transform, projection from CameraComponent ──
     camera_entity_ = ctx.world.add_entity();
-    be::math::Camera camera;
-    camera_entity_.add_component<be::CameraComponent>(camera);
-
-    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
-    cam.set_position(be::math::Vec3{6.0f, 3.5f, 8.0f});
-    cam.set_orientation(be::math::Quat::from_euler(be::math::radians(-18.0f),
-                                                    be::math::radians(35.0f), 0.0f));
-    cam.set_perspective(be::math::radians(55.0f),
-                        static_cast<float>(config().width) / static_cast<float>(config().height),
-                        0.1f, 100.0f);
+    camera_entity_.transform().position = be::math::Vec3{6.0f, 3.5f, 8.0f};
+    camera_entity_.transform().rotation = be::math::Quat::from_euler(be::math::radians(-18.0f),
+                                                                      be::math::radians(35.0f), 0.0f);
+    auto& cam_comp = camera_entity_.add_component<be::CameraComponent>();
+    cam_comp.set_perspective(be::math::radians(55.0f),
+                             static_cast<float>(config().width) / static_cast<float>(config().height),
+                             0.1f, 100.0f);
 
     // ── Textures ──
     auto checkerboard_tex = make_checkerboard_texture(device);

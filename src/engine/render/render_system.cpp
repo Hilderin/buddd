@@ -35,8 +35,8 @@ auto RenderSystem::render_scene() -> void {
         return;
     }
     auto& cam_comp = *cam_opt;
-    auto vp = cam_comp.camera().view_projection_matrix();
-    auto camera_pos = cam_comp.camera().position();
+    auto vp = cam_comp.view_projection_matrix();
+    auto camera_pos = cam_comp.entity().transform().position;
 
     // --- 1. Collect lights ---
     std::array<detail::LightData, detail::k_max_lights> light_data{};

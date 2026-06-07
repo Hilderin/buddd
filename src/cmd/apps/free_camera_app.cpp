@@ -2,7 +2,6 @@
 
 #include "engine_context.h"
 #include "scene/world.h"
-#include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/quat.h"
@@ -27,17 +26,14 @@ auto buddd::cmd::app::FreeCameraApp::setup(be::EngineContext const& ctx)
 {
     auto& device = ctx.device;
 
-    // Camera entity
+    // Camera entity — position/rotation from Transform, projection from CameraComponent
     camera_entity_ = ctx.world.add_entity();
-    be::math::Camera camera;
-    camera_entity_.add_component<be::CameraComponent>(camera);
-
-    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
-    cam.set_position(be::math::Vec3{0.0f, 2.0f, 5.0f});
-    cam.set_orientation(be::math::Quat::from_euler(0.0f, 0.0f, 0.0f));
-    cam.set_perspective(be::math::radians(60.0f),
-                        static_cast<float>(config().width) / static_cast<float>(config().height),
-                        0.1f, 100.0f);
+    camera_entity_.transform().position = be::math::Vec3{0.0f, 2.0f, 5.0f};
+    camera_entity_.transform().rotation = be::math::Quat::from_euler(0.0f, 0.0f, 0.0f);
+    auto& cam_comp = camera_entity_.add_component<be::CameraComponent>();
+    cam_comp.set_perspective(be::math::radians(60.0f),
+                             static_cast<float>(config().width) / static_cast<float>(config().height),
+                             0.1f, 100.0f);
 
     // FreeCameraMovement (default yaw=0, pitch=0 matches identity orientation)
     camera_entity_.add_component<be::FreeCameraMovement>();

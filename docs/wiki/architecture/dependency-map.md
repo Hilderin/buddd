@@ -92,10 +92,10 @@ RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
 
 ## Architecture boundary
 
-A hard architecture boundary is enforced by convention: **no code outside `src/engine/`** may `#include <SDL3/`, `<GL/`, `<glad/`, or any graphics-library header. Similarly, **no code outside `src/engine/math/`** may include any `glm/` header directly — all math access goes through the wrapper types (`Vec2`, `Vec3`, `Vec4`, `Mat4`, `Quat`, `Camera`). Violations are caught by code review (automated enforcement is a future goal).
+A hard architecture boundary is enforced by convention: **no code outside `src/engine/`** may `#include <SDL3/`, `<GL/`, `<glad/`, or any graphics-library header. Similarly, **no code outside `src/engine/math/`** may include any `glm/` header directly — all math access goes through the wrapper types (`Vec2`, `Vec3`, `Vec4`, `Mat4`, `Quat`). Violations are caught by code review (automated enforcement is a future goal).
 
 The GLM boundary specifically:
-- GLM headers may be included inside `src/engine/math/` (the wrapper headers and `camera.cpp`).
+- GLM headers may be included inside `src/engine/math/` (the wrapper headers and `math.h`).
 - Outside `src/engine/math/`, all math operations go through the wrapper types — the `.glm()` accessor is the sole interop path.
 - Test files comparing against GLM reference output include GLM headers directly; this is acknowledged as a design tension but accepted at this stage (no automated guard).
 

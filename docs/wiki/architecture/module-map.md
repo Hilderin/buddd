@@ -64,18 +64,16 @@ All types in namespace `buddd::engine`. Provides a lightweight assertion system 
 
 ### Math submodule (`math/`)
 
-All types in namespace `buddd::engine::math`. The math module wraps GLM (`glm`) with zero-overhead C++ wrapper types — header-only (except `Camera`). GLM headers are included only inside `src/engine/math/`.
+All types in namespace `buddd::engine::math`. The math module wraps GLM (`glm`) with zero-overhead C++ wrapper types — all header-only (Camera class removed in ADR-024). GLM headers are included only inside `src/engine/math/`.
 
 | File | Role |
 |---|---|
-| `math.h` | Convenience header: includes all math types, provides `radians()`, `degrees()`, math constants (`pi`, `half_pi`, `two_pi`, `epsilon`), and common math functions (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sqrt`) |
+| `math.h` | Convenience header: includes all math types, provides `radians()`, `degrees()`, math constants (`pi`, `half_pi`, `two_pi`, `epsilon`), common math functions (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sqrt`), `view_matrix(Vec3, Quat)`, and `look_at_rotation(Vec3, Vec3, Vec3)`. |
 | `vec2.h` | `Vec2` struct — 2D vector (x, y), wrapper around `glm::vec2`. Header-only. |
 | `vec3.h` | `Vec3` struct — 3D vector (x, y, z), wrapper around `glm::vec3`. Header-only. |
 | `vec4.h` | `Vec4` struct — 4D vector (x, y, z, w), wrapper around `glm::vec4`. Header-only. |
 | `mat4.h` | `Mat4` struct — 4×4 column-major matrix, wrapper around `glm::mat4`. Header-only. |
 | `quat.h` | `Quat` struct — quaternion (w, x, y, z), wrapper around `glm::quat`. Header-only. |
-| `camera.h` | `Camera` class — perspective camera with position, orientation, and perspective parameters. Computes view, projection, and view-projection matrices. |
-| `camera.cpp` | Camera method implementations (only type with a `.cpp` file). Contains GLM includes for implementation only. |
 
 Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, guarded by `static_assert(std::is_standard_layout_v<T>)`, `static_assert(sizeof(T) == sizeof(GLMType))`, and `static_assert(std::is_trivially_copyable_v<T>)`.
 
@@ -106,7 +104,7 @@ The `Window` class now stores a non-owning `Platform&` reference, creating a nav
 
 ### Scene submodule (`scene/`)
 
-All types in namespace `buddd::engine`. The scene graph module provides a lightweight entity system with hierarchy, transforms, polymorphic component dispatch, and ECS components (`CameraComponent`). It depends on math wrapper types (`Vec3`, `Quat`, `Mat4`, `Camera`) from `src/engine/math/` and standard C++ headers only — no GLM, SDL3, or OpenGL dependencies.
+All types in namespace `buddd::engine`. The scene graph module provides a lightweight entity system with hierarchy, transforms, polymorphic component dispatch, and ECS components (`CameraComponent`). It depends on math wrapper types (`Vec3`, `Quat`, `Mat4`) from `src/engine/math/` and standard C++ headers only — no GLM, SDL3, or OpenGL dependencies.
 
 Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieval, with zero boilerplate in component types. See ADR-006 for the decision rationale.
 
@@ -119,11 +117,11 @@ Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieva
 | `entity.cpp` | Entity non-inline method implementations — all delegate to `World`. |
 | `world.h` | `World` class — top-level container managing entity lifecycle, tree hierarchy, deferred destruction. Template methods for component dispatch (`add_component`, `get_component`, `remove_component`) and type-based iteration (`each<T>()`) defined inline. Camera registration API (`register_camera`, `unregister_camera`, `active_camera`) stores a `CameraComponent&` reference in an `std::optional<CameraComponent&>` member. |
 | `world.cpp` | World implementation including internal `EntityNode` type, slot-based storage, `flush_destroyed()` logic, and `mark_for_destroy()` iterative traversal. |
-| `camera_component.h` | `CameraComponent` ECS component class — wraps `math::Camera`, inherits `Component`. Auto-registers with `World` via `on_attach()` and unregisters on destruction (address-based comparison). |
+| `camera_component.h` | `CameraComponent` ECS component class — projection-only, inherits `Component`. Camera position/orientation from entity Transform. Auto-registers with `World` via `on_attach()` and unregisters on destruction (address-based comparison). |
 | `updatable.h` | `Updatable` pure abstract interface — orthogonal to `Component`. Provides `virtual update(const EngineContext& ctx) -> void`. Components can inherit from both via multiple inheritance. Auto-registered via `World::add_component<T>()` when `std::is_base_of_v<Updatable, T>`. Auto-dispatched in `run_app()` before `render_system.render_scene()`. |
 | `free_camera_movement.h` | `FreeCameraMovement` component class — inherits both `Component` and `Updatable`. Encapsulates free-camera controls: WASD movement, mouse look, right-click capture toggle, ESC to exit. Configurable `move_speed`, `mouse_sensitivity`, `pitch_clamp_degrees`, `invert_yaw`, `invert_pitch`. |
 | `free_camera_movement.cpp` | FreeCameraMovement implementation — input handling, camera state (yaw/pitch), component lifecycle. |
-| `camera_component.cpp` | CameraComponent implementation: `on_attach()` calls `world().register_camera(*this)`, destructor calls `world_->unregister_camera(*this)` (with null guard). |
+| `camera_component.cpp` | CameraComponent implementation: projection/view matrix computation, `look_at()` convenience methods, `on_attach()` calls `world().register_camera(*this)`, destructor calls `world_->unregister_camera(*this)` (with null guard). |
 | `directional_light_component.h` | `DirectionalLightComponent` — infinite parallel light. Direction from entity rotation (-Z forward). Properties: `colour` (Vec3), `intensity` (float). `on_attach()` no-op. |
 | `directional_light_component.cpp` | Constructor and accessor implementations. |
 | `point_light_component.h` | `PointLightComponent` — omni-directional light with position (from entity translation) and range. Properties: `colour`, `intensity`, `range` (float, default 10.0). `on_attach()` no-op. |
@@ -296,7 +294,7 @@ Each scene is an `App` subclass. The `config()` method returns the window config
 |---|---|
 | `run_app.h` / `run_app.cpp` | `RunApp` — empty window, clears framebuffer each frame (no draw calls), runs interactively until window close. |
 | `triangle_app.h` / `triangle_app.cpp` | `TriangleApp` — 120-frame coloured triangle demo using `engine::create_triangle()`. |
-| `cube_app.h` / `cube_app.cpp` | `CubeApp` — 120-frame rotating per-face-coloured cube (Camera + MVP). Uses `engine::create_cube()`. |
+| `cube_app.h` / `cube_app.cpp` | `CubeApp` — 120-frame rotating per-face-coloured cube (camera entity + MVP). Uses `engine::create_cube()`. |
 | `cube_scene_app.h` / `cube_scene_app.cpp` | `CubeSceneApp` — 120-frame rotating cube using `World` + `RenderSystem` (ECS approach). |
 | `textured_cube_app.h` / `textured_cube_app.cpp` | `TexturedCubeApp` — 120-frame rotating UV-mapped cube with brick texture using scene graph. |
 | `free_camera_app.h` / `free_camera_app.cpp` | `FreeCameraApp` — interactive fly-through camera (WASD + mouse look + Space/Control). Uses `Platform::delta_time()` for frame-rate-independent movement. Exit via Escape key. Uses `PhongMaterial` with orbiting point light + directional fill. |
@@ -342,7 +340,7 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 | `demo_tests.cpp` | **No `[cli][demo]` subprocess tests** — removed as part of SPEC-016. File retained for future non-subprocess demo tests. Demo correctness verified via compilation and EngineService creation tests. |
 | `platform_abstraction_tests.cpp` | Headless platform tests (T-01 through T-12), always compiled |
 | `sdl3_backend_tests.cpp` | SDL3 backend tests (conditionally compiled with `BUDDD_HAS_DISPLAY=ON`) |
-| `math_tests.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, Camera, utilities, interop, and edge cases |
+| `math_tests.cpp` | Math foundations tests (T-01 through T-71): Vec2, Vec3, Vec4, Mat4, Quat, view_matrix/look_at_rotation utilities, interop, and edge cases |
 | `scene_graph_tests.cpp` | Scene graph tests (T-01 through T-49): EntityId, Transform, Component, Entity, World, hierarchy, deferred destruction, pending-destroy contract, and edge cases — all headless, compiled in both BUDDD_HAS_DISPLAY branches |
 | `model_tests.cpp` | Model and cube tests (24 test cases: T-01 through T-24): Model factory methods, accessors, draw dispatch, move semantics, null model safety, cube data verification, shared material ownership, and demo loop simulation — all headless, compiled in both BUDDD_HAS_DISPLAY branches. Uses `EngineService::create()` instead of direct `RenderDeviceHeadless` construction. |
 | `model_asset_tests.cpp` | Model asset tests (21+ test cases covering AC-005 through AC-028): ModelAsset loading via AssetManager, ModelNode hierarchy verification, PbrMaterial creation with textures, error cases (missing POSITION, corrupt glTF, missing file, type mismatch, unsupported version), vertex scale, missing texture fallback, Uint32 indices, node without mesh, unsupported primitive mode, COL0R_0 VEC3 expansion, normal default, hot-reload simulation, `create_model()` convenience, `replace_root()` privacy. All headless. |

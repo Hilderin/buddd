@@ -59,12 +59,15 @@ auto buddd::cmd::app::CubeApp::setup(be::EngineContext const& ctx)
     if (!cube_result) return make_error(cube_result);
     model_ = std::move(*cube_result);
 
-    camera_.look_at(
+    camera_entity_ = ctx.world.add_entity();
+    camera_entity_.transform().position = be::math::Vec3{3.0f, 2.0f, 3.0f};
+    auto& cam_comp = camera_entity_.add_component<be::CameraComponent>();
+    cam_comp.look_at(
         be::math::Vec3{3.0f, 2.0f, 3.0f},
         be::math::Vec3{0.0f, 0.0f, 0.0f},
         be::math::Vec3::unit_y()
     );
-    camera_.set_perspective(
+    cam_comp.set_perspective(
         be::math::radians(60.0f),
         static_cast<float>(config().width) / static_cast<float>(config().height),
         0.1f,
@@ -83,8 +86,9 @@ auto buddd::cmd::app::CubeApp::on_render(be::EngineContext const& ctx) -> void {
 
     be::math::Mat4 model_matrix =
         be::math::Mat4::rotate(angle, be::math::Vec3::unit_y());
+    auto& cam_comp = *camera_entity_.get_component<be::CameraComponent>();
     be::math::Mat4 mvp =
-        camera_.projection_matrix() * camera_.view_matrix() * model_matrix;
+        cam_comp.view_projection_matrix() * model_matrix;
 
     auto uniform_result = material_->set_uniform("u_mvp", mvp);
     if (!uniform_result) {

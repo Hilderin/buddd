@@ -2,7 +2,6 @@
 
 #include "engine_context.h"
 #include "scene/world.h"
-#include "math/camera.h"
 #include "math/math.h"
 #include "math/quat.h"
 #include "math/vec3.h"
@@ -27,20 +26,20 @@ auto buddd::cmd::app::CubeSceneApp::setup(be::EngineContext const& ctx)
     // Create entity
     auto entity = ctx.world.add_entity();
 
-    // Camera component
-    be::math::Camera camera;
-    camera.look_at(
+    // Camera component — position/rotation from Transform, projection from CameraComponent
+    entity.transform().position = be::math::Vec3{3.0f, 2.0f, 3.0f};
+    auto& cam_comp = entity.add_component<be::CameraComponent>();
+    cam_comp.look_at(
         be::math::Vec3{3.0f, 2.0f, 3.0f},
         be::math::Vec3{0.0f, 0.0f, 0.0f},
         be::math::Vec3::unit_y()
     );
-    camera.set_perspective(
+    cam_comp.set_perspective(
         be::math::radians(60.0f),
         static_cast<float>(config().width) / static_cast<float>(config().height),
         0.1f,
         100.0f
     );
-    entity.add_component<be::CameraComponent>(camera);
 
     // --- Create material with u_mvp ---
     constexpr std::string_view k_vs = R"(

@@ -41,6 +41,7 @@ private:
     /// Recursively creates entities for mesh nodes in the model tree.
     auto create_entities(buddd::engine::ModelNode& node, buddd::engine::World& world) -> void;
 
+    buddd::engine::Entity camera_entity_;
     buddd::engine::AssetManager* asset_manager_ = nullptr;
     std::vector<buddd::engine::Entity> model_entities_;
 };

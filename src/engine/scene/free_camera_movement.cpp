@@ -42,8 +42,6 @@ void FreeCameraMovement::update(const EngineContext& ctx) {
         }
         return; // no-op, don't crash
     }
-    auto& cam = cam_opt->camera();
-
     // ── Mouse capture (right-click toggle, edge-detected) ──
     bool curr_right_click = input.is_mouse_down(MouseButton::Right);
     if (curr_right_click && !prev_right_click_) {
@@ -69,17 +67,17 @@ void FreeCameraMovement::update(const EngineContext& ctx) {
     float pitch_clamp_rad = math::radians(pitch_clamp_degrees);
     pitch_ = std::clamp(pitch_, -pitch_clamp_rad, pitch_clamp_rad);
 
-    cam.set_orientation(math::Quat::from_euler(pitch_, yaw_, 0.0f));
+    entity().transform().rotation = math::Quat::from_euler(pitch_, yaw_, 0.0f);
 
     // ── Keyboard movement ──
     constexpr float k_epsilon = 1.0e-6f;
-    math::Vec3 forward = cam.orientation() * math::Vec3{0.0f, 0.0f, -1.0f};
+    math::Vec3 forward = entity().transform().rotation * math::Vec3{0.0f, 0.0f, -1.0f};
     forward.y = 0.0f;
     if (forward.length_squared() > k_epsilon) {
         forward.normalize();
     }
 
-    math::Vec3 right = cam.orientation() * math::Vec3{1.0f, 0.0f, 0.0f};
+    math::Vec3 right = entity().transform().rotation * math::Vec3{1.0f, 0.0f, 0.0f};
     math::Vec3 movement{0.0f, 0.0f, 0.0f};
 
     if (input.is_down(KeyCode::W))           { movement += forward; }
@@ -89,7 +87,7 @@ void FreeCameraMovement::update(const EngineContext& ctx) {
     if (input.is_down(KeyCode::E))           { movement += math::Vec3::unit_y(); }
     if (input.is_down(KeyCode::Q))           { movement -= math::Vec3::unit_y(); }
 
-    cam.set_position(cam.position() + movement * move_speed * dt);
+    entity().transform().position = entity().transform().position + movement * move_speed * dt;
 }
 
 } // namespace buddd::engine

@@ -10,7 +10,6 @@
 #include "render/render_device.h"
 #include "render/model_node.h"
 #include "render/mesh_renderer.h"
-#include "math/camera.h"
 #include "math/math.h"
 #include "math/quat.h"
 #include "math/vec3.h"
@@ -56,15 +55,15 @@ auto buddd::cmd::app::HotReloadGltfApp::setup(be::EngineContext const& ctx)
     // Store pointer to the shared AssetManager
     asset_manager_ = &ctx.services.assets();
 
-    // Camera
+    // Camera — position/rotation from Transform, projection from CameraComponent
     auto cam_entity = ctx.world.add_entity();
-    cam_entity.add_component<be::CameraComponent>(be::math::Camera{});
-    auto& cam = cam_entity.get_component<be::CameraComponent>()->camera();
-    cam.set_position({0.0f, 1.0f, 3.0f});
-    cam.look_at({0.0f, 0.0f, 0.0f});
-    cam.set_perspective(be::math::radians(55.0f),
-                        static_cast<float>(config().width) / static_cast<float>(config().height),
-                        0.1f, 100.0f);
+    cam_entity.transform().position = {0.0f, 1.0f, 3.0f};
+    auto& cam_comp = cam_entity.add_component<be::CameraComponent>();
+    cam_comp.look_at({0.0f, 0.0f, 0.0f});
+    cam_comp.set_perspective(be::math::radians(55.0f),
+                             static_cast<float>(config().width) / static_cast<float>(config().height),
+                             0.1f, 100.0f);
+    camera_entity_ = cam_entity;
 
     // Directional light
     {
@@ -130,9 +129,9 @@ auto buddd::cmd::app::HotReloadGltfApp::on_frame_begin(be::EngineContext const& 
 
     // Camera animation
     if (auto cam_opt = ctx.world.active_camera()) {
-        auto& cam = cam_opt->camera();
+        auto& cc = *cam_opt;
         float a = static_cast<float>(ctx.frame) * 0.02f;
-        cam.set_position({3.0f * std::sin(a), 1.0f, 3.0f * std::cos(a)});
-        cam.look_at({0.0f, 0.0f, 0.0f});
+        cc.entity().transform().position = {3.0f * std::sin(a), 1.0f, 3.0f * std::cos(a)};
+        cc.look_at({0.0f, 0.0f, 0.0f});
     }
 }

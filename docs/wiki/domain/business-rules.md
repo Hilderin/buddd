@@ -276,8 +276,9 @@ Light type is encoded in `position_or_dir.w`:
 
 ### Light component accessor pattern
 
-All three light components follow the `CameraComponent` accessor pattern:
-- Mutable + const overloads using trailing return types.
+All three light components follow the `CameraComponent` pattern (as of ADR-024):
+- Projection-specific accessors on CameraComponent (no `camera()` accessor — position/orientation from Transform).
+- Light components have mutable + const overloads using trailing return types.
 - Properties are publicly mutable via non-const accessor references.
 - `on_attach()` is explicitly overridden as a no-op `{}`.
 - Destructor is NOT declared (compiler-generated default is sufficient).

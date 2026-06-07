@@ -24,6 +24,7 @@
 | ADR-020 | `docs/adr/ADR-020-custom-logging-system.md` — Custom logging system (structured logger, macro API, singleton, sinks) | Accepted |
 | ADR-021 | `docs/adr/ADR-021-developer-assertions.md` — Developer assertions (Fatal level, five macros, debug break, NDEBUG-only detection) | Accepted |
 | ADR-023 | `docs/adr/ADR-023-updatable-components.md` — Updatable Components & EngineContext (Updatable interface, EngineContext, World auto-registration, App::setup(EngineService&), run_app auto-dispatch) | Accepted |
+| ADR-024 | `docs/adr/ADR-024-camera-transform-integration.md` — Camera → Transform integration (remove `math::Camera`, CameraComponent projection-only, camera position/orientation via entity Transform) | Accepted |
 
 The current project state was established via:
 
