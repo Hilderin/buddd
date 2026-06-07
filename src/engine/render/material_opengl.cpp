@@ -66,7 +66,7 @@ auto MaterialOpenGL::get_uniform_location(std::string_view name) -> Result<GLint
 
 auto MaterialOpenGL::set_uniform(std::string_view name, float value) -> Result<void> {
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
     uniform_cache_[std::string(name)] = value;
     BUDDD_LOG_DEBUG("Uniform cached: {} (type=float)", name);
     return {};
@@ -74,7 +74,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, float value) -> Result<v
 
 auto MaterialOpenGL::set_uniform(std::string_view name, int32_t value) -> Result<void> {
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
     uniform_cache_[std::string(name)] = value;
     BUDDD_LOG_DEBUG("Uniform cached: {} (type=int)", name);
     return {};
@@ -82,7 +82,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, int32_t value) -> Result
 
 auto MaterialOpenGL::set_uniform(std::string_view name, bool value) -> Result<void> {
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
     uniform_cache_[std::string(name)] = value;
     BUDDD_LOG_DEBUG("Uniform cached: {} (type=bool)", name);
     return {};
@@ -90,7 +90,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, bool value) -> Result<vo
 
 auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec3& value) -> Result<void> {
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
     uniform_cache_[std::string(name)] = value;
     BUDDD_LOG_DEBUG("Uniform cached: {} (type=Vec3)", name);
     return {};
@@ -98,7 +98,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec3& value)
 
 auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec4& value) -> Result<void> {
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
     uniform_cache_[std::string(name)] = value;
     BUDDD_LOG_DEBUG("Uniform cached: {} (type=Vec4)", name);
     return {};
@@ -106,7 +106,7 @@ auto MaterialOpenGL::set_uniform(std::string_view name, const math::Vec4& value)
 
 auto MaterialOpenGL::set_uniform(std::string_view name, const math::Mat4& value) -> Result<void> {
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
     uniform_cache_[std::string(name)] = value;
     BUDDD_LOG_DEBUG("Uniform cached: {} (type=Mat4)", name);
     return {};
@@ -134,7 +134,7 @@ auto MaterialOpenGL::set_texture(std::string_view name, std::shared_ptr<Texture>
     }
 
     auto loc = get_uniform_location(name);
-    if (!loc) return std::unexpected(loc.error());
+    if (!loc) return make_error(loc);
 
     texture_map_[std::string(name)] = std::move(texture);
     BUDDD_LOG_DEBUG("Texture set: {}", name);

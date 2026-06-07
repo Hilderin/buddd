@@ -610,7 +610,7 @@ auto build_model_from_mesh(RenderDevice& device,
         // Read vertices
         auto vertex_result = read_vertex_data(model, mesh_idx, p, prim, scale);
         if (!vertex_result) {
-            return std::unexpected(vertex_result.error());
+            return make_error(vertex_result);
         }
         auto& prim_vertices = *vertex_result;
         size_t vertex_offset = all_vertices.size();
@@ -623,7 +623,7 @@ auto build_model_from_mesh(RenderDevice& device,
         // Read indices
         auto index_result = read_index_data(model, prim);
         if (!index_result) {
-            return std::unexpected(index_result.error());
+            return make_error(index_result);
         }
 
         size_t index_count = index_result->count;
@@ -730,7 +730,7 @@ auto build_model_from_mesh(RenderDevice& device,
         std::move(materials));
 
     if (!model_result) {
-        return std::unexpected(model_result.error());
+        return make_error(model_result);
     }
 
     // Add materials to out_materials
@@ -818,7 +818,7 @@ auto build_node(const tinygltf::Model& model,
                 node.model = std::move(**model_result);
             }
         } else {
-            return std::unexpected(model_result.error());
+            return make_error(model_result);
         }
     }
 
@@ -828,7 +828,7 @@ auto build_node(const tinygltf::Model& model,
         if (child_result) {
             node.children.push_back(std::move(*child_result));
         } else {
-            return std::unexpected(child_result.error());
+            return make_error(child_result);
         }
     }
 
@@ -955,7 +955,7 @@ auto load_gltf_model(RenderDevice& device,
         if (child_result) {
             root.children.push_back(std::move(*child_result));
         } else {
-            return std::unexpected(child_result.error());
+            return make_error(child_result);
         }
     }
 

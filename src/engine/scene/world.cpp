@@ -26,7 +26,7 @@ World::~World() {
 // ---------------------------------------------------------------------------
 // Entity lifecycle
 // ---------------------------------------------------------------------------
-auto World::create_entity() -> Entity {
+auto World::add_entity() -> Entity {
     // Allocate a slot index
     uint32_t index;
     if (!free_slots_.empty()) {

@@ -37,7 +37,7 @@ inline auto add_model_to_world_impl(
     Entity entity = Entity::none();
 
     if (node.model.has_value()) {
-        entity = Entity::create(world);
+        entity = world.add_entity();
         entity.transform().position = node.translation;
         entity.transform().rotation = node.rotation;
         entity.transform().scale = node.scale;

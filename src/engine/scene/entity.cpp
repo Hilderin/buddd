@@ -52,8 +52,4 @@ auto Entity::world_matrix() const noexcept -> math::Mat4 {
     return transform().world_matrix(*this);
 }
 
-auto Entity::create(World& world) -> Entity {
-    return world.create_entity();
-}
-
 } // namespace buddd::engine

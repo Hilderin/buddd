@@ -60,9 +60,6 @@ public:
     // -- Comparison --
     friend auto operator==(const Entity&, const Entity&) noexcept -> bool = default;
 
-    // -- Factory --
-    static auto create(World& world) -> Entity;
-
 private:
     friend class World;
     friend class Component;   // Component::entity() constructs Entity handles.

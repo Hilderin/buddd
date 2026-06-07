@@ -113,7 +113,7 @@ TEST_CASE("Transform::local_matrix() TRS order", "[scene][transform]") {
 
 TEST_CASE("Transform::world_matrix() for root entity equals local_matrix()", "[scene][transform]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.transform().position = math::Vec3(10.0f, 0.0f, 0.0f);
 
     math::Mat4 wm = entity.transform().world_matrix(entity);
@@ -128,7 +128,7 @@ TEST_CASE("Transform::world_matrix() for root entity equals local_matrix()", "[s
 
 TEST_CASE("Transform::world_matrix() accumulates parent transforms", "[scene][transform]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     parent.transform().position = math::Vec3(10.0f, 0.0f, 0.0f);
     auto child = parent.create_child();
 
@@ -143,7 +143,7 @@ TEST_CASE("Transform::world_matrix() accumulates parent transforms", "[scene][tr
 
 TEST_CASE("Transform::world_matrix() accumulates grandparent transforms", "[scene][transform]") {
     World world;
-    auto grandparent = Entity::create(world);
+    auto grandparent = world.add_entity();
     grandparent.transform().position = math::Vec3(10.0f, 0.0f, 0.0f);
 
     auto parent = grandparent.create_child();
@@ -185,7 +185,7 @@ TEST_CASE("Component base class", "[scene][component]") {
 
 TEST_CASE("Entity::add_component and get_component", "[scene][component]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     auto& comp = entity.add_component<MyComp>(42);
     REQUIRE(comp.x == 42);
@@ -199,7 +199,7 @@ TEST_CASE("Entity::add_component and get_component", "[scene][component]") {
 
 TEST_CASE("Entity::add_component unique per type", "[scene][component]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     auto& compA = entity.add_component<MyComp>(42);
     auto& compB = entity.add_component<OtherComp>(3.14f);
@@ -218,7 +218,7 @@ TEST_CASE("Entity::add_component unique per type", "[scene][component]") {
 
 TEST_CASE("Entity::get_component returns nullopt for missing type", "[scene][component]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<MyComp>(42);
 
     auto opt = entity.get_component<OtherComp>();
@@ -227,7 +227,7 @@ TEST_CASE("Entity::get_component returns nullopt for missing type", "[scene][com
 
 TEST_CASE("Entity::remove_component", "[scene][component]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<MyComp>(42);
 
     // First removal should succeed
@@ -245,7 +245,7 @@ TEST_CASE("Entity::remove_component", "[scene][component]") {
 
 TEST_CASE("Entity::get_component returns nullopt on pending-destroy entity", "[scene][component]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<MyComp>(42);
 
     entity.destroy();
@@ -256,7 +256,7 @@ TEST_CASE("Entity::get_component returns nullopt on pending-destroy entity", "[s
 
 TEST_CASE("Entity::get_component const overload", "[scene][component]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<MyComp>(42);
 
     const auto& constEntity = entity;
@@ -270,7 +270,7 @@ TEST_CASE("Entity::get_component const overload", "[scene][component]") {
 // ===========================================================================
 TEST_CASE("Entity::create returns valid non-null entity", "[scene][entity]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     REQUIRE(entity.id() != EntityId::none());
     REQUIRE(&entity.world() == &world);
@@ -284,8 +284,8 @@ TEST_CASE("Entity::none() returns null entity", "[scene][entity]") {
 
 TEST_CASE("Entity comparison", "[scene][entity]") {
     World world;
-    auto e1 = Entity::create(world);
-    auto e2 = Entity::create(world);
+    auto e1 = world.add_entity();
+    auto e2 = world.add_entity();
 
     // Same entity (same handle) is equal to itself
     REQUIRE(e1 == e1);
@@ -302,7 +302,7 @@ TEST_CASE("Entity comparison", "[scene][entity]") {
 
 TEST_CASE("Entity::transform modify persists", "[scene][entity]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     entity.transform().position = math::Vec3(1.0f, 2.0f, 3.0f);
     auto pos = entity.transform().position;
@@ -314,7 +314,7 @@ TEST_CASE("Entity::transform modify persists", "[scene][entity]") {
 
 TEST_CASE("Entity::destroy and is_pending_destroy", "[scene][entity]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     REQUIRE_FALSE(entity.is_pending_destroy());
 
@@ -327,7 +327,7 @@ TEST_CASE("Entity::destroy and is_pending_destroy", "[scene][entity]") {
 
 TEST_CASE("Entity::destroy idempotent", "[scene][entity]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     entity.destroy();
     REQUIRE(entity.is_pending_destroy());
@@ -346,14 +346,14 @@ TEST_CASE("World::flush_destroyed on empty world is safe", "[scene][world]") {
     REQUIRE_NOTHROW(world.flush_destroyed());
 
     // Create entities but don't destroy - flush should still be safe
-    auto e1 = Entity::create(world);
-    auto e2 = Entity::create(world);
+    auto e1 = world.add_entity();
+    auto e2 = world.add_entity();
     REQUIRE_NOTHROW(world.flush_destroyed());
 }
 
 TEST_CASE("World::flush_destroyed reclaims entities", "[scene][world]") {
     World world;
-    auto e1 = Entity::create(world);
+    auto e1 = world.add_entity();
     auto id1 = e1.id();
 
     // Capture the generation before destroy
@@ -363,7 +363,7 @@ TEST_CASE("World::flush_destroyed reclaims entities", "[scene][world]") {
     world.flush_destroyed();
 
     // Create a new entity - it may reuse slot with incremented generation
-    auto e2 = Entity::create(world);
+    auto e2 = world.add_entity();
     auto id2 = e2.id();
 
     // The new entity should have a different (higher or wrapped) generation
@@ -377,7 +377,7 @@ TEST_CASE("World::flush_destroyed reclaims entities", "[scene][world]") {
 
 TEST_CASE("World::destroy_entity equivalent to entity.destroy()", "[scene][world]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     REQUIRE_FALSE(entity.is_pending_destroy());
 
@@ -387,7 +387,7 @@ TEST_CASE("World::destroy_entity equivalent to entity.destroy()", "[scene][world
 
 TEST_CASE("World::flush_destroyed idempotent", "[scene][world]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.destroy();
 
     world.flush_destroyed();
@@ -400,7 +400,7 @@ TEST_CASE("World::flush_destroyed idempotent", "[scene][world]") {
 // ===========================================================================
 TEST_CASE("Entity::create_child creates child with parent link", "[scene][hierarchy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto child = parent.create_child();
 
     REQUIRE(child.parent() == parent);
@@ -408,7 +408,7 @@ TEST_CASE("Entity::create_child creates child with parent link", "[scene][hierar
 
 TEST_CASE("Entity::child_count and get_child after create_child", "[scene][hierarchy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto child = parent.create_child();
 
     REQUIRE(parent.child_count() == 1);
@@ -417,7 +417,7 @@ TEST_CASE("Entity::child_count and get_child after create_child", "[scene][hiera
 
 TEST_CASE("Entity::reparent to root", "[scene][hierarchy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto child = parent.create_child();
 
     REQUIRE(child.parent() == parent);
@@ -431,8 +431,8 @@ TEST_CASE("Entity::reparent to root", "[scene][hierarchy]") {
 
 TEST_CASE("Entity::reparent to another parent", "[scene][hierarchy]") {
     World world;
-    auto p1 = Entity::create(world);
-    auto p2 = Entity::create(world);
+    auto p1 = world.add_entity();
+    auto p2 = world.add_entity();
     auto child = p1.create_child();
 
     REQUIRE(child.parent() == p1);
@@ -448,7 +448,7 @@ TEST_CASE("Entity::reparent to another parent", "[scene][hierarchy]") {
 
 TEST_CASE("Entity::reparent current parent is no-op", "[scene][hierarchy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto child = parent.create_child();
 
     REQUIRE(parent.child_count() == 1);
@@ -466,7 +466,7 @@ TEST_CASE("Entity::reparent current parent is no-op", "[scene][hierarchy]") {
 // ===========================================================================
 TEST_CASE("Entity::destroy cascades to children", "[scene][destroy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto child = parent.create_child();
     auto grandchild = child.create_child();
 
@@ -483,7 +483,7 @@ TEST_CASE("Entity::destroy cascades to children", "[scene][destroy]") {
 
 TEST_CASE("flush_destroyed after cascade reclaims all", "[scene][destroy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto child = parent.create_child();
     auto grandchild = child.create_child();
 
@@ -495,7 +495,7 @@ TEST_CASE("flush_destroyed after cascade reclaims all", "[scene][destroy]") {
     world.flush_destroyed();
 
     // Create new entities - slot reuse should show incremented generations
-    auto new_parent = Entity::create(world);
+    auto new_parent = world.add_entity();
     // Since we had 3 entities originally, at least the first slot should be reused.
     // Just verify new entities work.
     REQUIRE(new_parent.id().generation > 0);
@@ -512,7 +512,7 @@ TEST_CASE("Deep hierarchy destroy does not stack overflow", "[scene][destroy]") 
     std::vector<Entity> entities;
     entities.reserve(CHAIN_LENGTH);
 
-    entities.push_back(Entity::create(world));
+    entities.push_back(world.add_entity());
     for (int i = 1; i < CHAIN_LENGTH; ++i) {
         entities.push_back(entities.back().create_child());
     }
@@ -535,8 +535,8 @@ TEST_CASE("flush_destroyed with no pending entities is no-op", "[scene][destroy]
     REQUIRE_NOTHROW(world.flush_destroyed());
 
     // Entities but none destroyed
-    auto e1 = Entity::create(world);
-    auto e2 = Entity::create(world);
+    auto e1 = world.add_entity();
+    auto e2 = world.add_entity();
     REQUIRE_NOTHROW(world.flush_destroyed());
 }
 
@@ -545,7 +545,7 @@ TEST_CASE("flush_destroyed with no pending entities is no-op", "[scene][destroy]
 // ===========================================================================
 TEST_CASE("Entity::world_matrix convenience method", "[scene][transform]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.transform().position = math::Vec3(5.0f, -3.0f, 2.0f);
     entity.transform().rotation = math::Quat::angle_axis(0.5f, math::Vec3::unit_y());
     entity.transform().scale = math::Vec3(2.0f, 1.0f, 3.0f);
@@ -562,7 +562,7 @@ TEST_CASE("Entity::world_matrix convenience method", "[scene][transform]") {
 
 TEST_CASE("Entity::world_matrix for chain with different transforms", "[scene][transform]") {
     World world;
-    auto root = Entity::create(world);
+    auto root = world.add_entity();
     root.transform().position = math::Vec3(10.0f, 0.0f, 0.0f);
     root.transform().scale = math::Vec3(2.0f, 1.0f, 1.0f);
 
@@ -603,7 +603,7 @@ TEST_CASE("Null entity safe operations", "[scene][null_entity]") {
 
     // Null entity != valid entity
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     REQUIRE(Entity::none() != entity);
 }
 
@@ -612,7 +612,7 @@ TEST_CASE("Null entity safe operations", "[scene][null_entity]") {
 // ===========================================================================
 TEST_CASE("Pending-destroy entity get_component returns nullopt", "[scene][pending_destroy]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<MyComp>(42);
 
     entity.destroy();
@@ -624,7 +624,7 @@ TEST_CASE("Pending-destroy entity get_component returns nullopt", "[scene][pendi
 
 TEST_CASE("Pending-destroy entity transform is accessible", "[scene][pending_destroy]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.transform().position = math::Vec3(7.0f, 8.0f, 9.0f);
 
     entity.destroy();
@@ -653,7 +653,7 @@ TEST_CASE("Null entity child_count returns 0", "[scene][null_entity]") {
 // ===========================================================================
 TEST_CASE("flush_destroyed multiple calls", "[scene][world]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.destroy();
 
     world.flush_destroyed();
@@ -665,8 +665,8 @@ TEST_CASE("World destructor with pending entities", "[scene][world]") {
     // Test that ~World() handles pending entities without explicit flush
     {
         World world;
-        auto e1 = Entity::create(world);
-        auto e2 = Entity::create(world);
+        auto e1 = world.add_entity();
+        auto e2 = world.add_entity();
         e1.add_component<MyComp>(1);
         e2.add_component<MyComp>(2);
 
@@ -680,7 +680,7 @@ TEST_CASE("World destructor with pending entities", "[scene][world]") {
 
 TEST_CASE("Destroyed entity still visible in parent before flush", "[scene][hierarchy]") {
     World world;
-    auto parent = Entity::create(world);
+    auto parent = world.add_entity();
     auto c1 = parent.create_child();
     auto c2 = parent.create_child();
 
@@ -705,7 +705,7 @@ TEST_CASE("flush_destroyed reverse depth order", "[scene][destroy]") {
     DestructorTracker::destroy_count = 0;
 
     World world;
-    auto root = Entity::create(world);
+    auto root = world.add_entity();
     root.add_component<DestructorTracker>(1); // id=1
 
     auto parent = root.create_child();
@@ -730,7 +730,7 @@ TEST_CASE("Component destructor called on entity destroy", "[scene][component]")
 
     {
         World world;
-        auto entity = Entity::create(world);
+        auto entity = world.add_entity();
         entity.add_component<DestructorFlag>(&flag);
 
         REQUIRE_FALSE(flag);
@@ -749,10 +749,10 @@ TEST_CASE("World destruction with pending entities — components destroyed", "[
 
     {
         World world;
-        auto e1 = Entity::create(world);
+        auto e1 = world.add_entity();
         e1.add_component<DestructorFlag>(&flag1);
 
-        auto e2 = Entity::create(world);
+        auto e2 = world.add_entity();
         e2.add_component<DestructorFlag>(&flag2);
 
         // Mark some for destruction
@@ -769,7 +769,7 @@ TEST_CASE("World destruction with pending entities — components destroyed", "[
 
 TEST_CASE("Stale EntityId after flush", "[scene][entity]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     EntityId captured_id = entity.id();
 
     entity.destroy();
@@ -783,7 +783,7 @@ TEST_CASE("Stale EntityId after flush", "[scene][entity]") {
     // Actually, we can test this via World::is_pending_destroy which is not public.
     // Let's create a new entity and check that the old generation is different.
 
-    auto new_entity = Entity::create(world);
+    auto new_entity = world.add_entity();
     // The new entity should have a different generation (since slot 0 was freed and reused)
     // OR a different index (if slot 0 was not reused yet)
     REQUIRE((new_entity.id().generation > captured_id.generation

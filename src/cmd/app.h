@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace buddd::engine { class EngineService; class RenderDevice; class World; }
+namespace buddd::engine { class EngineContext; }
 
 namespace buddd::cmd {
 
@@ -18,7 +18,7 @@ struct AppConfig {
 };
 
 /// Base class for all renderable applications.
-/// Lifecycle: config() -> setup() -> render() x N -> shutdown().
+/// Lifecycle: config() -> setup() -> on_frame_begin() x N -> on_render() x N -> shutdown().
 class App {
 public:
     virtual ~App() = default;
@@ -28,33 +28,19 @@ public:
 
     /// Called once before the render loop.
     /// Return error to abort (loop skipped, shutdown() still called).
-    [[nodiscard]] virtual auto setup(buddd::engine::EngineService& engine)
+    [[nodiscard]] virtual auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> = 0;
 
-    /// Called once per frame, before render(), between begin_frame() and end_frame().
-    /// Default no-op. Override for per-frame tasks like hot-reload polling.
-    virtual auto on_frame_begin() -> void {}
+    /// Called once per frame, before render_scene(), between begin_frame() and end_frame().
+    /// Default no-op. Override for per-frame tasks like hot-reload polling or transform updates.
+    virtual auto on_frame_begin(buddd::engine::EngineContext const& ctx) -> void {}
 
-    /// Called once per frame, between begin_frame() and end_frame().
-    /// frame is 0-based (0 = first rendered frame).
-    virtual auto render(buddd::engine::RenderDevice& device, int frame) -> void = 0;
+    /// Called once per frame after render_scene().
+    /// Replaces render(RenderDevice&, int). Default no-op.
+    virtual auto on_render(buddd::engine::EngineContext const& ctx) -> void {}
 
     /// Called once after the render loop ends (normal or error).
     virtual auto shutdown() -> void {}
-
-    /// Returns false if the app has requested the render loop to stop.
-    [[nodiscard]] auto is_running() const noexcept -> bool { return running_; }
-
-    /// Returns a pointer to the app's World if one exists, nullptr otherwise.
-    /// Override in apps that have a World (for Updatable auto-dispatch).
-    [[nodiscard]] virtual auto world() noexcept -> buddd::engine::World* { return nullptr; }
-
-    /// Public setter to allow run_app() to stop the render loop.
-    void set_running(bool v) { running_ = v; }
-
-protected:
-    /// Set to false to stop the render loop early (for interactive scenes).
-    bool running_ = true;
 };
 
 /// Central render loop.
@@ -65,10 +51,11 @@ protected:
 ///   2. Create Platform (SDL3 or Headless based on BUDDD_HAS_DISPLAY)
 ///   3. Create Window (using AppConfig.title/width/height)
 ///   4. Create RenderDevice
-///   5. Call app.setup()
-///   6. Render loop with RunningArgs.frame_limit and RunningArgs.captures
-///   7. Call app.shutdown()
-///   8. Return exit code
+///   5. Create World + RenderSystem (always, unconditionally)
+///   6. Call app.setup(ctx) where ctx contains all per-frame references
+///   7. Render loop with RunningArgs.frame_limit and RunningArgs.captures
+///   8. Call app.shutdown()
+///   9. Return exit code
 [[nodiscard]] auto run_app(App& app, const RunningArgs& args) -> int;
 
 } // namespace buddd::cmd

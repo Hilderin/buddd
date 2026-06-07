@@ -56,6 +56,9 @@ inline auto to_string(const Error& error) -> std::string {
     return category_str + ": " + error.message + " (code " + std::to_string(error.code) + ")";
 }
 
+template<typename T>
+using Result = std::expected<T, Error>;
+
 /// Creates a `std::unexpected<Error>` for use as a return value from Result<T> functions.
 /// @param category The error category.
 /// @param message  Human-readable error description.
@@ -64,7 +67,17 @@ inline auto make_error(Error::Category category, std::string message, int code =
     return std::unexpected<Error>(Error{category, code, std::move(message)});
 }
 
+/// Propagates an existing Error by wrapping it in std::unexpected<Error>.
+/// Enables: `return make_error(vs.error())` instead of `return std::unexpected(vs.error())`.
+inline auto make_error(const Error& error) -> std::unexpected<Error> {
+    return std::unexpected<Error>(error);
+}
+
+/// Propagates a failed Result<T> by extracting its error and wrapping it.
+/// Enables: `return make_error(vs)` instead of `return std::unexpected(vs.error())`.
 template<typename T>
-using Result = std::expected<T, Error>;
+inline auto make_error(const std::expected<T, Error>& result) -> std::unexpected<Error> {
+    return std::unexpected<Error>(result.error());
+}
 
 } // namespace buddd::engine

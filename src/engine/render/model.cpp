@@ -49,12 +49,12 @@ auto be::Model::create_indexed(
 
     auto vb = device.create_vertex_buffer(vertex_format, vertex_data);
     if (!vb) {
-        return std::unexpected(vb.error());
+        return make_error(vb);
     }
 
     auto ib = device.create_index_buffer(index_data, index_type);
     if (!ib) {
-        return std::unexpected(ib.error());
+        return make_error(ib);
     }
 
     // Count vertices/indices from spans

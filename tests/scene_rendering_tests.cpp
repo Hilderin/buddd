@@ -91,7 +91,7 @@ TEST_CASE("Component entity awareness", "[scene_rendering]") {
 
     // AC-002/AC-005/AC-006: entity() returns correct Entity after add_component
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     auto& comp = entity.add_component<EntityRecorder>();
 
     REQUIRE(comp.entity().id() == entity.id());
@@ -103,7 +103,7 @@ TEST_CASE("Component entity awareness", "[scene_rendering]") {
 // ===========================================================================
 TEST_CASE("Component on_attach is called", "[scene_rendering]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     bool flag = false;
     entity.add_component<AttachFlag>(&flag);
@@ -120,7 +120,7 @@ TEST_CASE("World::each basic iteration", "[scene_rendering]") {
     // Create 5 entities, attach TagComp to 3 of them
     std::vector<Entity> entities;
     for (int i = 0; i < 5; ++i) {
-        entities.push_back(Entity::create(world));
+        entities.push_back(world.add_entity());
     }
     entities[0].add_component<TagComp>(10);
     entities[2].add_component<TagComp>(20);
@@ -144,7 +144,7 @@ TEST_CASE("World::each basic iteration", "[scene_rendering]") {
 // ===========================================================================
 TEST_CASE("World::each skips pending-destroy", "[scene_rendering]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<TagComp>(42);
 
     // Before destroy: each should find it
@@ -210,7 +210,7 @@ TEST_CASE("CameraComponent auto-registers", "[scene_rendering]") {
     // AC-012: CameraComponent exists, inherits Component
     // AC-013: Can construct with default and with Camera parameter
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     math::Camera cam;
     cam.set_perspective(math::radians(90.0f), 1.0f, 0.1f, 50.0f);
@@ -236,7 +236,7 @@ TEST_CASE("CameraComponent auto-registers", "[scene_rendering]") {
 // ===========================================================================
 TEST_CASE("CameraComponent destructor unregisters", "[scene_rendering]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
 
     math::Camera cam;
     entity.add_component<CameraComponent>(cam);
@@ -359,7 +359,7 @@ TEST_CASE("RenderSystem draw call count", "[scene_rendering]") {
     World world;
 
     // Create camera entity
-    auto cam_entity = Entity::create(world);
+    auto cam_entity = world.add_entity();
     math::Camera cam;
     cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     cam_entity.add_component<CameraComponent>(cam);
@@ -405,7 +405,7 @@ TEST_CASE("RenderSystem draw call count", "[scene_rendering]") {
     auto model_ptr = std::make_shared<Model>(std::move(*model));
 
     // Create mesh renderer entity
-    auto mesh_entity = Entity::create(world);
+    auto mesh_entity = world.add_entity();
     mesh_entity.add_component<MeshRenderer>(model_ptr);
 
     // Render
@@ -425,7 +425,7 @@ TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
     World world;
 
     // Camera at origin looking down -Z (default camera)
-    auto cam_entity = Entity::create(world);
+    auto cam_entity = world.add_entity();
     math::Camera cam;
     // Default camera is at (0,0,0) looking down -Z
     cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
@@ -476,7 +476,7 @@ TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
     REQUIRE(headless_mat != nullptr);
 
     // Entity at (10, 0, 0) with identity rotation/scale
-    auto mesh_entity = Entity::create(world);
+    auto mesh_entity = world.add_entity();
     mesh_entity.transform().position = math::Vec3(10.0f, 0.0f, 0.0f);
     mesh_entity.add_component<MeshRenderer>(model_ptr);
 
@@ -555,7 +555,7 @@ TEST_CASE("RenderSystem set_uniform failure skip", "[scene_rendering]") {
     World world;
 
     // Camera entity
-    auto cam_entity = Entity::create(world);
+    auto cam_entity = world.add_entity();
     math::Camera cam;
     cam.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     cam_entity.add_component<CameraComponent>(cam);
@@ -635,10 +635,10 @@ TEST_CASE("RenderSystem set_uniform failure skip", "[scene_rendering]") {
     REQUIRE(model_invalid.has_value());
 
     // Create entities
-    auto valid_entity = Entity::create(world);
+    auto valid_entity = world.add_entity();
     valid_entity.add_component<MeshRenderer>(std::make_shared<Model>(std::move(*model_valid)));
 
-    auto invalid_entity = Entity::create(world);
+    auto invalid_entity = world.add_entity();
     invalid_entity.add_component<MeshRenderer>(std::make_shared<Model>(std::move(*model_invalid)));
 
     RenderSystem render_system(device, world);
@@ -672,9 +672,9 @@ TEST_CASE("World::each zero matches", "[scene_rendering]") {
     World world;
 
     // Create entities but no CameraComponent
-    auto e1 = Entity::create(world);
-    auto e2 = Entity::create(world);
-    auto e3 = Entity::create(world);
+    auto e1 = world.add_entity();
+    auto e2 = world.add_entity();
+    auto e3 = world.add_entity();
 
     bool called = false;
     size_t result = world.each<CameraComponent>([&](Entity, CameraComponent&) -> bool {
@@ -695,7 +695,7 @@ TEST_CASE("World::each early exit", "[scene_rendering]") {
     // Create 5 entities, all with TagComp
     std::vector<Entity> entities;
     for (int i = 0; i < 5; ++i) {
-        entities.push_back(Entity::create(world));
+        entities.push_back(world.add_entity());
         entities[i].add_component<TagComp>(i * 10);
     }
 
@@ -752,8 +752,8 @@ static_assert(!can_each<NonComponent>::value,
 TEST_CASE("Multiple camera components on different entities", "[scene_rendering]") {
     World world;
 
-    auto entity_a = Entity::create(world);
-    auto entity_b = Entity::create(world);
+    auto entity_a = world.add_entity();
+    auto entity_b = world.add_entity();
 
     auto& cam_a = entity_a.add_component<CameraComponent>();
     REQUIRE(&*world.active_camera() == &cam_a);
@@ -777,7 +777,7 @@ TEST_CASE("Multiple camera components on different entities", "[scene_rendering]
 // ===========================================================================
 TEST_CASE("Const-correctness of accessors", "[scene_rendering]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.add_component<CameraComponent>();
 
     // active_camera() is const-qualified
@@ -795,7 +795,7 @@ TEST_CASE("Const-correctness of accessors", "[scene_rendering]") {
 // ===========================================================================
 TEST_CASE("Entity transforms in scene rendering context", "[scene_rendering]") {
     World world;
-    auto entity = Entity::create(world);
+    auto entity = world.add_entity();
     entity.transform().position = math::Vec3(5.0f, 10.0f, -3.0f);
 
     math::Mat4 wm = entity.world_matrix();

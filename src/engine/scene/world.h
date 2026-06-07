@@ -30,7 +30,7 @@ public:
     auto operator=(World&&) -> World& = delete;
 
     // -- Entity lifecycle --
-    auto create_entity() -> Entity;
+    auto add_entity() -> Entity;
     void destroy_entity(Entity entity);
     void flush_destroyed() noexcept;
 

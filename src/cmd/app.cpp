@@ -3,6 +3,7 @@
 
 #include "log/log.h"
 
+#include "asset/asset_manager.h"
 #include "engine_service.h"
 #include "engine_context.h"
 #include "image/image.h"
@@ -10,6 +11,7 @@
 #include "platform/platform.h"
 #include "window/window.h"
 #include "render/render_device.h"
+#include "render/render_system.h"
 #include "scene/world.h"
 #include "scene/updatable.h"
 
@@ -47,15 +49,23 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
 
     BUDDD_LOG_INFO("Window opened: {}x{}", eng.window().width(), eng.window().height());
 
-    // 3. Setup app
-    auto setup_result = app.setup(eng);
+    // 3. Create World + RenderSystem (always, unconditionally)
+    auto world = std::make_unique<be::World>();
+    auto render_system = std::make_unique<be::RenderSystem>(eng.device(), *world);
+
+    // 4. Setup app
+    be::EngineContext setup_ctx{
+        eng, eng.window(), eng.device(), *world, *render_system,
+        eng.platform().delta_time(), 0
+    };
+    auto setup_result = app.setup(setup_ctx);
     if (!setup_result) {
         BUDDD_LOG_ERROR("{}", be::to_string(setup_result.error()));
         app.shutdown();
         return EXIT_FAILURE;
     }
 
-    // 4. Print start message
+    // 5. Print start message
     bool has_limit = args.frame_limit > 0;
     if (has_limit) {
         BUDDD_LOG_INFO("Scene started: {} ({} frames)", cfg.title, args.frame_limit);
@@ -63,7 +73,7 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
         BUDDD_LOG_INFO("Scene started: {} (interactive)", cfg.title);
     }
 
-    // 5. Render loop
+    // 6. Render loop
     bool any_capture_success = false;
     bool any_capture_failure = false;
     int frame = 0;
@@ -81,30 +91,43 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
             break;
         }
 
-        // App requested stop
-        if (!app.is_running()) {
-            aborted_by_user = true;
-            BUDDD_LOG_INFO("Scene aborted by user (frame {})", frame + 1);
-            break;
-        }
+        // Poll asset file events (hot-reload, file watching)
+        eng.assets().poll_file_events();
 
         // Begin frame
         eng.device().begin_frame();
 
-        // Frame start hook (hot-reload polling, etc.)
-        app.on_frame_begin();
+        // Construct per-frame EngineContext
+        be::EngineContext ctx{
+            eng, eng.window(), eng.device(), *world, *render_system,
+            eng.platform().delta_time(), frame
+        };
 
-        // ── Updatable auto-dispatch ──
-        if (auto* app_world = app.world()) {
-            be::EngineContext ctx{eng, eng.window(), eng.platform().delta_time()};
-            app_world->update_updatables(ctx);
-            if (ctx.is_exit_requested()) {
-                app.set_running(false);
-            }
+        // Frame start hook (hot-reload polling, transform updates, etc.)
+        app.on_frame_begin(ctx);
+
+        // Exit check after on_frame_begin
+        if (ctx.is_exit_requested()) {
+            aborted_by_user = true;
+            BUDDD_LOG_INFO("Scene aborted by user (frame {})", frame + 1);
+            eng.device().end_frame();  // Must end frame before breaking
+            break;
         }
 
-        // Render
-        app.render(eng.device(), frame);
+        // ── Updatable auto-dispatch ──
+        world->update_updatables(ctx);
+        if (ctx.is_exit_requested()) {
+            aborted_by_user = true;
+            BUDDD_LOG_INFO("Scene aborted by user (frame {})", frame + 1);
+            eng.device().end_frame();
+            break;
+        }
+
+        // ── Automatic scene render ──
+        render_system->render_scene();
+
+        // ── Custom rendering (optional, default no-op) ──
+        app.on_render(ctx);
 
         // Capture: read_pixels BEFORE end_frame()
         bool did_read_pixels = false;
@@ -146,17 +169,17 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
         ++frame;
     }
 
-    // 6. Print completion or abort
+    // 7. Print completion or abort
     if (!aborted_by_user) {
         BUDDD_LOG_INFO("Scene complete: {} ({} frames rendered)", cfg.title, frame);
     }
 
-    // 7. Shutdown
+    // 8. Shutdown
     app.shutdown();
 
     BUDDD_LOG_INFO("Window closed, shutting down.");
 
-    // 8. Exit code based on capture success
+    // 9. Exit code based on capture success
     bool has_captures = !args.captures.empty();
     if (has_captures && !any_capture_success && any_capture_failure)
         return EXIT_FAILURE;

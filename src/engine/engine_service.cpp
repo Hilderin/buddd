@@ -21,17 +21,17 @@ auto EngineService::create(Backend backend, const WindowConfig& config)
 {
     auto platform = Platform::create(backend);
     if (!platform) {
-        return std::unexpected(platform.error());
+        return make_error(platform);
     }
 
     auto window = (*platform)->create_window(config);
     if (!window) {
-        return std::unexpected(window.error());
+        return make_error(window);
     }
 
     auto device = RenderDevice::create(*window.value());
     if (!device) {
-        return std::unexpected(device.error());
+        return make_error(device);
     }
 
     auto engine = std::unique_ptr<EngineService>(
@@ -41,7 +41,7 @@ auto EngineService::create(Backend backend, const WindowConfig& config)
     // declared after device_ for correct destruction order).
     auto asset_mgr = AssetManager::create(engine->device(), "assets");
     if (!asset_mgr) {
-        return std::unexpected(asset_mgr.error());
+        return make_error(asset_mgr);
     }
     engine->asset_manager_ = std::move(*asset_mgr);
 

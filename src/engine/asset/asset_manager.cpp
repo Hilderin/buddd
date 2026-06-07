@@ -212,7 +212,7 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     auto yaml_result = parse_yaml_file(yaml_path);
     if (!yaml_result) {
         BUDDD_LOG_DEBUG("YAML error: {} - {}", yaml_path, yaml_result.error().message);
-        return std::unexpected(yaml_result.error());
+        return make_error(yaml_result);
     }
     auto yaml = std::move(*yaml_result);
 
@@ -222,7 +222,7 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
         auto err = make_error(Error::Category::InvalidArgument,
             "Expected type 'Texture', got '" + type + "'");
         BUDDD_LOG_DEBUG("Type mismatch: {} (expected Texture, got {})", id, type);
-        return std::unexpected(err);
+        return err;
     }
 
     // 3. Validate version
@@ -246,12 +246,12 @@ auto AssetManager::load_texture(const std::string& id, const std::string& yaml_p
     // 5. Load image and create texture
     auto image = Image::load(make_full_path(source_path));
     if (!image) {
-        return std::unexpected(image.error());
+        return make_error(image);
     }
 
     auto texture = device_.create_texture(*image);
     if (!texture) {
-        return std::unexpected(texture.error());
+        return make_error(texture);
     }
 
     std::shared_ptr<Texture> shared_tex(std::move(*texture));
@@ -299,7 +299,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     // 1. Parse YAML
     auto yaml_result = parse_yaml_file(yaml_path);
     if (!yaml_result) {
-        return std::unexpected(yaml_result.error());
+        return make_error(yaml_result);
     }
     auto yaml = std::move(*yaml_result);
 
@@ -309,7 +309,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
         auto err = make_error(Error::Category::InvalidArgument,
             "Expected type 'Material', got '" + type + "'");
         BUDDD_LOG_DEBUG("Type mismatch: {} (expected Material, got {})", id, type);
-        return std::unexpected(err);
+        return err;
     }
 
     // 3. Validate version
@@ -344,10 +344,10 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
 
     // 5. Load shader source files
     auto vert_source = read_file(make_full_path(vert_path));
-    if (!vert_source) return std::unexpected(vert_source.error());
+    if (!vert_source) return make_error(vert_source);
 
     auto frag_source = read_file(make_full_path(frag_path));
-    if (!frag_source) return std::unexpected(frag_source.error());
+    if (!frag_source) return make_error(frag_source);
 
     // 6. Deduplicate shader program by (vert_path, frag_path)
     ShaderProgramKey program_key{vert_path, frag_path};
@@ -360,13 +360,13 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
     } else {
         // Compile new shader program
         auto vs = device_.create_shader(ShaderType::Vertex, *vert_source);
-        if (!vs) return std::unexpected(vs.error());
+        if (!vs) return make_error(vs);
 
         auto fs = device_.create_shader(ShaderType::Fragment, *frag_source);
-        if (!fs) return std::unexpected(fs.error());
+        if (!fs) return make_error(fs);
 
         auto program = device_.create_shader_program(std::move(*vs), std::move(*fs));
-        if (!program) return std::unexpected(program.error());
+        if (!program) return make_error(program);
 
         shader_program = std::move(*program);
         shader_programs_[program_key] = shader_program;
@@ -376,7 +376,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
 
     // 7. Create a fresh Material for THIS asset
     auto material = device_.create_material(shader_program);
-    if (!material) return std::unexpected(material.error());
+    if (!material) return make_error(material);
     auto shared_material = std::shared_ptr<Material>(std::move(*material));
 
     // 8. Resolve texture references
@@ -389,7 +389,7 @@ auto AssetManager::load_material(const std::string& id, const std::string& yaml_
 
                 auto tex_asset = create<TextureAsset>(tex_id);
                 if (!tex_asset) {
-                    return std::unexpected(tex_asset.error());
+                    return make_error(tex_asset);
                 }
 
                 auto set_tex_result = shared_material->set_texture(tex_name, (*tex_asset)->texture());
@@ -451,7 +451,7 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
     // 1. Parse YAML
     auto yaml_result = parse_yaml_file(yaml_path);
     if (!yaml_result) {
-        return std::unexpected(yaml_result.error());
+        return make_error(yaml_result);
     }
     auto yaml = std::move(*yaml_result);
 
@@ -461,7 +461,7 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
         auto err = make_error(Error::Category::InvalidArgument,
             "Expected type 'Model', got '" + type + "'");
         BUDDD_LOG_DEBUG("Type mismatch: {} (expected Model, got {})", id, type);
-        return std::unexpected(err);
+        return err;
     }
 
     // 3. Validate version
@@ -496,7 +496,7 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
     auto load_result = detail::load_gltf_model(device_, make_full_path(source_path), scale);
     if (!load_result) {
         BUDDD_LOG_DEBUG("Model load failed: {} \u2014 {}", id, load_result.error().message);
-        return std::unexpected(load_result.error());
+        return make_error(load_result);
     }
 
     // Count vertices and nodes for logging (BEFORE moving root)
