@@ -5,19 +5,18 @@
 #include "asset/asset_manager.h"
 #include "asset/material_asset.h"
 #include "asset/texture_asset.h"
+#include "engine_context.h"
 #include "engine_service.h"
+#include "scene/world.h"
 #include "image/image.h"
 #include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/quat.h"
 #include "render/render_device.h"
-#include "render/render_system.h"
 #include "render/mesh_renderer.h"
 #include "render/texture.h"
-#include "scene/world.h"
 #include "scene/camera_component.h"
-#include "scene/entity.h"
 
 #include <chrono>
 #include <cstddef>
@@ -36,31 +35,22 @@ namespace be = buddd::engine;
 buddd::cmd::app::AssetDemoApp::AssetDemoApp() = default;
 buddd::cmd::app::AssetDemoApp::~AssetDemoApp() = default;
 
-auto buddd::cmd::app::AssetDemoApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::AssetDemoApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
-    // 1. Create AssetManager (keep alive for hot-reload)
-    auto am = be::AssetManager::create(device, "assets");
-    if (!am) {
-        BUDDD_LOG_ERROR("FATAL: could not create AssetManager: {}",
-                        be::to_string(am.error()));
-        return std::unexpected(am.error());
-    }
-    asset_manager_ = std::move(*am);
+    auto& device = ctx.device;
 
-    // 2. Load material from YAML
-    auto mat_asset = asset_manager_->create<be::MaterialAsset>("materials/demo_cube");
+    // 1. Load material from YAML using shared AssetManager
+    auto mat_asset = ctx.services.assets().create<be::MaterialAsset>("materials/demo_cube");
     if (!mat_asset) {
         BUDDD_LOG_ERROR("FATAL: could not load material: {}",
                         be::to_string(mat_asset.error()));
-        return std::unexpected(mat_asset.error());
+        return make_error(mat_asset);
     }
     auto material = (*mat_asset)->material();
 
-    // 3. Create World, Entity, Camera
-    world_ = std::make_unique<be::World>();
-    auto entity = be::Entity::create(*world_);
+    // 2. Create Entity, Camera
+    auto entity = ctx.world.add_entity();
 
     be::math::Camera camera;
     camera.look_at(
@@ -76,7 +66,7 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::EngineService& engine)
     );
     entity.add_component<be::CameraComponent>(camera);
 
-    // 4. Create vertex buffer with texture coordinates
+    // 3. Create vertex buffer with texture coordinates
     struct TexturedCubeVertex {
         float px, py, pz;
         float tx, ty;
@@ -132,7 +122,7 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::EngineService& engine)
             static_cast<uint32_t>(offsetof(TexturedCubeVertex, tx)), false},
     };
 
-    // 5. Create model
+    // 4. Create model
     auto model = be::Model::create_indexed(
         device, format,
         std::as_bytes(std::span(vertices)),
@@ -144,33 +134,25 @@ auto buddd::cmd::app::AssetDemoApp::setup(be::EngineService& engine)
     if (!model) {
         BUDDD_LOG_ERROR("FATAL: Failed to create textured cube model: {}",
                         be::to_string(model.error()));
-        return std::unexpected(model.error());
+        return make_error(model);
     }
 
-    // 6. Attach to entity via MeshRenderer
+    // 5. Attach to entity via MeshRenderer
     entity.add_component<be::MeshRenderer>(
         std::make_shared<be::Model>(std::move(*model)));
 
-    // 7. Create RenderSystem
-    render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
-
-    entity_ = std::make_unique<be::Entity>(std::move(entity));
+    entity_ = entity;
     start_time_ = std::chrono::steady_clock::now();
 
     return {};
 }
 
-auto buddd::cmd::app::AssetDemoApp::on_frame_begin() -> void {
-    asset_manager_->poll_file_events();
-}
-
-auto buddd::cmd::app::AssetDemoApp::render(be::RenderDevice&, int frame) -> void {
+auto buddd::cmd::app::AssetDemoApp::on_frame_begin(be::EngineContext const& ctx) -> void {
+    // Update rotation
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
     float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
     float angle = elapsed_seconds * 0.5f;
 
-    entity_->transform().rotation =
+    entity_.transform().rotation =
         be::math::Quat::angle_axis(angle, be::math::Vec3::unit_y());
-
-    render_system_->render_scene();
 }

@@ -34,27 +34,40 @@ We replace the per-demo free-function-with-individual-render-loop pattern with a
 A virtual `App` base class in `src/cmd/app.h` defines:
 
 - `config()` → `AppConfig` — window title, width, height
-- `setup(RenderDevice&)` → `Result<void>` — one-time initialisation
-- `render(RenderDevice&, int frame)` → `void` — one frame's rendering only (no begin/end)
+- `setup(EngineContext const&)` → `Result<void>` — one-time initialisation (full context: services, window, device, world, render_system, delta_time, frame)
+- `on_frame_begin(EngineContext const&)` → `void` — per-frame hook (default no-op, apps override for transform updates, hot-reload polling, etc.)
+- `on_render(EngineContext const&)` → `void` — one frame's custom rendering only (no begin/end). Default no-op. Replaces `render(RenderDevice&, int)`.
 - `shutdown()` → `void` — cleanup
 
-A protected `running_` boolean allows interactive scenes to stop the loop (e.g., on ESC).
+Removed: `render(RenderDevice&, int)`, `world()`, `is_running()`, `set_running()`, `running_`. Exit signalling is entirely through `ctx.request_exit()` / `ctx.is_exit_requested()`.
 
 ### 2. Centralised render loop in `run_app()`
 
 A single `run_app(App&, const RunningArgs&)` free function owns the entire render loop:
 
 ```
-create Platform, Window, RenderDevice
-app.setup()
+create EngineService (Platform, Window, RenderDevice, AssetManager)
+create World + RenderSystem (always, unconditionally)
+app.setup(ctx) where ctx = {services, window, device, world, render_system, delta_time, frame}
 loop:
+    poll_events() → exit if closed
     begin_frame()
-    app.render(device, frame)
+    app.on_frame_begin(ctx)        ← per-frame hook (hot-reload polling, transforms)
+    update_updatables(ctx)          ← auto Updatable dispatch
+    render_system.render_scene()   ← automatic scene rendering
+    app.on_render(ctx)             ← custom rendering (default no-op)
     (optionally) read_pixels() for capture
     end_frame()
-    poll_events() → exit if closed
+    ++frame
 app.shutdown()
 ```
+
+Key changes from the original design:
+- `World` and `RenderSystem` are created by `run_app()` (not by apps) and passed via `EngineContext`
+- `render_scene()` is called automatically before `on_render()` — apps no longer call it manually
+- `setup()` receives `EngineContext const&` instead of `EngineService&`
+- `on_render(ctx)` replaces `render(device, frame)` with a default no-op
+- Exit signalling is solely via `ctx.is_exit_requested()` — the old `running_`/`set_running()`/`is_running()` are removed
 
 `RunningArgs` carries frame limits and capture specifications parsed from CLI flags.
 
@@ -173,16 +186,20 @@ Keep the existing `sleep_for`-based frame limiting from the old demo code to con
 
 ### Negative
 
-- **Virtual dispatch overhead**: Each frame calls `app.render()` through a virtual dispatch. The cost is negligible (< 5 ns per call) compared to the GPU work of rendering a frame (milliseconds).
+- **Virtual dispatch overhead**: Each frame calls `app.on_render(ctx)` and `app.on_frame_begin(ctx)` through virtual dispatch. The combined cost is negligible (< 10 ns per call) compared to the GPU work of rendering a frame (milliseconds).
 - **Breaking change for existing `demo`/`capture` users**: Developers who used `buddd demo triangle` or `buddd capture cube` must update their commands to `buddd run triangle`. The error message tells them the command is unknown, but there is no deprecation period.
 - **Concrete `AppConfig` at construction time**: An `App` subclass's window configuration (`config()` return value) is determined at construction time. There is no mechanism for CLI flags to override window dimensions post-construction. This is acceptable because the spec defines fixed 1024×768.
 - **`demo_helpers` `std::exit()` avoids `shutdown()`**: `setup_triangle()` and `setup_cube()` call `std::exit(EXIT_FAILURE)` on allocation failure. This bypasses `App::shutdown()`. This is a pre-existing limitation inherited from the old code, not a new problem.
-- **Frame numbering dualism**: `App::render()` receives a 0-based frame index, but `--capture` uses 1-based frame numbers. The conversion happens in `run_app()`. This is a persistent off-by-one risk that requires careful maintenance.
+- **Frame numbering dualism**: `ctx.frame` in `on_frame_begin(ctx)` and `on_render(ctx)` is 0-based, but `--capture` uses 1-based frame numbers. The conversion happens in `run_app()`. This is a persistent off-by-one risk that requires careful maintenance.
 
 ### Compliance
 
 - All new scene code SHALL create an `App` subclass in `src/cmd/apps/`.
-- Scene `render()` methods SHALL NOT call `begin_frame()` or `end_frame()`.
+- Scene `on_render()` and `on_frame_begin()` methods SHALL NOT call `begin_frame()` or `end_frame()` — these are owned by `run_app()`.
+- Scene `setup()` SHALL accept `EngineContext const&` (not `EngineService&` or `RenderDevice&`).
+- Scene code SHALL NOT override `render(RenderDevice&, int)` — use `on_render(EngineContext const&)` instead (default no-op).
+- Scene code SHALL NOT override `world()` — World is owned by `run_app()` and accessible via `ctx.world`.
+- Scene code SHALL NOT use `is_running()`/`set_running()`/`running_` — use `ctx.request_exit()` / `ctx.is_exit_requested()`.
 - `src/cmd/apps/` is the canonical location for scene implementations.
 - `src/cmd/demo/demo_helpers.*` are the only remaining files in `src/cmd/demo/`.
 - The `demo` and `capture` commands are permanently removed; they SHALL NOT be reintroduced.
@@ -192,6 +209,7 @@ Keep the existing `sleep_for`-based frame limiting from the old demo code to con
 
 - SPEC-008 (`.specs/sprint-2026-06/cli-app-system/spec.md`): Spec-level documentation of the CLI App System.
 - IMPL-008 (`.specs/sprint-2026-06/cli-app-system/implementation-contract.md`): Implementation contract with detailed file-by-file changes.
+- SPEC-019-REFACTOR (`.specs/sprint-2026-06/engine-ownership-refactor/spec.md`): Engine ownership refactoring — updated App lifecycle (`setup(EngineContext const&)`, `on_render(ctx)`), run_app() owns World/RenderSystem, exit via `ctx.is_exit_requested()` only.
 - ADR-004 (`docs/adr/ADR-004-demo-system-architecture.md`): **Partially superseded** — per-demo free functions with individual render loops replaced by App subclasses with centralised loop.
 - ADR-003 (`docs/adr/ADR-003-render-pipeline-architecture.md`): Render pipeline architecture — precedent that render loops are application-level concern, now concretised in `run_app()`.
 - ADR-012 (`docs/adr/ADR-012-navigable-object-graph-engine-service.md`): EngineService pattern — enables `App` subclasses to access `Platform`/`Window`/`InputSystem` via `RenderDevice.window().platform()` without explicit references.

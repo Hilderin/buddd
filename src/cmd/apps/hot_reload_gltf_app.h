@@ -2,17 +2,12 @@
 
 #include "app.h"
 
-#include <memory>
-#include <vector>
+#include "asset/asset_manager.h"
+#include "render/model_node.h"
+#include "scene/entity.h"
+#include "scene/world.h"
 
-namespace buddd::engine {
-class AssetManager;
-class World;
-class RenderSystem;
-class Entity;
-class RenderDevice;
-class ModelNode;
-} // namespace buddd::engine
+#include <vector>
 
 namespace buddd::cmd::app {
 
@@ -31,25 +26,23 @@ public:
         return {"Buddd Engine \u2014 hot-reload glTF test", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
+    [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> override;
 
-    auto on_frame_begin() -> void override;
-    auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
+    auto on_frame_begin(buddd::engine::EngineContext const& ctx) -> void override;
+
+    auto on_render(buddd::engine::EngineContext const&) -> void override {}
 
 private:
     /// Reloads the model from the live YAML and creates corresponding entities.
     /// Destroys any existing model entities first.
-    auto reload_model() -> void;
+    auto reload_model(buddd::engine::World& world) -> void;
 
     /// Recursively creates entities for mesh nodes in the model tree.
-    auto create_entities(buddd::engine::ModelNode& node) -> void;
+    auto create_entities(buddd::engine::ModelNode& node, buddd::engine::World& world) -> void;
 
-    std::unique_ptr<buddd::engine::AssetManager> asset_manager_;
-    std::unique_ptr<buddd::engine::World> world_;
-    std::unique_ptr<buddd::engine::RenderSystem> render_system_;
+    buddd::engine::AssetManager* asset_manager_ = nullptr;
     std::vector<buddd::engine::Entity> model_entities_;
-    int frame_count_ = 0;
 };
 
 } // namespace buddd::cmd::app

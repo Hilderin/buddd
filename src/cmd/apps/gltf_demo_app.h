@@ -2,15 +2,7 @@
 
 #include "app.h"
 
-#include <memory>
-
-namespace buddd::engine {
-class RenderDevice;
-class World;
-class RenderSystem;
-class Entity;
-class AssetManager;
-} // namespace buddd::engine
+#include "scene/entity.h"
 
 namespace buddd::cmd::app {
 
@@ -25,16 +17,15 @@ public:
         return {"Buddd Engine \u2014 glTF Demo", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
+    [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> override;
 
-    auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
+    auto on_frame_begin(buddd::engine::EngineContext const& ctx) -> void override;
+
+    auto on_render(buddd::engine::EngineContext const&) -> void override {}
 
 private:
-    std::unique_ptr<buddd::engine::AssetManager> asset_manager_;
-    std::unique_ptr<buddd::engine::World> world_;
-    std::unique_ptr<buddd::engine::Entity> camera_entity_;
-    std::unique_ptr<buddd::engine::RenderSystem> render_system_;
+    buddd::engine::Entity camera_entity_;
 };
 
 } // namespace buddd::cmd::app

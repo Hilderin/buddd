@@ -4,15 +4,15 @@
 
 #include "asset/asset_manager.h"
 #include "asset/model_asset.h"
+#include "engine_context.h"
 #include "engine_service.h"
+#include "scene/world.h"
 #include "render/render_device.h"
-#include "render/render_system.h"
 #include "render/model_utils.h"
 #include "math/camera.h"
 #include "math/math.h"
 #include "math/quat.h"
 #include "math/vec3.h"
-#include "scene/world.h"
 #include "scene/camera_component.h"
 #include "scene/directional_light_component.h"
 #include "scene/entity.h"
@@ -31,29 +31,19 @@ namespace be = buddd::engine;
 buddd::cmd::app::GltfDemoApp::GltfDemoApp() = default;
 buddd::cmd::app::GltfDemoApp::~GltfDemoApp() = default;
 
-auto buddd::cmd::app::GltfDemoApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::GltfDemoApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
-    // Create AssetManager with base path at project root/assets
-    // (relative to CWD which should be project root)
+    auto& device = ctx.device;
+    // AssetManager is available from EngineService via ctx.services.assets()
     std::string base_path = "assets";
-    auto am_result = be::AssetManager::create(device, base_path);
-    if (!am_result) {
-        BUDDD_LOG_ERROR("Failed to create AssetManager: {}",
-                        be::to_string(am_result.error()));
-        return std::unexpected(am_result.error());
-    }
-    asset_manager_ = std::move(*am_result);
-
-    world_ = std::make_unique<be::World>();
 
     // ── Camera ──
-    camera_entity_ = std::make_unique<be::Entity>(be::Entity::create(*world_));
+    camera_entity_ = ctx.world.add_entity();
     be::math::Camera camera;
-    camera_entity_->add_component<be::CameraComponent>(camera);
+    camera_entity_.add_component<be::CameraComponent>(camera);
 
-    auto& cam = camera_entity_->get_component<be::CameraComponent>()->camera();
+    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
     cam.set_position(be::math::Vec3{0.0f, 1.0f, 3.0f});
     cam.set_orientation(be::math::Quat::from_euler(0.0f, be::math::radians(180.0f), 0.0f));
     cam.set_perspective(be::math::radians(55.0f),
@@ -62,7 +52,7 @@ auto buddd::cmd::app::GltfDemoApp::setup(be::EngineService& engine)
 
     // ── Directional light (from above-right) ──
     {
-        auto light_entity = be::Entity::create(*world_);
+        auto light_entity = ctx.world.add_entity();
         light_entity.add_component<be::DirectionalLightComponent>(
             be::math::Vec3{1.0f, 1.0f, 1.0f},  // white
             1.5f                                 // intensity
@@ -74,33 +64,27 @@ auto buddd::cmd::app::GltfDemoApp::setup(be::EngineService& engine)
     }
 
     // ── Load model ──
-    auto model_asset = asset_manager_->create<be::ModelAsset>("models/box/Box");
+    auto model_asset = ctx.services.assets().create<be::ModelAsset>("models/box/Box");
     if (!model_asset) {
         BUDDD_LOG_ERROR("Failed to load model: {}",
                         be::to_string(model_asset.error()));
-        // Return error to abort
-        return std::unexpected(model_asset.error());
+        return make_error(model_asset);
     }
 
     auto& root = (*model_asset)->root_node();
-    be::add_model_to_world(*world_, root);
-
-    // ── Render system ──
-    render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
+    be::add_model_to_world(ctx.world, root);
 
     return {};
 }
 
-auto buddd::cmd::app::GltfDemoApp::render(be::RenderDevice& device, int frame) -> void {
+auto buddd::cmd::app::GltfDemoApp::on_frame_begin(be::EngineContext const& ctx) -> void {
     // Y-rotation animation
-    auto& cam = camera_entity_->get_component<be::CameraComponent>()->camera();
-    float angle = static_cast<float>(frame) * 0.02f;
+    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
+    float angle = static_cast<float>(ctx.frame) * 0.02f;
     cam.set_position(be::math::Vec3{
         3.0f * std::sin(angle),
         1.0f,
         3.0f * std::cos(angle)
     });
     cam.look_at(be::math::Vec3{0.0f, 0.0f, 0.0f});
-
-    render_system_->render_scene();
 }

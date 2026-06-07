@@ -7,10 +7,6 @@
 
 #include <memory>
 
-namespace buddd::engine {
-class EngineService;
-} // namespace buddd::engine
-
 namespace buddd::cmd::app {
 
 /// Coloured triangle: 120-frame render loop.
@@ -20,10 +16,10 @@ public:
         return {"Buddd Engine \u2014 triangle", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
+    [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> override;
 
-    auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
+    auto on_render(buddd::engine::EngineContext const& ctx) -> void override;
 
 private:
     buddd::engine::Model model_;

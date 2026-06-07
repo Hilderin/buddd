@@ -2,7 +2,7 @@
 
 #include "log/log.h"
 
-#include "engine_service.h"
+#include "engine_context.h"
 #include "math/math.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
@@ -59,10 +59,10 @@ auto multi_mat_format() -> be::VertexFormat {
 
 } // anonymous namespace
 
-auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
+    auto& device = ctx.device;
     // Create 3 materials (red, green, blue)
     auto red_vs = device.create_shader(be::ShaderType::Vertex, R"(
         #version 450 core
@@ -70,14 +70,14 @@ auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
         uniform mat4 u_mvp;
         void main() { gl_Position = u_mvp * vec4(a_position, 1.0); }
     )");
-    if (!red_vs) return std::unexpected(red_vs.error());
+    if (!red_vs) return make_error(red_vs);
 
     auto red_fs = device.create_shader(be::ShaderType::Fragment, R"(
         #version 450 core
         out vec4 frag_color;
         void main() { frag_color = vec4(1.0, 0.0, 0.0, 1.0); }
     )");
-    if (!red_fs) return std::unexpected(red_fs.error());
+    if (!red_fs) return make_error(red_fs);
 
     auto red_mat = device.create_material(std::move(*red_vs), std::move(*red_fs), {"u_mvp"});
 
@@ -87,14 +87,14 @@ auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
         uniform mat4 u_mvp;
         void main() { gl_Position = u_mvp * vec4(a_position, 1.0); }
     )");
-    if (!green_vs) return std::unexpected(green_vs.error());
+    if (!green_vs) return make_error(green_vs);
 
     auto green_fs = device.create_shader(be::ShaderType::Fragment, R"(
         #version 450 core
         out vec4 frag_color;
         void main() { frag_color = vec4(0.0, 1.0, 0.0, 1.0); }
     )");
-    if (!green_fs) return std::unexpected(green_fs.error());
+    if (!green_fs) return make_error(green_fs);
 
     auto green_mat = device.create_material(std::move(*green_vs), std::move(*green_fs), {"u_mvp"});
 
@@ -104,14 +104,14 @@ auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
         uniform mat4 u_mvp;
         void main() { gl_Position = u_mvp * vec4(a_position, 1.0); }
     )");
-    if (!blue_vs) return std::unexpected(blue_vs.error());
+    if (!blue_vs) return make_error(blue_vs);
 
     auto blue_fs = device.create_shader(be::ShaderType::Fragment, R"(
         #version 450 core
         out vec4 frag_color;
         void main() { frag_color = vec4(0.0, 0.0, 1.0, 1.0); }
     )");
-    if (!blue_fs) return std::unexpected(blue_fs.error());
+    if (!blue_fs) return make_error(blue_fs);
 
     auto blue_mat = device.create_material(std::move(*blue_vs), std::move(*blue_fs), {"u_mvp"});
 
@@ -134,7 +134,7 @@ auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
         },
         {red_shared, green_shared, blue_shared}
     );
-    if (!model_result) return std::unexpected(model_result.error());
+    if (!model_result) return make_error(model_result);
     model_ = std::move(*model_result);
 
     camera_.look_at(
@@ -152,7 +152,7 @@ auto buddd::cmd::app::MultiMaterialApp::setup(be::EngineService& engine)
     return {};
 }
 
-auto buddd::cmd::app::MultiMaterialApp::render(be::RenderDevice& device, int) -> void {
+auto buddd::cmd::app::MultiMaterialApp::on_render(be::EngineContext const& ctx) -> void {
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
     float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
     float angle = elapsed_seconds * 0.5f;
@@ -171,5 +171,5 @@ auto buddd::cmd::app::MultiMaterialApp::render(be::RenderDevice& device, int) ->
         }
     }
 
-    model_.draw(device);
+    model_.draw(ctx.device);
 }

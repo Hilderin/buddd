@@ -2,7 +2,7 @@
 
 #include "log/log.h"
 
-#include "engine_service.h"
+#include "engine_context.h"
 #include "math/math.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
@@ -19,10 +19,10 @@ BUDDD_LOG_TAG("CubeApp");
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::CubeApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::CubeApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
+    auto& device = ctx.device;
 
     // --- Create material ---
     constexpr std::string_view k_vs = R"(
@@ -47,16 +47,16 @@ auto buddd::cmd::app::CubeApp::setup(be::EngineService& engine)
     )";
 
     auto vs = device.create_shader(be::ShaderType::Vertex, k_vs);
-    if (!vs) return std::unexpected(vs.error());
+    if (!vs) return make_error(vs);
     auto fs = device.create_shader(be::ShaderType::Fragment, k_fs);
-    if (!fs) return std::unexpected(fs.error());
+    if (!fs) return make_error(fs);
     auto mat = device.create_material(std::move(*vs), std::move(*fs), {"u_mvp"});
-    if (!mat) return std::unexpected(mat.error());
+    if (!mat) return make_error(mat);
     material_ = std::shared_ptr<be::Material>(std::move(*mat));
 
     // --- Create cube model ---
     auto cube_result = be::create_cube(device, material_);
-    if (!cube_result) return std::unexpected(cube_result.error());
+    if (!cube_result) return make_error(cube_result);
     model_ = std::move(*cube_result);
 
     camera_.look_at(
@@ -76,7 +76,7 @@ auto buddd::cmd::app::CubeApp::setup(be::EngineService& engine)
     return {};
 }
 
-auto buddd::cmd::app::CubeApp::render(be::RenderDevice& device, int) -> void {
+auto buddd::cmd::app::CubeApp::on_render(be::EngineContext const& ctx) -> void {
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
     float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
     float angle = elapsed_seconds * 0.5f;
@@ -91,5 +91,5 @@ auto buddd::cmd::app::CubeApp::render(be::RenderDevice& device, int) -> void {
         BUDDD_LOG_ERROR("Failed to set u_mvp uniform: {}",
                         be::to_string(uniform_result.error()));
     }
-    model_.draw(device);
+    model_.draw(ctx.device);
 }

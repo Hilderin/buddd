@@ -12,11 +12,9 @@ public:
         return {};  // defaults: "Buddd Engine", 1024x768
     }
 
-    [[nodiscard]] auto setup(buddd::engine::EngineService&) -> buddd::engine::Result<void> override {
+    [[nodiscard]] auto setup(buddd::engine::EngineContext const&) -> buddd::engine::Result<void> override {
         return {};
     }
-
-    auto render(buddd::engine::RenderDevice&, int) -> void override {}
 };
 
 } // namespace buddd::cmd::app

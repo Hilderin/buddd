@@ -2,24 +2,22 @@
 
 #include "log/log.h"
 
-#include "engine_service.h"
+#include "engine_context.h"
+#include "scene/world.h"
 #include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/vec4.h"
 #include "math/quat.h"
 #include "render/render_device.h"
-#include "render/render_system.h"
 #include "render/mesh_renderer.h"
 #include "render/texture.h"
 #include "render/vertex.h"
 #include "render/phong/phong_material.h"
-#include "scene/world.h"
 #include "scene/camera_component.h"
 #include "scene/directional_light_component.h"
 #include "scene/point_light_component.h"
 #include "scene/spot_light_component.h"
-#include "scene/entity.h"
 #include "scene/free_camera_movement.h"
 #include "image/image.h"
 
@@ -200,18 +198,17 @@ static const CubeSpec k_cubes[] = {
 // Main setup
 // ============================================================================
 
-auto buddd::cmd::app::PhongApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::PhongApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
-    world_ = std::make_unique<be::World>();
+    auto& device = ctx.device;
 
     // ── Camera ──
-    camera_entity_ = std::make_unique<be::Entity>(be::Entity::create(*world_));
+    camera_entity_ = ctx.world.add_entity();
     be::math::Camera camera;
-    camera_entity_->add_component<be::CameraComponent>(camera);
+    camera_entity_.add_component<be::CameraComponent>(camera);
 
-    auto& cam = camera_entity_->get_component<be::CameraComponent>()->camera();
+    auto& cam = camera_entity_.get_component<be::CameraComponent>()->camera();
     cam.set_position(be::math::Vec3{6.0f, 3.5f, 8.0f});
     cam.set_orientation(be::math::Quat::from_euler(be::math::radians(-18.0f),
                                                     be::math::radians(35.0f), 0.0f));
@@ -255,14 +252,14 @@ auto buddd::cmd::app::PhongApp::setup(be::EngineService& engine)
         }
 
         auto model = create_phong_cube(device, mat);
-        auto entity = be::Entity::create(*world_);
+        auto entity = ctx.world.add_entity();
         entity.add_component<be::MeshRenderer>(
             std::make_shared<be::Model>(std::move(model)));
         entity.transform().position = spec.position;
     }
 
     // ── Directional fill light ──
-    auto fill = be::Entity::create(*world_);
+    auto fill = ctx.world.add_entity();
     fill.add_component<be::DirectionalLightComponent>(
         be::math::Vec3{0.6f, 0.6f, 0.8f}, 0.35f);
     fill.transform().rotation =
@@ -270,23 +267,23 @@ auto buddd::cmd::app::PhongApp::setup(be::EngineService& engine)
                                     be::math::radians(50.0f), 0.0f);
 
     // ── Point light A (warm orange, orbiting) ──
-    pointA_entity_ = std::make_unique<be::Entity>(be::Entity::create(*world_));
-    pointA_entity_->add_component<be::PointLightComponent>(
+    pointA_entity_ = ctx.world.add_entity();
+    pointA_entity_.add_component<be::PointLightComponent>(
         be::math::Vec3{1.0f, 0.4f, 0.1f}, 1.8f, 12.0f);
 
     // ── Point light B (cool blue, orbiting, out of phase) ──
-    pointB_entity_ = std::make_unique<be::Entity>(be::Entity::create(*world_));
-    pointB_entity_->add_component<be::PointLightComponent>(
+    pointB_entity_ = ctx.world.add_entity();
+    pointB_entity_.add_component<be::PointLightComponent>(
         be::math::Vec3{0.1f, 0.3f, 1.0f}, 1.6f, 12.0f);
 
     // ── Point light C (static purple, above center) ──
-    auto pointC_entity = be::Entity::create(*world_);
+    auto pointC_entity = ctx.world.add_entity();
     pointC_entity.add_component<be::PointLightComponent>(
         be::math::Vec3{0.6f, 0.2f, 0.8f}, 0.7f, 8.0f);
     pointC_entity.transform().position = be::math::Vec3{0.0f, 3.5f, 0.0f};
 
     // ── Spot light (bright warm, from above aiming at origin) ──
-    auto spot_entity = be::Entity::create(*world_);
+    auto spot_entity = ctx.world.add_entity();
     spot_entity.add_component<be::SpotLightComponent>(
         be::math::Vec3{1.0f, 0.95f, 0.85f}, 2.5f, 14.0f,
         be::math::radians(18.0f), be::math::radians(35.0f));
@@ -295,21 +292,17 @@ auto buddd::cmd::app::PhongApp::setup(be::EngineService& engine)
         be::math::Quat::from_euler(be::math::radians(30.0f), 0.0f, 0.0f);
 
     // FreeCameraMovement with initial yaw/pitch matching the camera orientation
-    camera_entity_->add_component<be::FreeCameraMovement>(
+    camera_entity_.add_component<be::FreeCameraMovement>(
         be::math::radians(35.0f),   // initial yaw
         be::math::radians(-18.0f)   // initial pitch
     );
-
-    // ── Render system ──
-    render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
 
     start_time_ = std::chrono::steady_clock::now();
 
     return {};
 }
 
-auto buddd::cmd::app::PhongApp::render(be::RenderDevice& device, int) -> void {
-    // Camera is auto-updated via World::update_updatables() in run_app()
+auto buddd::cmd::app::PhongApp::on_frame_begin(be::EngineContext const& ctx) -> void {
     auto now = std::chrono::steady_clock::now();
     float elapsed = std::chrono::duration<float>(now - start_time_).count();
 
@@ -318,18 +311,15 @@ auto buddd::cmd::app::PhongApp::render(be::RenderDevice& device, int) -> void {
     float orbit_r = 6.0f;
     float orbit_y = 2.5f;
 
-    pointA_entity_->transform().position = be::math::Vec3{
+    pointA_entity_.transform().position = be::math::Vec3{
         orbit_r * std::cos(t * 0.8f),
         orbit_y + 0.8f * std::sin(t * 1.2f),
         orbit_r * std::sin(t * 0.8f)
     };
 
-    pointB_entity_->transform().position = be::math::Vec3{
+    pointB_entity_.transform().position = be::math::Vec3{
         orbit_r * 0.7f * std::cos(t * 0.6f + 1.57f),
         orbit_y - 0.5f + 1.2f * std::sin(t * 0.9f + 0.5f),
         orbit_r * 0.7f * std::sin(t * 0.6f + 1.57f)
     };
-
-    // ── Render ──
-    render_system_->render_scene();
 }

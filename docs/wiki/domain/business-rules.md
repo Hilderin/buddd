@@ -109,21 +109,29 @@ See the full API reference in [docs/wiki/domain/logging.md](/docs/wiki/domain/lo
 1. `app.config()` → `AppConfig`
 2. `EngineService::create(backend, WindowConfig)` → creates Platform, Window, RenderDevice, AssetManager in one call
 3. print "Window opened: WxH"
-4. `app.setup(engine_service)` (EngineService&) → if error, `shutdown()` and exit 1
-5. print start message
-6. Loop until frame limit or window close or ESC or app exit request:
+4. Create `World` + `RenderSystem` (always, unconditionally — owned by `run_app()` via `std::unique_ptr`)
+5. Construct `EngineContext{services, window, device, world, render_system, delta_time, 0}` for setup
+6. `app.setup(ctx)` → if error, `shutdown()` and exit 1
+7. print start message
+8. Loop until frame limit or window close or exit request:
    a. `poll_events()` — if returns false (window closed), break
-   b. If `!app.is_running()`, break (exit requested via Updatable)
-   c. `device->begin_frame()`
-   d. `app.on_frame_begin()` — per-frame hook (default no-op, overridden by apps like `AssetDemoApp` and `HotReloadApp` for hot-reload polling)
-   e. **Updatable auto-dispatch**: `World::update_updatables(EngineContext{services, window, delta_time})` — all updatable components run; if any called `request_exit()`, `app.set_running(false)` is called
-   f. `app.render(device, frame)`
-   g. capture injection
-   h. `device->end_frame()`
-7. print completion/abort message
-8. `app.shutdown()`
-9. print "Window closed, shutting down."
-10. return exit code
+   b. `device->begin_frame()`
+   c. Construct per-frame `EngineContext{services, window, device, world, render_system, delta_time, frame}`
+   d. `app.on_frame_begin(ctx)` — per-frame hook (default no-op, overridden by apps for hot-reload polling via `ctx.services.assets().poll_file_events()`, transform updates, camera animation)
+   e. If `ctx.is_exit_requested()`, call `end_frame()` + break
+   f. **Updatable auto-dispatch**: `World::update_updatables(ctx)` — all updatable components run; all updatables execute even if exit requested (no short-circuit)
+   g. If `ctx.is_exit_requested()`, call `end_frame()` + break
+   h. `render_system->render_scene()` — automatic scene rendering (extracted from old `app.render()`)
+   i. `app.on_render(ctx)` — custom rendering overlay (default no-op, replaces `app.render(device, frame)`)
+   j. capture injection
+   k. `device->end_frame()`
+   l. ++frame
+9. print completion/abort message
+10. `app.shutdown()`
+11. print "Window closed, shutting down."
+12. return exit code
+
+Exit signalling is entirely via `ctx.request_exit()` / `ctx.is_exit_requested()`. The old `app.is_running()`/`app.set_running()`/`app.running_` members are removed.
 
 ### Driver quirk
 
@@ -334,14 +342,14 @@ constants:              # optional — map uniform name → float value
 ### Hot-reload (V1 — fully implemented)
 
 - The FileWatcher is Linux inotify only (`#ifdef __linux__`). On non-Linux or headless, `NullFileWatcher` is used.
-- `poll_file_events()` must be called explicitly by user code — the engine does not call it automatically. Apps override `on_frame_begin()` to call `asset_manager_->poll_file_events()` once per frame.
+- `poll_file_events()` must be called explicitly by user code — the engine does not call it automatically. Apps override `on_frame_begin(ctx)` to call `ctx.services.assets().poll_file_events()` once per frame (via the shared EngineService AssetManager — no more private AssetManager instances).
 - **Fully implemented**: `handle_yaml_change()` and `handle_source_change()` perform in-place GPU handle swaps:
   - **Texture source change**: reloads image, creates new GPU texture, extracts native GL handle via `release_gl_handle()`, injects into existing `Texture` via `replace_gl_handle()`.
   - **Shader source change**: recompiles both vertex+fragment shaders, creates new `ShaderProgram`, extracts handle via `release_handle()`, injects into existing shared `ShaderProgram` via `replace_handle()`.
   - **YAML metadata change**: re-parses YAML, updates dependency map, and (for materials) re-resolves texture bindings and constant overrides.
   - All existing `shared_ptr<Material>` / `shared_ptr<Texture>` references remain valid — handles swap transparently.
 - **Recursive inotify**: `InotifyFileWatcher::add_watch_recursive()` walks the entire directory tree at startup, adding an inotify watch for every subdirectory. File events are reported with relative paths matching those stored in `DependencyMap`.
-- **HotReloadApp**: Test app (`buddd run hot-reload`) loads a textured cube via YAML, swaps `hot_reload_a.png` → `hot_reload_live.png` at frame 30, and calls `poll_file_events()` to trigger reload. Use with dual `--capture` to verify before/after:
+- **HotReloadApp**: Test app (`buddd run hot-reload`) loads a textured cube via YAML, swaps `hot_reload_a.png` → `hot_reload_live.png` at frame 30 (in `on_frame_begin(ctx)` at `ctx.frame == 30`), and calls `poll_file_events()` to trigger reload. Use with dual `--capture` to verify before/after:
   ```
   buddd run hot-reload --frame 60 --capture 30:/tmp/before.png --capture 60:/tmp/after.png
   ```

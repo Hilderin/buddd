@@ -2,19 +2,17 @@
 
 #include "log/log.h"
 
-#include "engine_service.h"
+#include "engine_context.h"
+#include "scene/world.h"
 #include "image/image.h"
 #include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/quat.h"
 #include "render/render_device.h"
-#include "render/render_system.h"
 #include "render/mesh_renderer.h"
 #include "render/texture.h"
-#include "scene/world.h"
 #include "scene/camera_component.h"
-#include "scene/entity.h"
 
 #include <chrono>
 #include <cstddef>
@@ -30,16 +28,16 @@ BUDDD_LOG_TAG("TexturedCube");
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
+    auto& device = ctx.device;
     // 1. Load texture
     auto image_result = be::Image::load("assets/brick.png");
     if (!image_result) {
         BUDDD_LOG_ERROR("FATAL: could not load assets/brick.png: {}",
                         be::to_string(image_result.error()));
-        return std::unexpected(image_result.error());
+        return make_error(image_result);
     }
 
     // 2. Create texture
@@ -47,13 +45,12 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineService& engine)
     if (!texture_result) {
         BUDDD_LOG_ERROR("FATAL: could not create texture: {}",
                         be::to_string(texture_result.error()));
-        return std::unexpected(texture_result.error());
+        return make_error(texture_result);
     }
     std::shared_ptr<be::Texture> texture(std::move(*texture_result));
 
-    // 3. Create World, Entity, Camera
-    world_ = std::make_unique<be::World>();
-    auto entity = be::Entity::create(*world_);
+    // 3. Create Entity, Camera
+    auto entity = ctx.world.add_entity();
 
     be::math::Camera camera;
     camera.look_at(
@@ -151,20 +148,20 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineService& engine)
     auto vs = device.create_shader(be::ShaderType::Vertex, k_vertex_source);
     if (!vs) {
         BUDDD_LOG_ERROR("FATAL: {}", be::to_string(vs.error()));
-        return std::unexpected(vs.error());
+        return make_error(vs);
     }
 
     auto fs = device.create_shader(be::ShaderType::Fragment, k_fragment_source);
     if (!fs) {
         BUDDD_LOG_ERROR("FATAL: {}", be::to_string(fs.error()));
-        return std::unexpected(fs.error());
+        return make_error(fs);
     }
 
     // 6. Create material
     auto mat = device.create_material(std::move(*vs), std::move(*fs));
     if (!mat) {
         BUDDD_LOG_ERROR("FATAL: {}", be::to_string(mat.error()));
-        return std::unexpected(mat.error());
+        return make_error(mat);
     }
     std::shared_ptr<be::Material> shared_mat(std::move(*mat));
 
@@ -173,7 +170,7 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineService& engine)
     if (!tex_result) {
         BUDDD_LOG_ERROR("FATAL: set_texture failed: {}",
                         be::to_string(tex_result.error()));
-        return std::unexpected(tex_result.error());
+        return make_error(tex_result);
     }
 
     // 8. Create model
@@ -188,29 +185,24 @@ auto buddd::cmd::app::TexturedCubeApp::setup(be::EngineService& engine)
     if (!model) {
         BUDDD_LOG_ERROR("FATAL: Failed to create textured cube model: {}",
                         be::to_string(model.error()));
-        return std::unexpected(model.error());
+        return make_error(model);
     }
 
     // 9. Attach to entity via MeshRenderer
     entity.add_component<be::MeshRenderer>(
         std::make_shared<be::Model>(std::move(*model)));
 
-    // 10. Create RenderSystem
-    render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
-
-    entity_ = std::make_unique<be::Entity>(std::move(entity));
+    entity_ = entity;
     start_time_ = std::chrono::steady_clock::now();
 
     return {};
 }
 
-auto buddd::cmd::app::TexturedCubeApp::render(be::RenderDevice&, int) -> void {
+auto buddd::cmd::app::TexturedCubeApp::on_frame_begin(be::EngineContext const& ctx) -> void {
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
     float elapsed_seconds = std::chrono::duration<float>(elapsed).count();
     float angle = elapsed_seconds * 0.5f;
 
-    entity_->transform().rotation =
+    entity_.transform().rotation =
         be::math::Quat::angle_axis(angle, be::math::Vec3::unit_y());
-
-    render_system_->render_scene();
 }

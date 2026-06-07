@@ -9,10 +9,6 @@
 #include <chrono>
 #include <memory>
 
-namespace buddd::engine {
-class EngineService;
-} // namespace buddd::engine
-
 namespace buddd::cmd::app {
 
 /// Rotating cube: 120-frame render loop with manual camera/MVP/draw calls.
@@ -22,10 +18,10 @@ public:
         return {"Buddd Engine \u2014 cube", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
+    [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> override;
 
-    auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
+    auto on_render(buddd::engine::EngineContext const& ctx) -> void override;
 
 private:
     buddd::engine::Model model_;

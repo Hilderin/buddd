@@ -161,27 +161,42 @@ RenderDevice& device
 
 ### Frame loop (after EngineService setup)
 
+The frame loop lives in `run_app()` in `src/cmd/app.cpp`. `run_app()` creates a `World` and `RenderSystem` unconditionally for every app (empty World is ~1KB, `render_scene()` on empty World is a no-op). These are owned by `run_app()` and passed to the app via `EngineContext`.
+
 ```
     [Frame loop: run_app() orchestrates rendering each frame]
+    - Before the loop:
+        - Create World (std::unique_ptr)
+        - Create RenderSystem(device, world) (std::unique_ptr)
+        - Construct EngineContext with all 7 fields for setup()
+        - app.setup(ctx) — one-time initialisation
+
     - Each frame:
         1. poll_events() — dispatches SDL events, computes delta_time, calls
            InputSystem::begin_frame() to advance input state. Returns false
-           on window close.
-        2. Check app.is_running() — false if exit was requested via Updatable.
-        3. device->begin_frame() — clears buffers, starts GPU frame.
-        4. app.on_frame_begin() — per-frame hook (default no-op, apps override
-           for tasks like hot-reload polling via asset_manager->poll_file_events()).
-        5. Updatable auto-dispatch:
-           World::update_updatables(EngineContext{services, window, delta_time})
-           — all registered Updatable components run. If any calls
-           EngineContext::request_exit(), app.set_running(false) is called
-           after the iteration (no short-circuit — all updatables run each frame).
-        6. app.render(device, frame) — application rendering logic.
-        7. Capture injection (if --capture matches current frame).
-        8. device->end_frame() — swap buffers, finalize GPU frame.
-    - Updatable components receive EngineContext containing EngineService&,
-      Window&, and delta_time — they do not need to query the navigable graph
-      directly for these.
+           on window close → break.
+        2. device->begin_frame() — clears buffers, starts GPU frame.
+        3. Construct per-frame EngineContext with all 7 fields:
+           {services, window, device, world, render_system, delta_time, frame}
+        4. app.on_frame_begin(ctx) — per-frame hook (default no-op, apps override
+           for tasks like hot-reload polling via ctx.services.assets().poll_file_events(),
+           transform updates, camera animation). If ctx.is_exit_requested() → end_frame + break.
+        5. World::update_updatables(ctx) — all registered Updatable components run.
+           If ctx.is_exit_requested() → end_frame + break.
+        6. render_system.render_scene() — automatic scene rendering (begin_frame/end_frame
+           are owned by run_app(), render_scene only issues draw calls).
+        7. app.on_render(ctx) — custom rendering overlay (default no-op, replaces old
+           app.render(device, frame)). Runs AFTER render_scene().
+        8. Capture injection (if --capture matches current frame).
+        9. device->end_frame() — swap buffers, finalize GPU frame.
+        10. ++frame
+
+    - After the loop:
+        - app.shutdown() — cleanup
+        - World and RenderSystem destroyed by unique_ptr
+    - Exit is signalled via EngineContext::request_exit() / is_exit_requested() only.
+      The old App::is_running()/set_running()/running_ members are removed.
+    - Updatable components receive the full EngineContext with all 7 fields.
 ```
 
 ### Texture data flow
@@ -321,7 +336,7 @@ Hot-reload is **fully implemented** — `handle_yaml_change()` and `handle_sourc
 
 ### Error propagation
 
-All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`, `create_texture`, `AssetManager::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. The `Error` struct carries:
+All factory methods (`Platform::create`, `create_window`, `RenderDevice::create`, `create_texture`, `AssetManager::create`) return `Result<T>` (`std::expected<T, Error>`). On failure they return `std::unexpected<Error>` constructed via `make_error()`. Two overloads simplify propagation: `make_error(const Error&)` (creates `std::unexpected<Error>` from an existing error) and `make_error(const Result<T>&)` (extracts the error from a failed `Result`). Use `return make_error(vs)` instead of `return std::unexpected(vs.error())`. The `Error` struct carries:
 - `Category`: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `TextureCreationFailed`, `IoFailed`, `Unsupported`, `InputInitFailed`, `Unknown`
 - `code`: backend-specific numeric error code (defaults to 0)
 - `message`: human-readable description

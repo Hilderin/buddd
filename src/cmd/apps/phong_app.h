@@ -3,16 +3,8 @@
 #include "app.h"
 
 #include <chrono>
-#include <memory>
-#include <vector>
 
 #include "scene/entity.h"
-#include "scene/world.h"
-#include "render/render_system.h"
-
-namespace buddd::engine {
-class EngineService;
-} // namespace buddd::engine
 
 namespace buddd::cmd::app {
 
@@ -23,19 +15,17 @@ public:
         return {"Buddd Engine \u2014 phong", 1024, 768};
     }
 
-    [[nodiscard]] auto setup(buddd::engine::EngineService& engine)
+    [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> override;
 
-    auto render(buddd::engine::RenderDevice& device, int frame) -> void override;
+    auto on_frame_begin(buddd::engine::EngineContext const& ctx) -> void override;
 
-    auto world() noexcept -> buddd::engine::World* override { return world_.get(); }
+    auto on_render(buddd::engine::EngineContext const&) -> void override {}
 
 private:
-    std::unique_ptr<buddd::engine::World> world_;
-    std::unique_ptr<buddd::engine::Entity> camera_entity_;
-    std::unique_ptr<buddd::engine::Entity> pointA_entity_;
-    std::unique_ptr<buddd::engine::Entity> pointB_entity_;
-    std::unique_ptr<buddd::engine::RenderSystem> render_system_;
+    buddd::engine::Entity camera_entity_;
+    buddd::engine::Entity pointA_entity_;
+    buddd::engine::Entity pointB_entity_;
     std::chrono::steady_clock::time_point start_time_;
 };
 

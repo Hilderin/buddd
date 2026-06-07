@@ -49,16 +49,24 @@ A struct bundling all per-frame state:
 struct EngineContext {
     EngineService& services;
     Window& window;
+    RenderDevice& device;       // NEW: convenience access
+    World& world;               // NEW: owned by run_app()
+    RenderSystem& render_system; // NEW: owned by run_app()
     float delta_time;
+    int frame;                  // NEW: moved from render() parameter
 
     void request_exit() const;
     [[nodiscard]] auto is_exit_requested() const -> bool;
+
+    mutable bool exit_requested_ = false;
 };
 ```
 
-- Passed as `const&` to every `Updatable::update()` call — single const reference, everything accessible.
+- Passed as `const&` to every `Updatable::update()` call and all App lifecycle methods (`setup`, `on_frame_begin`, `on_render`) — single const reference, everything accessible.
+- 7 fields: core services, window, rendering device, scene world, scene render system, timing, and frame counter.
 - `exit_requested_` is `mutable` to allow `const&` propagation while still enabling state mutation.
-- Unifies the parameter list: instead of threading `InputSystem&, Window&, float dt` separately, components receive one parameter that can grow without breaking call sites.
+- Unifies the parameter list: instead of threading `InputSystem&, Window&, float dt, RenderDevice&, World&, int frame` separately, components receive one parameter that can grow without breaking call sites.
+- `run_app()` owns the `World` and `RenderSystem`, passing references through `EngineContext`. Apps no longer create their own.
 
 ### 3. World auto-registration and cleanup
 
@@ -75,26 +83,34 @@ if constexpr (std::is_base_of_v<Updatable, T>) {
 - `flush_destroyed()` — Before the `EntityNode` `unique_ptr` is destroyed, iterate its `components_` and `std::erase` any `Updatable*` from `updatables_` via `dynamic_cast`.
 - `remove_component<T>()` — Before erasing a component, `dynamic_cast` to `Updatable*` and `std::erase` from `updatables_`.
 
-### 4. App::setup(EngineService&) — broadened signature
+### 4. App::setup(EngineContext const&) — broadened signature
 
-Changed from `App::setup(RenderDevice&)` to `App::setup(EngineService&)`. This gives apps access to the full engine service locator (platform, window, input, asset manager, render device, etc.) from setup time, rather than only the render device.
+Changed from `App::setup(EngineService&)` to `App::setup(EngineContext const&)`. This gives apps access to the full engine context (services, window, device, world, render_system, delta_time, frame) from setup time. The EngineContext also passes ownership references to the World and RenderSystem that `run_app()` creates and owns.
 
 ### 5. run_app auto-dispatch
 
-`run_app()` in `src/cmd/app.cpp` creates an `EngineContext` each frame and calls `World::update_updatables(ctx)` before `app.render()`:
+`run_app()` in `src/cmd/app.cpp` creates a `World` and `RenderSystem` unconditionally (owned by `run_app()`), constructs a full `EngineContext` each frame, and calls `World::update_updatables(ctx)` before `render_system.render_scene()` and `app.on_render(ctx)`:
 
 ```cpp
-be::EngineContext ctx{eng, eng.window(), eng.platform().delta_time()};
-if (auto* app_world = app.world()) {
-    app_world->update_updatables(ctx);
-    if (ctx.is_exit_requested()) {
-        app.set_running(false);
-    }
-}
+// run_app() creates World + RenderSystem unconditionally:
+auto world = std::make_unique<be::World>();
+auto render_system = std::make_unique<be::RenderSystem>(eng.device(), *world);
+
+// Per-frame EngineContext with all 7 fields:
+be::EngineContext ctx{
+    eng, eng.window(), eng.device(), *world, *render_system,
+    eng.platform().delta_time(), frame
+};
+
+// Frame lifecycle:
+app.on_frame_begin(ctx);              // per-frame hook (optional)
+world->update_updatables(ctx);        // auto Updatable dispatch
+render_system->render_scene();        // automatic scene rendering
+app.on_render(ctx);                   // custom rendering (optional)
 ```
 
-- `App::world()` virtual method (default `nullptr`) lets apps expose their `World*`.
-- `App::set_running(bool)` exposed publicly (was `protected` setter only).
+- `App::world()` is **removed** — no longer needed because `run_app()` owns the World and passes it via `EngineContext`.
+- `App::set_running()`/`App::is_running()`/`App::running_` are **removed** — exit signalling is entirely through `ctx.request_exit()` / `ctx.is_exit_requested()`.
 - Exit is signalled via `EngineContext::request_exit()` rather than a `bool` return — all updatables run before the exit check, which avoids partial-update problems.
 
 ## Alternatives considered
@@ -143,13 +159,13 @@ Using `std::weak_ptr<Updatable>` or `std::shared_ptr<Updatable>` in `updatables_
 - **EngineContext is extensible** — New per-frame state (e.g., frame number, timing statistics, debug overlay) can be added to `EngineContext` without changing any `Updatable::update()` signature.
 - **Orthogonal to Component** — Not all updatables need to be ECS components (though the current use case is component-based). The interface is standalone.
 - **Safe cleanup** — Explicit `dynamic_cast` + `std::erase` in both destroy paths guarantees no dangling pointers, validated by spec AC-034 and EC-010.
-- **App::setup(EngineService&)** — Apps now have access to the full engine service graph at setup time (asset manager, input system, platform), enabling richer initialisation without adding more parameters.
+- **App::setup(EngineContext const&)** — Apps now have access to the full engine context at setup time (services, window, device, world, render_system, delta_time, frame), enabling richer initialisation without adding more parameters. World and RenderSystem are owned by `run_app()`, passed by reference.
 
 ### Negative
 
 - **All updatables run even after exit request** — If one updatable calls `request_exit()`, remaining updatables still execute for that frame. This is intentional (avoids partial-update inconsistency) but means exit is deferred by at most one frame.
 - **Dynamic_cast in cleanup paths** — `flush_destroyed()` and `remove_component<T>()` use `dynamic_cast<Updatable*>` per component, adding RTTI overhead on entity destruction. This is acceptable because entity destruction is infrequent (not a per-frame hot path).
-- **App::setup() signature change cascaded to all 12+ apps** — Every app subclass had to update its `setup()` signature from `(RenderDevice&)` to `(EngineService&)`. This was a mechanical but wide-reaching change.
+- **App::setup() signature change cascaded to all 13 apps** — Every app subclass had to update its `setup()` signature from `(EngineService&)` to `(EngineContext const&)`. This was a mechanical but wide-reaching change. Additionally, the `render()` method was replaced by `on_render(ctx)`, `world()` accessor removed, and `is_running()`/`set_running()`/`running_` removed.
 - **Raw pointer registry in World** — `std::vector<Updatable*>` introduces lifetime coupling between World and its components. The safety hinges on the correctness of the cleanup logic in both destroy paths. An incorrect implementation would cause use-after-free.
 
 ### Risks
@@ -160,12 +176,14 @@ Using `std::weak_ptr<Updatable>` or `std::shared_ptr<Updatable>` in `updatables_
 ## Compliance
 
 - `src/engine/scene/updatable.h` MUST declare `Updatable` as a pure abstract class with `virtual auto update(const EngineContext& ctx) -> void = 0` and a virtual destructor.
-- `src/engine/engine_context.h` MUST define `EngineContext` with `EngineService& services`, `Window& window`, `float delta_time`, `request_exit()`, and `is_exit_requested()`.
+- `src/engine/engine_context.h` MUST define `EngineContext` with 7 fields: `EngineService& services`, `Window& window`, `RenderDevice& device`, `World& world`, `RenderSystem& render_system`, `float delta_time`, `int frame`, plus `request_exit()`, and `is_exit_requested()`.
 - `src/engine/scene/world.h` MUST auto-register `Updatable` subclasses in `add_component<T>()` via `if constexpr (std::is_base_of_v<Updatable, T>)`.
 - `src/engine/scene/world.h/world.cpp` MUST clean up `Updatable*` pointers in both `flush_destroyed()` and `remove_component<T>()` before component destructors run.
 - `World::update_updatables(const EngineContext&)` MUST iterate all registered updatables and MUST NOT short-circuit on exit request.
-- `App::setup()` MUST accept `EngineService&` (not `RenderDevice&`).
-- `run_app()` MUST create `EngineContext` each frame and call `World::update_updatables(ctx)` before `app.render()`.
+- `App::setup()` MUST accept `EngineContext const&` (not `EngineService&`).
+- `App::on_render(EngineContext const&)` replaces `render(RenderDevice&, int)` with a default no-op implementation.
+- `App::world()`, `App::is_running()`, `App::set_running()`, and `App::running_` are removed.
+- `run_app()` MUST create `World` and `RenderSystem` unconditionally, MUST construct `EngineContext` with all 7 fields each frame, MUST call `World::update_updatables(ctx)` before `render_system.render_scene()`, and MUST call `render_system.render_scene()` before `app.on_render(ctx)`.
 
 ## Related documents
 

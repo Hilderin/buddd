@@ -1,18 +1,16 @@
 #include "apps/free_camera_app.h"
 
-#include "engine_service.h"
+#include "engine_context.h"
+#include "scene/world.h"
 #include "math/camera.h"
 #include "math/math.h"
 #include "math/vec3.h"
 #include "math/quat.h"
 #include "render/primitives.h"
 #include "render/render_device.h"
-#include "render/render_system.h"
 #include "render/mesh_renderer.h"
 #include "render/shader.h"
-#include "scene/world.h"
 #include "scene/camera_component.h"
-#include "scene/entity.h"
 #include "scene/free_camera_movement.h"
 
 #include <algorithm>
@@ -24,14 +22,13 @@
 
 namespace be = buddd::engine;
 
-auto buddd::cmd::app::FreeCameraApp::setup(be::EngineService& engine)
+auto buddd::cmd::app::FreeCameraApp::setup(be::EngineContext const& ctx)
     -> be::Result<void>
 {
-    auto& device = engine.device();
-    world_ = std::make_unique<be::World>();
+    auto& device = ctx.device;
 
     // Camera entity
-    camera_entity_ = be::Entity::create(*world_);
+    camera_entity_ = ctx.world.add_entity();
     be::math::Camera camera;
     camera_entity_.add_component<be::CameraComponent>(camera);
 
@@ -68,28 +65,20 @@ auto buddd::cmd::app::FreeCameraApp::setup(be::EngineService& engine)
     )";
 
     auto vs = device.create_shader(be::ShaderType::Vertex, k_vs);
-    if (!vs) return std::unexpected(vs.error());
+    if (!vs) return make_error(vs);
     auto fs = device.create_shader(be::ShaderType::Fragment, k_fs);
-    if (!fs) return std::unexpected(fs.error());
+    if (!fs) return make_error(fs);
     auto mat = device.create_material(std::move(*vs), std::move(*fs), {"u_mvp"});
-    if (!mat) return std::unexpected(mat.error());
+    if (!mat) return make_error(mat);
     auto shared_mat = std::shared_ptr<be::Material>(std::move(*mat));
 
     // --- Create cube via primitive helper ---
     auto cube_result = be::create_cube(device, shared_mat);
-    if (!cube_result) return std::unexpected(cube_result.error());
-    auto cube_entity = be::Entity::create(*world_);
+    if (!cube_result) return make_error(cube_result);
+    auto cube_entity = ctx.world.add_entity();
     cube_entity.add_component<be::MeshRenderer>(
         std::make_shared<be::Model>(std::move(*cube_result)));
-    cube_entity_ = std::make_unique<be::Entity>(std::move(cube_entity));
-
-    // RenderSystem
-    render_system_ = std::make_unique<be::RenderSystem>(device, *world_);
+    cube_entity_ = cube_entity;
 
     return {};
-}
-
-auto buddd::cmd::app::FreeCameraApp::render(be::RenderDevice&, int) -> void {
-    // Camera is auto-updated via World::update_updatables() in run_app()
-    render_system_->render_scene();
 }
