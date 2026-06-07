@@ -38,6 +38,7 @@ For `run`, the scene dispatch is:
 ├── argv[2] == "gltf-demo"               → GltfDemoApp
 ├── argv[2] == "gltf-helmet"             → GltfHelmetApp
 ├── argv[2] == "hot-reload-gltf"         → HotReloadGltfApp
+├── argv[2] == "imgui-demo"              → ImguiDemoApp
 └── Unknown scene                          → BUDDD_LOG_ERROR("Unknown scene: '{}'", scene_name)
                                              fwrite(scene_usage, stderr)  // usage text remains as fprintf(stderr)
                                              exit 1
@@ -122,16 +123,22 @@ EngineService::create(Backend, WindowConfig)
         │         │           - SDL_GL_CreateContext, SDL_GL_MakeCurrent
         │         │           - GL_DEPTH_TEST (GL_LESS) enabled
         │         │
+        │         │           - **ImGui init**: `engine_imgui::init(sdl_window, gl_context)` called
+        │         │             after SDL_GL_MakeCurrent (before device construction). If
+        │         │             init fails, a non-fatal warning is logged and `is_initialized()`
+        │         │             remains false.
+        │         │
         │         └── native_handle() == nullptr (Headless backend)
-        │                 │
-        │                 └── [Headless render device]
-        │                     - RenderDeviceHeadless(window)
-        │                     - size() delegates to window_.width() / height()
-        │                     - begin_frame() and end_frame() are no-ops
-        │
+                │
+                └── [Headless render device]
+                    - RenderDeviceHeadless(window)
+                    - size() delegates to window_.width() / height()
+                    - begin_frame() and end_frame() are no-ops
+                    - ImGui init is skipped (no display)
+
         └── EngineService{platform, window, device}
             - Accessors: .platform(), .window(), .device()
-            - Navigable graph: device().window().platform().input_system()
+            - Navigable graph: device.window().platform().input_system()
             - Member order guarantees destruction: ~device → ~window → ~platform
 ```
 
@@ -173,9 +180,12 @@ The frame loop lives in `run_app()` in `src/cmd/app.cpp`. `run_app()` creates a 
 
     - Each frame:
         1. poll_events() — dispatches SDL events, computes delta_time, calls
-           InputSystem::begin_frame() to advance input state. Returns false
+           InputSystem::begin_frame() to advance input state, then routes each
+           event to `engine_imgui::on_sdl_event()` for ImGui. Returns false
            on window close → break.
-        2. device->begin_frame() — clears buffers, starts GPU frame.
+        2. device->begin_frame() — clears buffers, starts GPU frame. After the
+           buffer clear, calls `engine_imgui::new_frame()` if initialised
+           (no-op if not).
         3. Construct per-frame EngineContext with all 7 fields:
            {services, window, device, world, render_system, delta_time, frame}
         4. app.on_frame_begin(ctx) — per-frame hook (default no-op, apps override
@@ -186,10 +196,17 @@ The frame loop lives in `run_app()` in `src/cmd/app.cpp`. `run_app()` creates a 
         6. render_system.render_scene() — automatic scene rendering (begin_frame/end_frame
            are owned by run_app(), render_scene only issues draw calls).
         7. app.on_render(ctx) — custom rendering overlay (default no-op, replaces old
-           app.render(device, frame)). Runs AFTER render_scene().
-        8. Capture injection (if --capture matches current frame).
-        9. device->end_frame() — swap buffers, finalize GPU frame.
-        10. ++frame
+           app.render(device, frame)). Runs AFTER render_scene(). Apps call
+           `ImGui::Begin()`/`End()` here to build their UI.
+        8. device->render_ui() — renders any active UI overlay (ImGui).
+           Calls `engine_imgui::render()` in the OpenGL backend; no-op
+           in headless. Runs AFTER app.on_render() so app ImGui calls
+           are recorded in the draw list, and BEFORE capture so ImGui
+           appears in screenshots.
+        9. Capture injection (if --capture matches current frame). Captures
+           now include the ImGui overlay.
+        10. device->end_frame() — swap buffers, finalize GPU frame.
+        11. ++frame
 
     - After the loop:
         - app.shutdown() — cleanup
@@ -464,6 +481,62 @@ material.set_uniform("u_light_colours[1]", ld2.colour);
 - The backend is fixed for the lifetime of a `Platform` instance — no runtime switching.
 - `EngineService` guarantees the lifecycle invariants via member declaration order (`platform_`, `window_`, `device_`), ensuring `~RenderDevice` → `~Window` → `~Platform` on destruction.
 - All back-references (`Window::platform_`, `RenderDevice::window_`) are non-owning (`T&`), compliant with ADR-010. See ADR-012 for the full rationale.
+- **ImGui shutdown**: `engine_imgui::shutdown()` is called inside `RenderDeviceOpenGL::~RenderDeviceOpenGL()` before `SDL_GL_DestroyContext()`, ensuring cleanup happens while the GL context is still current.
+- **ImGui init**: `engine_imgui::init()` is called inside `RenderDevice::create()` after `SDL_GL_MakeCurrent` but before the `RenderDeviceOpenGL` constructor, ensuring the GL context is current for ImGui's shader compilation. If init fails, a non-fatal warning is logged and `is_initialized()` remains false.
+- **All ImGui functions are no-ops when not initialised** (headless mode or init failure).
+
+### ImGui integration hooks (SPEC-026)
+
+The `engine_imgui` module is fully integrated into the engine's existing lifecycle with zero app boilerplate for core integration:
+
+**Frame loop:**
+- `engine_imgui::new_frame()` is called from within `RenderDeviceOpenGL::begin_frame()` after the buffer clear — before `app.on_frame_begin()`.
+- `RenderDevice::render_ui()` is a new virtual method (default no-op) called by `run_app()` after `app.on_render()` and before capture/`read_pixels`. `RenderDeviceOpenGL` overrides it to call `engine_imgui::render()`.
+
+**Event flow:**
+- `PlatformSDL3::poll_events()` feeds each SDL event to `engine_imgui::on_sdl_event()` after routing to `InputSystemSDL3::on_sdl_event()`. ImGui events are always forwarded regardless of ImGui's consumption flags.
+
+**Init / Shutdown:**
+- `engine_imgui::init(sdl_window, gl_context)` is called inside `RenderDevice::create()` after the GL context is created and made current, before constructing the `RenderDeviceOpenGL`. Non-fatal on failure — engine continues without ImGui.
+- `engine_imgui::shutdown()` is called inside `RenderDeviceOpenGL::~RenderDeviceOpenGL()` before `SDL_GL_DestroyContext()`, ensuring GL resources are released while the context is still valid.
+
+**Headless:**
+- When `BUDDD_HAS_DISPLAY=OFF` or the native handle is null, `engine_imgui::init()` is never called. All ImGui functions (`new_frame()`, `render()`, `on_sdl_event()`) are no-ops guarded by `is_initialized()`. Apps simply do not call ImGui functions in headless mode.
+
+**Event consumption:**
+- The engine does NOT filter events based on ImGui's `io.WantCaptureMouse` or `io.WantCaptureKeyboard` flags. The `InputSystem` continues to see all events. Apps that use both ImGui and engine input must check these flags themselves.
+
+```
+[RenderDevice::create()]
+    │
+    ├── SDL_GL_MakeCurrent(sdl_window, gl_context)
+    ├── engine_imgui::init(sdl_window, gl_context)    ← NEW
+    └── new RenderDeviceOpenGL(window, sdl_window, gl_context)
+            │
+            └── RenderDeviceOpenGL::~RenderDeviceOpenGL()
+                    │
+                    ├── engine_imgui::shutdown()       ← NEW
+                    └── SDL_GL_DestroyContext(context_)
+
+[PlatformSDL3::poll_events() loop]
+    while (SDL_PollEvent(&event)):
+        ├── input_system_.on_sdl_event(event)          ← existing
+        └── engine_imgui::on_sdl_event(event)           ← NEW
+
+[run_app() frame loop]
+    ├── 1. poll_events()
+    ├── 2. device.begin_frame()
+    │           ├── glClear(...)                        ← existing
+    │           └── engine_imgui::new_frame()           ← NEW
+    ├── 3..6. (on_frame_begin, updatables, render_scene)
+    ├── 7. app.on_render(ctx)       ← apps call ImGui::Begin()/End() here
+    ├── 8. device.render_ui()
+    │           └── engine_imgui::render()              ← NEW
+    ├── 9. capture (read_pixels)    ← now includes ImGui overlay
+    └── 10. device.end_frame()
+```
+
+See [SPEC-026](/.specs/sprint-2026-06/imgui-demo/spec.md) for the full specification and [ADR-026](/docs/adr/ADR-026-imgui-integration.md) for the architecture decision.
 
 ## Reference
 
@@ -482,3 +555,5 @@ material.set_uniform("u_light_colours[1]", ld2.colour);
 - Spec: [SPEC-016](/.specs/sprint-2026-05/architecture-refactor-device-window-platform/spec.md) — Architecture Refactor: Navigable Object Graph, EngineService
 - ADR: [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) — Navigable Object Graph, EngineService, and Abstract Interface Extensions
 - ADR: [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)
+- Spec: [SPEC-026](/.specs/sprint-2026-06/imgui-demo/spec.md) — EngineImGui Module: Dear ImGui Integration (public API, frame lifecycle, event routing, demo app, headless no-op)
+- ADR: [ADR-026](/docs/adr/ADR-026-imgui-integration.md) — EngineImGui Module: Dear ImGui Integration (hybrid approach, embedded backends, automated lifecycle)

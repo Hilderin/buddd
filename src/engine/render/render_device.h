@@ -95,6 +95,10 @@ public:
     ///         Returns an error if the backend does not support readback.
     [[nodiscard]] virtual auto read_pixels() -> Result<ImageBuffer> = 0;
 
+    /// Render any active UI overlay (ImGui).
+    /// Default no-op — overridden by OpenGL backend to call engine_imgui::render().
+    virtual auto render_ui() -> void {}
+
     RenderDevice(const RenderDevice&) = delete;
     auto operator=(const RenderDevice&) -> RenderDevice& = delete;
     RenderDevice(RenderDevice&&) = delete;

@@ -68,6 +68,8 @@ public:
 
     auto read_pixels() -> Result<ImageBuffer> override;
 
+    auto render_ui() -> void override;
+
     RenderDeviceOpenGL(const RenderDeviceOpenGL&) = delete;
     auto operator=(const RenderDeviceOpenGL&) -> RenderDeviceOpenGL& = delete;
     RenderDeviceOpenGL(RenderDeviceOpenGL&&) = delete;

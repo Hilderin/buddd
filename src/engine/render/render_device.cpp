@@ -3,6 +3,8 @@
 #include "render_device_headless.h"
 #include "window/window.h"
 
+#include "imgui/engine_imgui.h"
+
 #include <SDL3/SDL.h>
 
 #include "log/log.h"
@@ -43,6 +45,13 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
     SDL_GL_MakeCurrent(sdl_window, gl_context);
 
     BUDDD_LOG_INFO("Render device created (OpenGL 4.5 Core)");
+
+    // Initialise ImGui after the GL context is current
+    auto imgui_result = engine_imgui::init(sdl_window, gl_context);
+    if (!imgui_result) {
+        BUDDD_LOG_WARN("ImGui init failed (non-fatal): {}", to_string(imgui_result.error()));
+    }
+
     return std::unique_ptr<RenderDevice>(
         new RenderDeviceOpenGL(window, sdl_window, gl_context));
 }

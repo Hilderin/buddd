@@ -129,6 +129,9 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
         // ── Custom rendering (optional, default no-op) ──
         app.on_render(ctx);
 
+        // Render any active UI overlay (ImGui)
+        eng.device().render_ui();
+
         // Capture: read_pixels BEFORE end_frame()
         bool did_read_pixels = false;
         be::Result<be::ImageBuffer> pixel_buffer =

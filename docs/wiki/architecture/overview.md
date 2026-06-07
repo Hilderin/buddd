@@ -23,6 +23,7 @@ buddd2/
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
 │   │   ├── window/          # Window abstraction (Window, WindowConfig)
 │   │   ├── image/           # Image I/O (ImageBuffer, Image, stb_image)
+│   │   ├── imgui/           # ImGui integration (engine_imgui wrapper, embedded Dear ImGui sources)
 │   │   ├── input/           # Input system (KeyCode, MouseButton, InputSystem)
 │   │   ├── asset/           # Asset manager (Asset, TextureAsset, MaterialAsset, FileWatcher, DependencyMap)
 │   │   └── render/          # Render device abstraction (RenderDevice)
@@ -41,13 +42,13 @@ buddd2/
 - **Presets**: `debug` (Debug build) and `release` (Release build)
 - **Standard**: C++26 (`CMAKE_CXX_STANDARD 26`, `REQUIRED ON`, `EXTENSIONS OFF`)
 - **Formatting**: `clang-format` via custom `format` CMake target
-- **External dependencies**: SDL3 (fetched via `FetchContent`), GLM (fetched via `FetchContent`), OpenGL (system `find_package`), stb (fetched via `FetchContent`)
+- **External dependencies**: SDL3 (fetched via `FetchContent`), GLM (fetched via `FetchContent`), OpenGL (system `find_package`), stb (fetched via `FetchContent`), Dear ImGui (fetched via `FetchContent`, docking branch)
 
 ## CMake targets
 
 | Target | Type | Directory | Description |
 |---|---|---|---|
-| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, render pipeline module, and image I/O module. Links SDL3, OpenGL, GLM, and stb. |
+| `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, render pipeline module, image I/O module, and ImGui integration module. Links SDL3, OpenGL, GLM, stb, and Dear ImGui. |
 | `buddd` | Executable | `src/cmd/` | CLI binary; links `buddd_engine` |
 | `buddd_editor` | INTERFACE library | `src/editor/` | Placeholder — no compiled sources |
 | `buddd_tests` | Executable | `tests/` | Catch2 test binary; links `buddd_engine` |
@@ -96,6 +97,12 @@ src/engine/
 │   ├── image_buffer.h       # ImageBuffer — raw GPU readback data (width, height, channels, bytes)
 │   ├── image.h              # Image — create from buffer, load/save PNG
 │   └── image.cpp            # Image implementation (stb_image, stb_image_write, row-flipping)
+├── imgui/                    # ImGui integration module
+│   ├── CMakeLists.txt       # Build rules (adds engine_imgui.cpp to buddd_engine sources)
+│   ├── engine_imgui.h       # Public API: init, shutdown, new_frame, render, on_sdl_event, is_initialized
+│   ├── engine_imgui.cpp     # Impl wrapping Dear ImGui backends (ImGui_ImplSDL3 + ImGui_ImplOpenGL3)
+│   ├── imgui/               # Dear ImGui library sources (docking branch, embedded)
+│   └── backends/            # Official ImGui backends (imgui_impl_sdl3, imgui_impl_opengl3, embedded)
 ├── input/                    # Input system (Keyboard, Mouse)
 │   ├── key_code.h           # Public header: KeyCode enum (uint8_t, values matching SDL_Scancode)
 │   ├── input_system.h       # Public header: InputSystem abstract class, MouseButton enum
@@ -167,6 +174,7 @@ src/engine/
 - `./build/debug/src/cmd/buddd run cube --capture 120:/tmp/out.png` — renders 120 frames of the cube and captures frame 120 to `/tmp/out.png`. The `--capture` flag can be repeated for multiple captures.
 - `./build/debug/src/cmd/buddd run cube --frame 60` — runs exactly 60 frames of the cube, then exits automatically.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
+- `./build/debug/src/cmd/buddd run imgui-demo` — opens a 1280×720 window (title "Buddd Engine — ImGui Demo"), runs for 300 frames showing `ImGui::ShowDemoWindow()` and a custom "ImGui Demo" panel with FPS counter on a cleared background. Supports `--capture` for CI verification.
 - `./build/debug/src/cmd/buddd help` — prints usage information listing three commands (`run`, `version`, `help`)
 - `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
 - `buddd demo`, `buddd capture`, `buddd test` are **removed** — they produce an unknown command error

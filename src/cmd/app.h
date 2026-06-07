@@ -28,8 +28,9 @@ public:
 
     /// Called once before the render loop.
     /// Return error to abort (loop skipped, shutdown() still called).
-    [[nodiscard]] virtual auto setup(buddd::engine::EngineContext const& ctx)
-        -> buddd::engine::Result<void> = 0;
+    /// Default no-op (returns success). Override to add custom initialisation.
+    [[nodiscard]] virtual auto setup(buddd::engine::EngineContext const& /*ctx*/)
+        -> buddd::engine::Result<void> { return {}; }
 
     /// Called once per frame, before render_scene(), between begin_frame() and end_frame().
     /// Default no-op. Override for per-frame tasks like hot-reload polling or transform updates.

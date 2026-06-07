@@ -5,6 +5,7 @@
 #include "apps/asset_demo_app.h"
 #include "apps/hot_reload_app.h"
 #include "apps/hot_reload_gltf_app.h"
+#include "apps/imgui_demo_app.h"
 #include "apps/gltf_demo_app.h"
 #include "apps/cube_app.h"
 #include "apps/cube_scene_app.h"
@@ -105,6 +106,8 @@ auto main(int argc, char* argv[]) -> int {
             app = std::make_unique<bc::app::GltfHelmetApp>();
         else if (scene == "hot-reload-gltf")
             app = std::make_unique<bc::app::HotReloadGltfApp>();
+        else if (scene == "imgui-demo")
+            app = std::make_unique<bc::app::ImguiDemoApp>();
         else {
             BUDDD_LOG_ERROR("Unknown scene: '{}'", argv[2]);
             std::fprintf(stderr,
@@ -124,6 +127,7 @@ auto main(int argc, char* argv[]) -> int {
                 "  gltf         glTF model loading demo (Box model with orbit camera)\n"
                 "  gltf-helmet  Interactive DamagedHelmet inspection with free camera\n"
                 "  multi-material  Multi-material cube: 3 submeshes with red, green, blue materials (120 frames)\n"
+                "  imgui-demo   ImGui integration demo: ShowDemoWindow + custom panel (120 frames)\n"
                 "\n"
                 "Flags:\n"
                 "  --frame N        Render exactly N frames, then exit (default: interactive)\n"

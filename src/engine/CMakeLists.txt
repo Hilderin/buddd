@@ -49,6 +49,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tinygltf)
 
+# ----- Dear ImGui (immediate-mode GUI library) -----
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.8-docking
+)
+FetchContent_MakeAvailable(imgui)
+
 find_package(OpenGL REQUIRED)
 
 # Collect all engine source files automatically using GLOB.
@@ -59,6 +67,8 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
 )
 
 add_library(buddd_engine STATIC ${ENGINE_SOURCES})
+
+add_subdirectory(imgui)
 
 # Propagate display backend flag so the engine library uses the right ShaderProgram code path
 if(BUDDD_HAS_DISPLAY)

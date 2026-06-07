@@ -24,6 +24,7 @@ buddd_editor            (standalone, no dependencies)
 | `buddd_engine` | `OpenGL::GL` | PUBLIC | OpenGL rendering (4.5 Core profile) |
 | `buddd_engine` | `glm::glm` | PUBLIC | GLM header-only math library — provides underlying implementation for Vec2, Vec3, Vec4, Mat4, Quat wrappers |
 | `buddd_engine` | `stb` | PRIVATE | Single-header public-domain library for PNG I/O (stb_image + stb_image_write). Fetched via FetchContent. |
+| `buddd_engine` | `imgui` | PRIVATE | Dear ImGui (docking branch `v1.91.8-docking`) — immediate-mode GUI library. Fetched via FetchContent. Compiled as part of `buddd_engine` via the glob in `src/engine/imgui/CMakeLists.txt`. |
 
 ## External dependencies
 
@@ -34,6 +35,7 @@ buddd_editor            (standalone, no dependencies)
 | **GLM** | 1.0.1 | `https://github.com/g-truc/glm.git` | CMake `FetchContent` (automatic download at configure time) — header-only, no compiled library |
 | **OpenGL** | 4.5 Core | System-provided (`libgl-dev` or equivalent) | `find_package(OpenGL REQUIRED)` |
 | **stb** | `31c1ad37456438565541f9958214b6e762fb4` | `https://github.com/nothings/stb.git` | CMake `FetchContent` (automatic download at configure time) — header-only, only `#include` path needed. |
+| **Dear ImGui** | `v1.91.8-docking` (docking branch) | `https://github.com/ocornut/imgui.git` | CMake `FetchContent` (automatic download at configure time) — compiled library sources embedded in `src/engine/imgui/` alongside wrapper module.
 
 - Catch2, SDL3, and GLM are fetched once and cached in the build directory; subsequent configures use the cached copy.
 - Compiled dependencies that are large or slow to debug (notably SDL3) are built with `-DCMAKE_BUILD_TYPE=Release` via `CMAKE_ARGS` in their `FetchContent_Declare` to avoid debugger startup slowness from their debug symbols. Header-only dependencies (GLM) are unaffected. See `src/engine/CMakeLists.txt` for the SDL3 declaration, [ADR-007](/docs/adr/ADR-007-release-dependency-build.md) for the full rationale, and the [setup guide](/docs/wiki/engineering/setup.md) for details.

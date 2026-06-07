@@ -1,6 +1,8 @@
 #include "platform_sdl3.h"
 #include "window/window_sdl3.h"
 
+#include "imgui/engine_imgui.h"
+
 #include "log/log.h"
 
 #include <SDL3/SDL.h>
@@ -35,6 +37,7 @@ auto PlatformSDL3::poll_events() -> bool {
         }
         // Route non-quit events to the input system
         input_system_.on_sdl_event(event);
+        (void)engine_imgui::on_sdl_event(event);
     }
     return true;
 }

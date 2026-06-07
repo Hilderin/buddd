@@ -18,6 +18,8 @@
 #include <string>
 #include <tuple>
 
+#include "imgui/engine_imgui.h"
+
 #include "log/log.h"
 #include "debug/assert.h"
 
@@ -110,6 +112,7 @@ RenderDeviceOpenGL::RenderDeviceOpenGL(Window& window, SDL_Window* sdl_window, S
 }
 
 RenderDeviceOpenGL::~RenderDeviceOpenGL() {
+    engine_imgui::shutdown();
     SDL_GL_DestroyContext(context_);
 }
 
@@ -119,6 +122,11 @@ auto RenderDeviceOpenGL::begin_frame() -> void {
     glViewport(0, 0, w, h);
     glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    engine_imgui::new_frame();
+}
+
+auto RenderDeviceOpenGL::render_ui() -> void {
+    engine_imgui::render();
 }
 
 auto RenderDeviceOpenGL::end_frame() -> void {
