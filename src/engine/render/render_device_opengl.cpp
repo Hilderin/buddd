@@ -356,8 +356,8 @@ auto RenderDeviceOpenGL::create_texture(const Image& image) -> Result<std::uniqu
 
     glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTextureParameteri(tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTextureParameteri(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(tex, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTextureParameteri(tex, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     // Check for GL errors after upload
     GLenum gl_error = glGetError();
