@@ -85,8 +85,8 @@ The Platform abstraction now integrates the InputSystem: each concrete Platform 
 |---|---|
 | `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory, `virtual auto input_system() -> InputSystem& = 0`, and `virtual auto delta_time() const noexcept -> float = 0` |
 | `platform.cpp` | Factory implementation: dispatches to SDL3 or Headless backend based on `Backend` enum |
-| `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member, `delta_time_` member, and `last_frame_ticks_` for frame timing |
-| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation, `poll_events()` computes delta from `SDL_GetTicks`, calls `begin_frame()`, routes events to `InputSystemSDL3::on_sdl_event()` then to `engine_imgui::on_sdl_event()` for ImGui |
+| `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member, `delta_time_` member, `last_frame_ticks_` for frame timing, `register_window()`/`unregister_window()` public methods, and `std::unordered_map<SDL_WindowID, Window*> window_map_` private member for routing SDL events to the correct `Window` instance |
+| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation with `SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE` flag, `SDL_SetWindowMinimumSize(320, 240)` for minimum size enforcement, window registration via `SDL_GetWindowID()` + `register_window()` in `create_window()`, `poll_events()` computes delta from `SDL_GetTicks`, calls `begin_frame()`, handles `SDL_EVENT_WINDOW_RESIZED`/`MAXIMIZED`/`RESTORED` events via windowID map lookup before routing to `InputSystemSDL3::on_sdl_event()` then `engine_imgui::on_sdl_event()` for ImGui |
 | `platform_headless.h` | Private header: `PlatformHeadless` concrete class (final) with embedded `InputSystemHeadless` member and `delta_time()` override |
 | `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions; `poll_events()` calls `begin_frame()`; `delta_time()` returns fixed 1/60f |
 
@@ -96,11 +96,11 @@ The `Window` class now stores a non-owning `Platform&` reference, creating a nav
 
 | File | Role |
 |---|---|
-| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via new `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. |
-| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. |
-| `window_sdl3.cpp` | SDL3 implementation: `SDL_DestroyWindow` on destruction, `native_handle()` casts to `void*`. |
-| `window_headless.h` | Private header: `WindowHeadless` concrete class. Mouse capture is no-op; `is_mouse_captured()` returns `false`. |
-| `window_headless.cpp` | Headless implementation: stores width/height, `native_handle()` returns `nullptr`. |
+| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via new `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, pure virtual `on_resize(int w, int h)` (for updating cached dimensions on window resize), and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. |
+| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Declares `on_resize()` override to update cached `width_`/`height_`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. |
+| `window_sdl3.cpp` | SDL3 implementation: `on_resize()` updates `width_` and `height_`. Destructor un-registers from `PlatformSDL3`'s windowID map via `unregister_window()` before `SDL_DestroyWindow`. `native_handle()` casts to `void*`. |
+| `window_headless.h` | Private header: `WindowHeadless` concrete class. Declares `on_resize()` override to update cached `width_`/`height_`. Mouse capture is no-op; `is_mouse_captured()` returns `false`. |
+| `window_headless.cpp` | Headless implementation: stores width/height, `on_resize()` updates cached dimensions (no clamping by design — accepts any values for test flexibility), `native_handle()` returns `nullptr`. |
 
 ### Scene submodule (`scene/`)
 

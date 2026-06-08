@@ -13,6 +13,11 @@ auto WindowHeadless::height() const noexcept -> int {
     return height_;
 }
 
+auto WindowHeadless::on_resize(int w, int h) -> void {
+    width_  = w;
+    height_ = h;
+}
+
 auto WindowHeadless::native_handle() const noexcept -> void* {
     return nullptr;
 }

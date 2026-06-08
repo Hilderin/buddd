@@ -102,8 +102,11 @@ EngineService::create(Backend, WindowConfig)
         │         │
         │         ├── Valid config (width>0, height>0)
         │         │       │
-        │         │       └── [Window created with Platform& back-link]
-        │         │           - SDL3 backend: SDL_CreateWindow with SDL_WINDOW_OPENGL flag
+        │       │       └── [Window created with Platform& back-link]
+        │         │           - SDL3 backend: SDL_CreateWindow with SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE flag,
+        │         │             SDL_SetWindowMinimumSize(320, 240) for minimum size enforcement,
+        │         │             window registered in PlatformSDL3's windowID→Window map via
+        │         │             SDL_GetWindowID() + register_window(),
         │         │             WindowSDL3(sdl_window, w, h, *this)
         │         │           - Headless backend: in-memory width/height storage
         │         │             WindowHeadless(w, h, *this)
@@ -179,10 +182,13 @@ The frame loop lives in `run_app()` in `src/cmd/app.cpp`. `run_app()` creates a 
         - app.setup(ctx) — one-time initialisation
 
     - Each frame:
-        1. poll_events() — dispatches SDL events, computes delta_time, calls
-           InputSystem::begin_frame() to advance input state, then routes each
-           event to `engine_imgui::on_sdl_event()` for ImGui. Returns false
-           on window close → break.
+        1. poll_events() — computes delta_time, calls InputSystem::begin_frame(),
+           then processes each SDL event. For `SDL_EVENT_WINDOW_RESIZED`,
+           `SDL_EVENT_WINDOW_MAXIMIZED`, and `SDL_EVENT_WINDOW_RESTORED`, looks up
+           the window via the windowID→Window* map and calls `Window::on_resize(w, h)`
+           to update the cached dimensions before any downstream handler reads them.
+           All events are then routed to `input_system_.on_sdl_event()` and
+           `engine_imgui::on_sdl_event()`. Returns false on window close → break.
         2. device->begin_frame() — clears buffers, starts GPU frame. After the
            buffer clear, calls `engine_imgui::new_frame()` if initialised
            (no-op if not).
@@ -494,7 +500,7 @@ The `engine_imgui` module is fully integrated into the engine's existing lifecyc
 - `RenderDevice::render_ui()` is a new virtual method (default no-op) called by `run_app()` after `app.on_render()` and before capture/`read_pixels`. `RenderDeviceOpenGL` overrides it to call `engine_imgui::render()`.
 
 **Event flow:**
-- `PlatformSDL3::poll_events()` feeds each SDL event to `engine_imgui::on_sdl_event()` after routing to `InputSystemSDL3::on_sdl_event()`. ImGui events are always forwarded regardless of ImGui's consumption flags.
+- `PlatformSDL3::poll_events()` first handles `SDL_EVENT_WINDOW_RESIZED`/`MAXIMIZED`/`RESTORED` events by looking up the `SDL_WindowID` in the windowID→Window* map and calling `Window::on_resize()` to update cached dimensions. Then each SDL event (including the resize event) is routed to `input_system_.on_sdl_event()` followed by `engine_imgui::on_sdl_event()`. The window cache is updated before any downstream handler reads it. ImGui events are always forwarded regardless of ImGui's consumption flags.
 
 **Init / Shutdown:**
 - `engine_imgui::init(sdl_window, gl_context)` is called inside `RenderDevice::create()` after the GL context is created and made current, before constructing the `RenderDeviceOpenGL`. Non-fatal on failure — engine continues without ImGui.

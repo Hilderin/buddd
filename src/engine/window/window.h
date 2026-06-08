@@ -24,6 +24,8 @@ public:
     virtual auto height() const noexcept -> int = 0;
     virtual auto native_handle() const noexcept -> void* = 0;
 
+    virtual auto on_resize(int w, int h) -> void = 0;
+
     virtual auto set_mouse_capture(bool captured) -> void = 0;
     virtual auto is_mouse_captured() const noexcept -> bool = 0;
 

@@ -35,6 +35,31 @@ auto PlatformSDL3::poll_events() -> bool {
         if (event.type == SDL_EVENT_QUIT) {
             return false;
         }
+        // Handle window resize / maximize / restore events
+        if (event.type == SDL_EVENT_WINDOW_RESIZED
+         || event.type == SDL_EVENT_WINDOW_MAXIMIZED
+         || event.type == SDL_EVENT_WINDOW_RESTORED)
+        {
+            SDL_WindowID window_id = event.window.windowID;
+            auto it = window_map_.find(window_id);
+            if (it != window_map_.end()) {
+                Window* win = it->second;
+                if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+                    int w = event.window.data1;
+                    int h = event.window.data2;
+                    BUDDD_LOG_DEBUG("Window resize: {}x{} (windowID={})", w, h, +window_id);
+                    win->on_resize(w, h);
+                } else {
+                    // MAXIMIZED or RESTORED: query current size from SDL
+                    SDL_Window* sdl_win = static_cast<SDL_Window*>(win->native_handle());
+                    int w, h;
+                    SDL_GetWindowSize(sdl_win, &w, &h);
+                    BUDDD_LOG_DEBUG("Window resize (maximize/restore): {}x{} (windowID={})", w, h, +window_id);
+                    win->on_resize(w, h);
+                }
+            }
+        }
+
         // Route non-quit events to the input system
         input_system_.on_sdl_event(event);
         (void)engine_imgui::on_sdl_event(event);
@@ -59,7 +84,7 @@ auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::uniq
         config.title.c_str(),
         config.width,
         config.height,
-        SDL_WINDOW_OPENGL
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
     );
 
     if (sdl_window == nullptr) {
@@ -67,8 +92,23 @@ auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::uniq
             "SDL_CreateWindow failed: " + std::string(SDL_GetError()));
     }
 
-    BUDDD_LOG_INFO("Window created: {}x{}", config.width, config.height);
-    return std::unique_ptr<Window>(new WindowSDL3(sdl_window, config.width, config.height, *this));
+    if (!SDL_SetWindowMinimumSize(sdl_window, 320, 240)) {
+        BUDDD_LOG_WARN("SDL_SetWindowMinimumSize failed: {}", SDL_GetError());
+    }
+
+    auto win = std::unique_ptr<Window>(new WindowSDL3(sdl_window, config.width, config.height, *this));
+    SDL_WindowID win_id = SDL_GetWindowID(sdl_window);
+    register_window(win_id, win.get());
+    BUDDD_LOG_INFO("Window created (resizable): {}x{} (windowID={})", config.width, config.height, +win_id);
+    return win;
+}
+
+auto PlatformSDL3::register_window(SDL_WindowID id, Window* window) -> void {
+    window_map_[id] = window;
+}
+
+auto PlatformSDL3::unregister_window(SDL_WindowID id) -> void {
+    window_map_.erase(id);
 }
 
 } // namespace buddd::engine

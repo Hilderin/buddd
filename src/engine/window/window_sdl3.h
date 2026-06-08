@@ -15,6 +15,8 @@ public:
     auto height() const noexcept -> int override;
     auto native_handle() const noexcept -> void* override;
 
+    auto on_resize(int w, int h) -> void override;
+
     auto set_mouse_capture(bool captured) -> void override;
     auto is_mouse_captured() const noexcept -> bool override;
 

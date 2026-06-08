@@ -1,4 +1,5 @@
 #include "window_sdl3.h"
+#include "platform/platform_sdl3.h"
 
 namespace buddd::engine {
 
@@ -6,6 +7,11 @@ WindowSDL3::WindowSDL3(SDL_Window* window, int width, int height, Platform& plat
     : Window(platform), window_(window), width_(width), height_(height) {}
 
 WindowSDL3::~WindowSDL3() {
+    SDL_WindowID id = SDL_GetWindowID(window_);
+    if (id != 0) {
+        // Safe static_cast: WindowSDL3 is only ever created by PlatformSDL3::create_window()
+        static_cast<PlatformSDL3&>(platform_).unregister_window(id);
+    }
     SDL_DestroyWindow(window_);
 }
 
@@ -15,6 +21,11 @@ auto WindowSDL3::width() const noexcept -> int {
 
 auto WindowSDL3::height() const noexcept -> int {
     return height_;
+}
+
+auto WindowSDL3::on_resize(int w, int h) -> void {
+    width_  = w;
+    height_ = h;
 }
 
 auto WindowSDL3::native_handle() const noexcept -> void* {
