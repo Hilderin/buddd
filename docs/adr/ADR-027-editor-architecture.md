@@ -73,26 +73,27 @@ All editor code resides in `namespace buddd::editor`. This is consistent with ex
 - `buddd::cmd::app` — App subclasses
 - `buddd::editor` — editor library
 
-### Decision 4: Editor class with PIMPL pattern
+### Decision 4: Editor class with direct member variables
 
-The `Editor` class uses the PIMPL (Pointer to Implementation) idiom:
+The `Editor` class uses direct member variables instead of PIMPL:
 
 ```cpp
 class Editor {
 public:
-    Editor();
-    ~Editor();
+    Editor() = default;
+    ~Editor() = default;
     [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void>;
-    auto draw_ui() -> void;
+    auto draw_ui(buddd::engine::EngineContext const& ctx) -> void;
     auto shutdown() -> void;
 private:
-    struct EditorImpl;
-    std::unique_ptr<EditorImpl> impl_;
+    bool initialized_ = false;
+    buddd::engine::EngineService* engine_ = nullptr;
+    buddd::engine::Window* window_ = nullptr;
 };
 ```
 
-**Rationale**: PIMPL hides implementation details from consumers, reduces header dependencies (no `<imgui.h>` in the public header), and provides a stable ABI for the library boundary. This is consistent with existing PIMPL usage in the engine (e.g., `PhongMaterial`, `PbrMaterial`).
+**Rationale**: Direct member variables are simpler for a static library within the same project — no ABI concerns, no extra indirection. The `Editor` is not a public API intended for external consumption; it is an internal library within the project's own build system. Header dependencies are managed via forward declarations of engine types, not via PIMPL.
 
 ### Decision 5: ImGui init failure is fatal in display mode (amends ADR-026)
 
@@ -149,7 +150,7 @@ The editor does **not** respond to Escape — only window close (title-bar X, `A
 - **Reusable editor library**: `buddd_editor` can be used from the CLI, from tests, or from future entry points (e.g., a native desktop launcher) without modification.
 - **No render loop duplication**: The editor uses the same battle-tested `run_app()` render loop as all other applications. No new platform initialisation, event handling, or frame timing code.
 - **Architecture boundary preserved**: Zero SDL3/OpenGL/GLM headers outside `src/engine/`. Verified by `grep -rnE '#include.*(SDL3|GL/|glm/)' src/editor/ src/cmd/apps/editor_app.*` — zero matches.
-- **Stable library boundary**: PIMPL hides implementation details, reduces recompilation when editor internals change, and provides a clean public API.
+- **Simple implementation**: Direct member variables avoid the indirection and boilerplate of PIMPL. The class declaration is self-documenting — all state is visible in the header.
 - **Hard failure on ImGui init failure**: Developers catch configuration issues immediately rather than debugging a blank window. All display-mode apps benefit.
 - **Single entry point**: One binary, one build target. No separate editor executable to build, package, or debug.
 - **Consistent namespace convention**: `buddd::editor` follows the established pattern of `buddd::engine`, `buddd::cmd`, `buddd::cmd::app`.
@@ -158,7 +159,7 @@ The editor does **not** respond to Escape — only window close (title-bar X, `A
 ### Negative
 
 - **Build time increase**: `buddd_editor` adds a new static library target. One additional `.cpp` file to compile (`editor.cpp`) per configuration. Negligible in practice (~0.1s debug build).
-- **ABI boundary**: The PIMPL pattern adds a level of indirection and requires the destructor to be defined in the `.cpp` file (where `EditorImpl` is complete). This is standard C++ and well-understood.
+- **Header exposes internals**: Direct member variables reveal the `Editor`'s internal state in the header (`EngineService*`, `Window*`). This is acceptable for an internal library within the same project but would be unsuitable for a public SDK.
 - **Breaking change for ImGui-based apps**: Any code relying on the old non-fatal ImGui init behavior will now receive a hard error. In practice, this is the desired behavior — no display-mode application should silently lack ImGui.
 - **Version coupling**: `buddd_editor` links `buddd_engine` as PUBLIC, so any ABI-breaking change in the engine requires recompilation of the editor. This is expected and correct for a tightly coupled static library.
 - **Headless mode requires explicit error handling**: `EditorApp::setup()` must check `BUDDD_HAS_DISPLAY` at compile time and return an error. This is a one-time cost in `editor_app.cpp`.

@@ -12,6 +12,7 @@
 #include "apps/free_camera_app.h"
 #include "apps/phong_app.h"
 #include "apps/gltf_helmet_app.h"
+#include "apps/editor_app.h"
 #include "apps/run_app.h"
 #include "apps/textured_cube_app.h"
 #include "apps/triangle_app.h"
@@ -64,6 +65,11 @@ auto main(int argc, char* argv[]) -> int {
         return bc::VersionCommand{}.run(argc, argv);
     if (cmd == "help")
         return bc::HelpCommand{}.run(argc, argv);
+
+    if (cmd == "edit") {
+        bc::app::EditorApp editor_app;
+        return bc::run_app(editor_app, bc::RunningArgs{});
+    }
 
     if (cmd != "run") {
         BUDDD_LOG_ERROR("Unknown command: '{}'", argv[1]);

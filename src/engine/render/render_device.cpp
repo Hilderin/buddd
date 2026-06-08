@@ -47,9 +47,8 @@ auto RenderDevice::create(Window& window) -> Result<std::unique_ptr<RenderDevice
     BUDDD_LOG_INFO("Render device created (OpenGL 4.5 Core)");
 
     // Initialise ImGui after the GL context is current
-    auto imgui_result = engine_imgui::init(sdl_window, gl_context);
-    if (!imgui_result) {
-        BUDDD_LOG_WARN("ImGui init failed (non-fatal): {}", to_string(imgui_result.error()));
+    if (auto imgui_result = engine_imgui::init(sdl_window, gl_context); !imgui_result) {
+        return make_error(imgui_result.error());
     }
 
     return std::unique_ptr<RenderDevice>(

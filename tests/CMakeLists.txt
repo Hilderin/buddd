@@ -28,6 +28,7 @@ target_include_directories(buddd_tests PRIVATE
 
 target_link_libraries(buddd_tests PRIVATE
     buddd_engine
+    buddd_editor
     Catch2::Catch2WithMain
 )
 

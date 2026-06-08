@@ -65,36 +65,38 @@ Opens a 1280×800 window titled "Buddd Editor" with an interactive ImGui dockspa
 namespace buddd::editor {
 
 /// Scaffold for the Buddd Editor.
-/// Lifecycle: Editor() → setup() → draw_ui() x N → shutdown().
+/// Lifecycle: Editor() → setup(ctx) → draw_ui(ctx) x N → shutdown().
 class Editor {
 public:
     Editor();
     ~Editor();
 
-    /// Store const engine context reference for UI drawing.
+    /// Store engine service and window references for later use.
     /// Called from EditorApp::setup(). Returns error if ImGui is not initialized.
     [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void>;
 
     /// Draw the ImGui dockspace and any active editor panels.
-    /// Called every frame from EditorApp::on_render(). No-op if setup() was not called.
-    auto draw_ui() -> void;
+    /// Called every frame from EditorApp::on_render() with fresh per-frame context.
+    /// No-op if setup() was not called.
+    auto draw_ui(buddd::engine::EngineContext const& ctx) -> void;
 
     /// Cleanup. Called from EditorApp::shutdown().
     auto shutdown() -> void;
 
 private:
-    struct EditorImpl;
-    std::unique_ptr<EditorImpl> impl_;
+    bool initialized_ = false;
+    buddd::engine::EngineService* engine_ = nullptr;
+    buddd::engine::Window* window_ = nullptr;
 };
 
 } // namespace buddd::editor
 ```
 
-- `Editor()` constructor creates a default-constructed PIMPL (`EditorImpl`).
-- `setup(EngineContext const&)` stores the const engine context reference. Returns an error if `engine_imgui::is_initialized()` returns `false` (ImGui not available).
-- `draw_ui()` creates a full-viewport ImGui dockspace node. No-op if `setup()` was not called or if `impl_` is null.
-- `shutdown()` releases the PIMPL. Safe to call multiple times.
+- `Editor()` constructor creates a default Editor with `initialized_ = false`, `engine_ = nullptr`, `window_ = nullptr`.
+- `setup(EngineContext const&)` stores `&ctx.services` and `&ctx.window`. Returns an error if `engine_imgui::is_initialized()` returns `false` (ImGui not available).
+- `draw_ui(EngineContext const&)` creates a full-viewport ImGui dockspace node. No-op if `setup()` was not called (`initialized_` is false).
+- `shutdown()` resets stored pointers and clears initialized flag. Safe to call multiple times.
 - `~Editor()` calls `shutdown()`.
 
 ### `EditorApp` class (`src/cmd/apps/editor_app.h`)
@@ -112,7 +114,7 @@ public:
     [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void> override;
 
-    /// Calls Editor::draw_ui() each frame.
+    /// Calls Editor::draw_ui() each frame with per-frame context.
     auto on_render(buddd::engine::EngineContext const& ctx) -> void override;
 
     /// Calls Editor::shutdown().
@@ -127,7 +129,7 @@ private:
 
 - `config()` returns `AppConfig{.title = "Buddd Editor", .width = 1280, .height = 800}`.
 - `setup()` creates the `Editor` via `std::make_unique<Editor>()`, then calls `editor_->setup(ctx)`. If setup fails, the error is propagated and the app exits (via `run_app()` error handling).
-- `on_render()` calls `editor_->draw_ui()`.
+- `on_render(ctx)` calls `editor_->draw_ui(ctx)`.
 - `shutdown()` calls `editor_->shutdown()`.
 
 ### CMake changes
@@ -197,7 +199,7 @@ if (auto result = engine_imgui::init(sdl_window, gl_context); !result) {
 | File | Purpose |
 |---|---|
 | `src/editor/editor.h` | `Editor` class declaration (`namespace buddd::editor`). |
-| `src/editor/editor.cpp` | `Editor` implementation (PIMPL, dockspace UI). |
+| `src/editor/editor.cpp` | `Editor` implementation (dockspace UI, stores EngineService& and Window&). |
 | `src/editor/CMakeLists.txt` | Converted to STATIC library, links `buddd_engine`. |
 | `src/cmd/apps/editor_app.h` | `EditorApp` class declaration. |
 | `src/cmd/apps/editor_app.cpp` | `EditorApp` implementation. |
@@ -281,7 +283,7 @@ As an editor developer, I want a unit test that constructs an `Editor`, calls `s
 | ID | Description | Verification |
 |---|---|---|
 | AC-001 | `src/editor/editor.h` exists and declares `class Editor` in `namespace buddd::editor` with `setup(EngineContext const&) -> Result<void>`, `draw_ui() -> void`, and `shutdown() -> void`. | File exists; inspect declaration. |
-| AC-002 | `src/editor/editor.h` uses PIMPL: private `struct EditorImpl` and `std::unique_ptr<EditorImpl>`. | Inspect file for forward-declared implementation struct and unique_ptr member. |
+| AC-002 | `src/editor/editor.h` stores `EngineService*` and `Window*` as private members instead of PIMPL. | Inspect file; verify pointer members and no PIMPL. |
 | AC-003 | `src/editor/CMakeLists.txt` defines `buddd_editor` as a STATIC library and links `buddd_engine` as PUBLIC. | Inspect file; verify `add_library(buddd_editor STATIC ...)` and `target_link_libraries(buddd_editor PUBLIC buddd_engine)`. |
 | AC-004 | `src/editor/CMakeLists.txt` sets public include directory to `${CMAKE_CURRENT_SOURCE_DIR}`. | Inspect file; verify `target_include_directories(buddd_editor PUBLIC ...)`. |
 | AC-005 | `src/cmd/apps/editor_app.h` exists and declares `class EditorApp` inheriting `buddd::cmd::App`. | File exists; inspect class declaration. |
@@ -299,7 +301,7 @@ As an editor developer, I want a unit test that constructs an `Editor`, calls `s
 | AC-017 | No SDL3, OpenGL, or GLM headers are included from any file under `src/cmd/apps/editor_app.*`. | Run `grep -rnE '#include.*(SDL3|GL/|glm/)' src/cmd/apps/` — zero matches. |
 | AC-018 | `Editor::setup()` returns an error if `engine_imgui::is_initialized()` returns `false`. | Inspect `editor.cpp`; verify the check and error return for missing ImGui. |
 | AC-019 | `Editor::draw_ui()` creates an ImGui dockspace via `ImGui::DockSpaceOverViewport()`. | Inspect `editor.cpp`; verify dockspace creation call. |
-| AC-020 | `Editor::draw_ui()` is a no-op if `setup()` was never called (null impl_). | Inspect `editor.cpp`; verify guard clause. |
+| AC-020 | `Editor::draw_ui()` is a no-op if `setup()` was never called (`initialized_` is false). | Inspect `editor.cpp`; verify guard clause. |
 | AC-021 | `Editor::shutdown()` is safe to call multiple times. | Inspect `editor.cpp`; verify idempotency (null check, reset). |
 | AC-022 | Build succeeds with `cmake --build --preset debug` after all changes. | Run `cmake --build --preset debug`; verify no compile or link errors. |
 | AC-023 | `buddd edt` (typo) produces "Unknown command: 'edt'" error and exits with code 1. | Run `buddd edt`; verify stderr message and exit code. |
@@ -332,9 +334,9 @@ As an editor developer, I want a unit test that constructs an `Editor`, calls `s
 | `buddd edit --foo` (unknown flag) | `run_app()` keeps strict argument parsing — this will likely produce a parse error or warning, consistent with how other apps handle unknown flags. |
 | `buddd edit` without display server (e.g., SSH session without X11) | SDL3 init fails → platform creation failure → `run_app()` prints error and exits with code 1. |
 | `Editor::setup()` called twice | Undefined behaviour (not a supported use case). Each Editor instance should be set up once. |
-| `Editor::draw_ui()` called before `setup()` | No-op (guarded by null impl_ check). |
-| `Editor::draw_ui()` called after `shutdown()` | No-op (impl_ is null after shutdown). |
-| `Editor::shutdown()` called before `setup()` | No-op (impl_ is null). Safe to call. |
+| `Editor::draw_ui()` called before `setup()` | No-op (guarded by `initialized_` check). |
+| `Editor::draw_ui()` called after `shutdown()` | No-op (`initialized_` is false). |
+| `Editor::shutdown()` called before `setup()` | No-op (`initialized_` is false). Safe to call. |
 | Editor window resized | ImGui dockspace fills the viewport automatically (DockSpaceOverViewport tracks window size). |
 
 ## Error cases

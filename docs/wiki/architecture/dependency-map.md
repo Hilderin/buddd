@@ -11,13 +11,13 @@ buddd ──PRIVATE──► buddd_engine ──PUBLIC──► SDL3::SDL3
 buddd_tests ──PRIVATE─┤
                ──PRIVATE──► Catch2::Catch2WithMain (external)
                            │
-buddd_editor            (standalone, no dependencies)
+buddd_editor ──PUBLIC──► buddd_engine
 ```
 
 | Source target | Dependency | Link type | Notes |
 |---|---|---|---|
 | `buddd` | `buddd_engine` | PRIVATE | CLI needs the engine's version and platform APIs |
-| `buddd_editor` | *(none)* | — | INTERFACE placeholder, no compiled code |
+| `buddd_editor` | `buddd_engine` | PUBLIC | Editor library: Editor class, EditorApp, and editor infrastructure |
 | `buddd_tests` | `buddd_engine` | PRIVATE | Tests exercise engine library code |
 | `buddd_tests` | `Catch2::Catch2WithMain` | PRIVATE | Catch2 provides `main()` and test runner |
 | `buddd_engine` | `SDL3::SDL3` | PUBLIC | SDL3 library for windowing, input, and GL context management |
@@ -85,7 +85,7 @@ RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
 ## Key constraints
 
 - The engine is a **static library** (`STATIC`), not header-only. This may change in the future.
-- The editor target produces **no binary** and links **nothing** — it is a structural placeholder.
+- The editor target is a **static library** that links `buddd_engine` (PUBLIC) — it is no longer a placeholder.
 - Catch2 is **not** a dependency of the engine or the CLI — only of the test binary.
 - The headless backend has **zero** external dependencies and is always compiled alongside the SDL3+OpenGL backend.
 - `buddd_engine` links `SDL3::SDL3`, `OpenGL::GL`, and `glm::glm` as **PUBLIC** so that consumers inheriting the include paths can use SDL3, OpenGL, and GLM types **inside** `src/engine/` only.

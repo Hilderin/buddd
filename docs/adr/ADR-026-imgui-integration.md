@@ -55,6 +55,8 @@ auto is_initialized() -> bool;
 
 **Init failure is non-fatal**: If `engine_imgui::init()` returns an error, a warning is logged and the engine continues without ImGui. `is_initialized()` returns `false`, and all lifecycle methods become no-ops.
 
+> **AMENDED by ADR-027 (Editor Architecture)**: ImGui init failure in the SDL3/display path is now **fatal** — `RenderDevice::create()` propagates the error instead of logging a warning. Headless mode is unaffected (ImGui init is not called). See ADR-027 Decision 5 for details.
+
 ### Decision 3: Frame lifecycle automated via `RenderDevice` hooks
 
 ImGui's frame lifecycle is integrated into the engine's existing `RenderDevice` and `run_app()` architecture with **zero ImGui-specific code in `run_app()`**:

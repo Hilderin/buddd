@@ -279,7 +279,7 @@ The library exposes a PUBLIC include directory of `${CMAKE_CURRENT_SOURCE_DIR}` 
 
 The command-line binary. Links `buddd_engine` as PRIVATE.
 
-Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) defines `config()` / `setup()` / `render()` / `shutdown()`, and a centralised `run_app()` free function owns the render loop. Scene implementations are `App` subclasses in `src/cmd/apps/`. The CLI dispatches only three commands (`run`, `version`, `help`) — see [ADR-014](/docs/adr/ADR-014-cli-app-system.md) for the architectural rationale.
+Uses an `App` lifecycle pattern: a virtual `App` base class (`src/cmd/app.h`) defines `config()` / `setup()` / `render()` / `shutdown()`, and a centralised `run_app()` free function owns the render loop. Scene implementations are `App` subclasses in `src/cmd/apps/`. The CLI dispatches four commands (`run`, `edit`, `version`, `help`) — see [ADR-014](/docs/adr/ADR-014-cli-app-system.md) and [ADR-027](/docs/adr/ADR-027-editor-architecture.md) for the architectural rationale.
 
 ### Build system
 
@@ -335,16 +335,37 @@ The `demo_helpers.*` files are now **empty placeholders**. All helper functions 
 - `buddd` (no arguments) or `buddd run` → opens 1024×768 window, empties framebuffer each frame (no draw calls), runs until user closes window
 - `buddd run <scene> [--frame N] [--capture N:path]...` → runs the named scene. Available scenes: `triangle` (120 frames, coloured triangle), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), `textured-cube` (120 frames, UV-mapped cube with brick texture), `free-camera` (interactive, WASD + mouse look + Space/Control), `phong` (interactive, Phong lighting with orbiting point light + directional fill), `hot-reload` (60 frames, hot-reload verification, swaps texture at frame 30), `multi-material` (120 frames, cube with red/green/blue submeshes), `gltf-demo` (interactive, loads Box/DamagedHelmet glTF model with PBR materials and orbit camera), `hot-reload-gltf` (hot-reload verification for glTF models, swaps model file at frame N), **`imgui-demo`** (300 frames, ImGui overlay with demo window and custom panel on cleared background, 1280×720). `--frame N` limits rendering to N frames. `--capture N:path` captures frame N to a PNG file (repeatable for multiple captures). If no scene is given, defaults to `RunApp` (empty window). If scene is unknown, prints error to stderr and exits 1. Extra unexpected positional arguments print a warning on stderr.
 - `buddd version` → prints `buddd 0.1.0` to stdout
-- `buddd help` → prints usage information listing three commands (`run`, `version`, `help`)
+- `buddd edit` → opens the editor (1280×800 ImGui-docked window, title "Buddd Editor"). Requires display; errors out if `BUDDD_HAS_DISPLAY=OFF`. Editor does not exit on Escape — only window close exits.
+- `buddd help` → prints usage information listing four commands (`run`, `edit`, `version`, `help`)
 - Unknown command → prints `"Unknown command: '<cmd>'"` followed by usage to stderr, exits with code 1
 - `buddd test` is **removed** — produces an unknown command error
 - Old `--test` and `--version` flags are **dropped** — produce an unknown command error
 
 **Note**: Old `demo` and `capture` subcommands are permanently removed per [ADR-014](/docs/adr/ADR-014-cli-app-system.md). Use `buddd run <scene>` with `--capture` instead.
 
-## `buddd_editor` — INTERFACE library placeholder (`src/editor/`)
+## `buddd_editor` — Static library (`src/editor/`)
 
-A placeholder for the future editor application. Currently defines an INTERFACE library target with no sources, no dependencies, and no include directories. No binary is produced.
+The editor library provides the `Editor` class and `EditorApp` for the editor application. It links `buddd_engine` (PRIVATE) and uses namespace `buddd::editor`. See [ADR-027](/docs/adr/ADR-027-editor-architecture.md) for the architectural rationale.
+
+### Editor class
+
+| File | Role |
+|---|---|
+| `editor.h` | Public header: `Editor` class declaration in `buddd::editor` namespace. Lifecycle methods: `setup(EngineContext const&)` (stores `EngineService*` and `Window*` references, marks initialized), `draw_ui(EngineContext const&)` (renders ImGui dockspace), `shutdown()` (nulls pointers). Uses direct member variables (`EngineService* engine_`, `Window* window_`, `bool initialized_`). |
+| `editor.cpp` | Editor implementation. `draw_ui()` creates a full-window ImGui dockspace node: `DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode)`. `setup()` stores references from the context. `shutdown()` nulls stored pointers. |
+
+### EditorApp (`src/cmd/apps/`)
+
+| File | Role |
+|---|---|
+| `editor_app.h` | `EditorApp` — `App` subclass. Declares `EditorApp()` and `~EditorApp() override`. Stores `std::unique_ptr<Editor>`. `setup(EngineContext const&)` creates and calls `editor_->setup(ctx)`. `on_render(EngineContext const&)` calls `editor_->draw_ui(ctx)`. `shutdown()` calls `editor_->shutdown()`. |
+| `editor_app.cpp` | Implementation of EditorApp lifecycle — delegates to `Editor`. |
+
+### CLI integration
+
+- The `buddd edit` command is dispatched in `main.cpp`, which creates an `EditorApp` and calls `run_app()`. Requires display (`BUDDD_HAS_DISPLAY`); exits with error in headless mode.
+- `--frame`/`--capture` work incidentally via `run_app()` but are not editor features.
+- The editor does NOT exit on Escape — only window close exits.
 
 ## `buddd_tests` — Test executable (`tests/`)
 

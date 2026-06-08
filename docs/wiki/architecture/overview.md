@@ -28,7 +28,7 @@ buddd2/
 │   │   ├── asset/           # Asset manager (Asset, TextureAsset, MaterialAsset, FileWatcher, DependencyMap)
 │   │   └── render/          # Render device abstraction (RenderDevice)
 │   ├── cmd/                 # CLI binary (links engine)
-│   └── editor/              # Editor placeholder (INTERFACE lib)
+│   └── editor/              # Editor library (STATIC lib)
 ├── tests/                   # Unit tests (Catch2 v3)
 └── docs/
     ├── specs/               # Product specs and implementation contracts
@@ -50,7 +50,7 @@ buddd2/
 |---|---|---|---|
 | `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, render pipeline module, image I/O module, and ImGui integration module. Links SDL3, OpenGL, GLM, stb, and Dear ImGui. |
 | `buddd` | Executable | `src/cmd/` | CLI binary; links `buddd_engine` |
-| `buddd_editor` | INTERFACE library | `src/editor/` | Placeholder — no compiled sources |
+| `buddd_editor` | Static library | `src/editor/` | Editor library: Editor class, EditorApp, and editor infrastructure. Links buddd_engine. |
 | `buddd_tests` | Executable | `tests/` | Catch2 test binary; links `buddd_engine` |
 
 ## Engine library (`buddd_engine`) internal structure

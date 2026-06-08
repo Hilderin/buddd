@@ -22,7 +22,7 @@ Create the editor scaffolding: convert `buddd_editor` from an INTERFACE placehol
 
 | ADR | Relevance |
 |---|---|---|
-| ADR-027 (Editor Architecture) | Captures all editor architecture decisions: separate library, App lifecycle reuse, namespace, PIMPL, ImGui fatal init, CLI command, architecture boundary. Newly written for this feature. |
+| ADR-027 (Editor Architecture) | Captures all editor architecture decisions: separate library, App lifecycle reuse, namespace, direct member variables, ImGui fatal init, CLI command, architecture boundary. Newly written for this feature. |
 | ADR-019 (Architecture Boundaries) | No SDL3/OpenGL/GLM headers outside `src/engine/`. The `src/editor/` and `src/cmd/apps/` directories must include zero such headers. |
 | ADR-026 (Dear ImGui Integration) | Decision 2 ("Init failure is non-fatal") is amended by this spec: ImGui init failure in the display path is now **fatal** (error propagation instead of warning). The amendment must be reflected in ADR-026. `engine_imgui::is_initialized()` is the API the Editor calls to verify ImGui availability. |
 | ADR-014 (CLI App System) | `EditorApp` follows the same `App` lifecycle pattern. `run_app()` is unchanged. |
@@ -83,7 +83,7 @@ Create the editor scaffolding: convert `buddd_editor` from an INTERFACE placehol
 2. **Namespace nesting**: `buddd::editor` for Editor, `buddd::cmd::app` for EditorApp. Use `namespace` blocks without indentation of content (project style).
 3. **`#pragma once`**: All new headers must use `#pragma once` as the include guard.
 4. **`[[nodiscard]]`**: All `Result<T>`-returning functions must be marked `[[nodiscard]]`.
-5. **PIMPL pattern**: `EditorImpl` forward-declared inside `Editor` class as `struct EditorImpl;` with `std::unique_ptr<EditorImpl> impl_;` as sole private member. See existing PIMPL usage in `PhongMaterial` / `PbrMaterial`.
+5. **Direct member variables**: `Editor` stores `EngineService*` and `Window*` as private members (extracted from `EngineContext` in `setup()`). No PIMPL — direct members are simpler for a static library within the same project.
 6. **App subclass pattern**: Header declares `class EditorApp final : public buddd::cmd::App`, implements all virtual overrides. See `run_app.h` and `imgui_demo_app.h` for pattern.
 7. **CMake**: STATIC library definition uses `add_library(buddd_editor STATIC ...)` with PUBLIC include directory and PUBLIC link to `buddd_engine`.
 8. **Test pattern**: Catch2 `TEST_CASE("name", "[tag]")` with `#include <catch2/catch_test_macros.hpp>`. See `tests/version_tests.cpp`.
@@ -149,70 +149,62 @@ Declare in `namespace buddd::editor`:
 
 #include "error.h"
 
-#include <memory>
-
-namespace buddd::engine { struct EngineContext; }
+namespace buddd::engine { struct EngineContext; class EngineService; class Window; }
 
 namespace buddd::editor {
 
 /// Scaffold for the Buddd Editor.
-/// Lifecycle: Editor() → setup() → draw_ui() x N → shutdown().
+/// Lifecycle: Editor() → setup(ctx) → draw_ui(ctx) x N → shutdown().
 class Editor {
 public:
     Editor();
     ~Editor();
 
-    /// Store const engine context reference for UI drawing.
+    /// Store engine service and window references for later use.
     /// Called from EditorApp::setup(). Returns error if ImGui is not initialized.
     [[nodiscard]] auto setup(buddd::engine::EngineContext const& ctx)
         -> buddd::engine::Result<void>;
 
     /// Draw the ImGui dockspace and any active editor panels.
-    /// Called every frame from EditorApp::on_render(). No-op if setup() was not called.
-    auto draw_ui() -> void;
+    /// Called every frame from EditorApp::on_render() with fresh per-frame context.
+    /// No-op if setup() was not called.
+    auto draw_ui(buddd::engine::EngineContext const& ctx) -> void;
 
     /// Cleanup. Called from EditorApp::shutdown().
     auto shutdown() -> void;
 
 private:
-    struct EditorImpl;
-    std::unique_ptr<EditorImpl> impl_;
+    bool initialized_ = false;
+    buddd::engine::EngineService* engine_ = nullptr;
+    buddd::engine::Window* window_ = nullptr;
 };
 
 } // namespace buddd::editor
 ```
 
-- Forward-declare `EngineContext` — do NOT include `engine_context.h`. The `#include "error.h"` is needed for the `Result<void>` return type. `error.h` is provided by `buddd_engine` (via `target_include_directories` PUBLIC).
+- Forward-declare `EngineContext`, `EngineService`, `Window` — do NOT include their headers.
+- The `#include "error.h"` is needed for the `Result<void>` return type.
 - Do NOT include `<imgui.h>` in this header.
-- The PIMPL struct `EditorImpl` is forward-declared as private; the full definition lives in `editor.cpp`.
+- No PIMPL — direct member variables for simplicity (static library, no ABI concerns).
 
 ### Step 4: Editor implementation — `src/editor/editor.cpp`
 
-Implement the four class members:
+Implement the three class members (`setup`, `draw_ui`, `shutdown`) plus constructor/destructor.
 
 **`Editor::Editor()`**
 
-```cpp
-Editor::Editor() : impl_(std::make_unique<EditorImpl>()) {}
-```
-
-- `EditorImpl` is a minimal struct defined at file scope in `editor.cpp`:
-  ```cpp
-  struct Editor::EditorImpl {
-      buddd::engine::EngineContext const* ctx = nullptr;
-  };
-  ```
-- No heavy includes in the impl struct in v1. The ctx pointer is stored as a raw non-owning pointer.
+Default constructor — `initialized_` is already `false`, pointers are already `nullptr` from the in-class initializers. Can be `= default` or empty body.
 
 **`Editor::setup(EngineContext const& ctx) -> Result<void>`**
 
-1. Store `&ctx` in `impl_->ctx`.
-2. Check `buddd::engine::engine_imgui::is_initialized()`. If `false`, return `make_error(Error::Category::InitFailed, "ImGui is not initialized. The editor requires a display with working ImGui.")`.
-3. Return success (`return {};`).
+1. Extract and store references: `engine_ = &ctx.services; window_ = &ctx.window;`
+2. Set `initialized_ = true;`
+3. Check `buddd::engine::engine_imgui::is_initialized()`. If `false`, return `make_error(Error::Category::InitFailed, "ImGui is not initialized. The editor requires a display with working ImGui.")`.
+4. Return success (`return {};`).
 
-**`Editor::draw_ui()`**
+**`Editor::draw_ui(EngineContext const& ctx)`**
 
-1. Guard: if `impl_` is null or `impl_->ctx` is null, return immediately (no-op).
+1. Guard: if `!initialized_`, return immediately (no-op).
 2. Create an ImGui dockspace covering the full viewport:
    ```cpp
    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
@@ -221,12 +213,13 @@ Editor::Editor() : impl_(std::make_unique<EditorImpl>()) {}
 
 **`Editor::shutdown()`**
 
-1. `impl_.reset();` — releases the `EditorImpl`. Safe to call multiple times (resetting a null unique_ptr is a no-op).
-2. No ImGui shutdown — that is owned by `RenderDeviceOpenGL`.
+1. `initialized_ = false;`
+2. `engine_ = nullptr; window_ = nullptr;`
+3. No ImGui shutdown — that is owned by `RenderDeviceOpenGL`.
 
 **`Editor::~Editor()`**
 
-- Default or explicitly `= default` in the `.cpp` file (where `EditorImpl` is complete). The destructor must be defined in the `.cpp` because `EditorImpl` is incomplete at the point of the header declaration.
+- Calls `shutdown()`.
 
 **Includes needed in `editor.cpp`**:
 
@@ -310,11 +303,12 @@ auto EditorApp::setup(EngineContext const& ctx) -> Result<void> {
 ```cpp
 auto EditorApp::on_render(EngineContext const& ctx) -> void {
     if (editor_) {
-        editor_->draw_ui();
+        editor_->draw_ui(ctx);
     }
 }
 ```
 
+- Passes the per-frame `ctx` to `Editor::draw_ui()` so the editor always has fresh per-frame state (delta_time, frame, etc.).
 - No-op guard for safety (if setup was never called or failed).
 
 **`EditorApp::shutdown()`**
@@ -395,61 +389,11 @@ target_link_libraries(buddd_tests PRIVATE
 
 #include <catch2/catch_test_macros.hpp>
 
-// Forward declarations needed to construct a headless EngineContext
-#include "engine_service.h"    // or relevant headers
-#include "window/window.h"
-#include "render/render_device.h"
-// ... additional includes as needed for creating test context
-
 TEST_CASE("Editor can be constructed, set up, and shut down headlessly", "[editor]") {
-    // The editor test MUST run in headless mode. It constructs a minimal
-    // EngineContext without a display.
-    //
-    // Strategy A (preferred if feasible): Create an EngineService in headless
-    //   mode and extract a valid EngineContext from it. This matches how
-    //   run_app() works and provides a real (headless) context.
-    //
-    // Strategy B (fallback): Build a minimal EngineContext struct on the
-    //   stack with dummy references if headless EngineService creation is
-    //   too heavy for this test.
-    //
-    // NOTE: The editor must NOT crash during setup or shutdown even when
-    //       no ImGui is available (headless mode). Editor::setup() will
-    //       return an error because engine_imgui::is_initialized() is false.
-    //       That is acceptable — the test verifies crash-free lifecycle,
-    //       not successful setup.
-    //
-    // [NEEDS CLARIFICATION] The exact test implementation depends on whether
-    // a headless EngineService can be cheaply created. Two approaches:
-    //
-    // Approach A (preferred):
-    //   auto engine = buddd::engine::EngineService::create(
-    //       buddd::engine::Backend::Headless,
-    //       buddd::engine::WindowConfig{"Editor Test", 128, 128});
-    //   REQUIRE(engine);
-    //   auto world = std::make_unique<buddd::engine::World>();
-    //   auto render_system = std::make_unique<buddd::engine::RenderSystem>(
-    //       engine->device(), *world);
-    //   buddd::engine::EngineContext ctx{
-    //       *engine, engine->window(), engine->device(),
-    //       *world, *render_system, 0.016f, 0};
-    //
-    // Approach B (simpler if EngineService::create doesn't work in test):
-    //   Create a struct with dangling references for the EngineContext — but
-    //   this is risky and not recommended.
-    //
-    // The implementer should choose Approach A if EngineService::create()
-    // works in headless mode without a display. If not, they must create
-    // platform/window/device individually.
-
     buddd::editor::Editor editor;
 
     // Setup will likely fail (no ImGui in headless), but must not crash.
-    // Both success and failure paths are valid outcomes for this test.
-    auto result = editor.setup(ctx);  // ctx constructed per Approach A
-
-    // Verify no crash: draw_ui is no-op (impl_ is null or ctx is null after failed setup)
-    editor.draw_ui();
+    auto result = editor.setup(ctx);  // ctx needs to be constructed (see below)
 
     // Shutdown: must be safe and idempotent
     editor.shutdown();
@@ -457,11 +401,29 @@ TEST_CASE("Editor can be constructed, set up, and shut down headlessly", "[edito
 }
 ```
 
+**Constructing the test EngineContext**: Create a headless `EngineService`:
+```cpp
+#include "engine_service.h"
+#include "scene/world.h"
+#include "render/render_system.h"
+
+auto engine = buddd::engine::EngineService::create(
+    buddd::engine::Backend::Headless,
+    buddd::engine::WindowConfig{"Editor Test", 128, 128});
+REQUIRE(engine);
+auto world = std::make_unique<buddd::engine::World>();
+auto render_system = std::make_unique<buddd::engine::RenderSystem>((*engine)->device(), *world);
+buddd::engine::EngineContext ctx{
+    **engine, (*engine)->window(), (*engine)->device(),
+    *world, *render_system, 0.016f, 0};
+```
+
 **Test requirements**:
 - Tag the test case `[editor]`.
 - The test must compile and link in both `BUDDD_HAS_DISPLAY=ON` and `BUDDD_HAS_DISPLAY=OFF` modes.
 - The test must pass in headless mode (no display required).
-- Verify crash-free constructor, `setup()`, `draw_ui()`, and `shutdown()` (including double `shutdown()`).
+- Verify crash-free constructor, `setup()`, and `shutdown()` (including double `shutdown()`).
+- `draw_ui()` is NOT called in this test (ImGui isn't initialized in headless mode).
 - The test must link `buddd_editor` (handled by `tests/CMakeLists.txt` change).
 
 ## Required tests
@@ -470,7 +432,7 @@ TEST_CASE("Editor can be constructed, set up, and shut down headlessly", "[edito
 
 | Test | File | What it verifies |
 |---|---|---|
-| Editor lifecycle | `tests/editor_tests.cpp` | `Editor` constructor, `setup()` with headless context, `draw_ui()` (no-op after failed setup), `shutdown()` (including double call). Tag: `[editor]`. Run unconditionally (no `#ifdef` guard). |
+| Editor lifecycle | `tests/editor_tests.cpp` | `Editor` constructor, `setup()` with headless context, `shutdown()` (including double call). `draw_ui()` is not called (no ImGui in headless). Tag: `[editor]`. Run unconditionally (no `#ifdef` guard). |
 | CLI unknown command | `tests/cli_app_tests.cpp` | Existing tests already verify `buddd <unknown>` produces "Unknown command:" error. No new test needed — the `edit` branch does not change the unknown-command path. |
 
 ### E2E / Integration verification
@@ -493,9 +455,9 @@ TEST_CASE("Editor can be constructed, set up, and shut down headlessly", "[edito
 | `buddd edit` with extra args | Extra args silently ignored. | `RunningArgs{}` default; no arg parsing |
 | No display server (SSH, no X11) | SDL3 init fails → platform creation fails → `run_app()` prints error and exits code 1. | Existing platform error path |
 | `Editor::setup()` called twice | Undefined behaviour (not a supported use case). No guard. | Implicit: caller responsibility |
-| `Editor::draw_ui()` before `setup()` | No-op (impl_ is valid but ctx is null). | Guard in `draw_ui()` |
-| `Editor::draw_ui()` after `shutdown()` | No-op (impl_ is null). | Guard in `draw_ui()` |
-| `Editor::shutdown()` before `setup()` | No-op (impl_ is null reset). | Safe: `reset()` on null is no-op |
+| `Editor::draw_ui()` before `setup()` | No-op (`initialized_` is false). | Guard in `draw_ui()` |
+| `Editor::draw_ui()` after `shutdown()` | No-op (`initialized_` is false). | Guard in `draw_ui()` |
+| `Editor::shutdown()` before `setup()` | No-op (`initialized_` is false). | Safe: no-op when already false |
 | `Editor::shutdown()` called twice | No-op on second call. | Safe: `reset()` on null is no-op |
 | Editor window resized | ImGui dockspace fills viewport automatically. | `ImGui::DockSpaceOverViewport()` handles this |
 | `buddd edt` (typo) | Falls through to unknown-command handler. | Existing `if (cmd != "run")` guard |
@@ -535,7 +497,7 @@ None. No schema changes, data files, or persistent state in v1.
 The implementation is complete when ALL of the following are verifiable:
 
 - [ ] **AC-001**: `src/editor/editor.h` exists and declares `class Editor` in `namespace buddd::editor` with `setup(EngineContext const&) -> Result<void>`, `draw_ui() -> void`, and `shutdown() -> void`.
-- [ ] **AC-002**: `src/editor/editor.h` uses PIMPL: private `struct EditorImpl` and `std::unique_ptr<EditorImpl>`.
+- [ ] **AC-002**: `src/editor/editor.h` stores `EngineService*` and `Window*` as private members (no PIMPL).
 - [ ] **AC-003**: `src/editor/CMakeLists.txt` defines `buddd_editor` as a STATIC library and links `buddd_engine` as PUBLIC.
 - [ ] **AC-004**: `src/editor/CMakeLists.txt` sets public include directory to `${CMAKE_CURRENT_SOURCE_DIR}`.
 - [ ] **AC-005**: `src/cmd/apps/editor_app.h` exists and declares `class EditorApp` inheriting `buddd::cmd::App`.

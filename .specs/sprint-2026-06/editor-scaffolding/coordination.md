@@ -3,8 +3,8 @@
 ## Orchestrator
 
 **Feature**: `editor-scaffolding`
-**Status**: in-progress
-**Current step**: human-validation
+**Status**: completed
+**Current step**: completed
 **Initial instructions**: Create the editor scaffolding: a reusable `buddd_editor` library with an `Editor` class skeleton, an `EditorApp` that extends the `App` lifecycle, and a `buddd edit` CLI command. The editor should open an empty ImGui-docked window. The editor library lives in `src/editor/`, uses namespace `buddd::editor`, and links `buddd_engine`. This is scaffolding only — no editor panels or features beyond the ImGui dockspace.
 **Notes**: Grill-me (Definition of Ready walkthrough) complete. All criteria satisfied. Decisions recorded in ## Decision Log below. **Update 2026-06-07**: Human clarified that ImGui init failure in the SDL3/display path should be a fatal error in the engine (`RenderDevice::create()` returns error instead of non-fatal warning). This changes ADR-026 behavior. Will require ADR amendment or new ADR. **Correction 2026-06-07**: Human corrected two points during validation: (1) `--frame`/`--capture` work incidentally through `run_app()` — NG-05 updated from "no flags" to "not editor features". (2) Escape should NOT close the editor — spec updated to remove Escape behavior. This is an editor, not a demo scene.
 
@@ -84,83 +84,90 @@ none
 
 ## Human Validation
 
-**Status**: pending
-**Approver**: <git user name>
-**Date**: <date and time>
+**Status**: approved
+**Approver**: Hilderin
+**Date**: 2026-06-07 20:40 EDT
 **Warnings**:
 <none>
-**Notes**: <any human feedback or conditions>
+**Notes**: Human approved after corrections: (1) --frame/--capture are incidental through run_app(), not editor features. (2) Escape does NOT close editor. (3) ADR-027 created for architecture rationale. Spec and contract updated to reference ADR-027.
 
 ## code-implementer
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Updated Editor class API from PIMPL pattern to direct member variables (`EngineService*`, `Window*`, `bool initialized_`). `draw_ui()` now takes `EngineContext const& ctx` (per-frame context). `setup()` stores `engine_` and `window_` references from context. `shutdown()` nulls pointers. All 426 tests pass, build succeeds, architecture boundaries clean.
 **Artifacts**:
-<none>
+- `src/editor/editor.h` — modified (removed PIMPL, added direct member vars, draw_ui takes ctx)
+- `src/editor/editor.cpp` — modified (no PIMPL, new lifecycle impl)
+- `src/cmd/apps/editor_app.cpp` — modified (pass ctx to draw_ui)
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+none
 **Blocking issues**:
-<none>
+none
 
 ## code-reviewer
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Implementation correctly updates Editor API from PIMPL to direct member variables. All 20 acceptance criteria satisfied. Build produces zero warnings from our code. All 426 tests pass (21427 assertions). Architecture boundary clean (no SDL3/OpenGL/GLM in src/editor/ or src/cmd/apps/). No blocking issues found. The EditorApp header adds explicit constructor/destructor declarations (required for unique_ptr<Editor> destructor visibility) that are not in the spec — minor documentation gap, not a blocking issue.
 **Artifacts**:
 - `.specs/sprint-2026-06/editor-scaffolding/code-review.md`
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+- EditorApp header declares `EditorApp()` and `~EditorApp() override` not shown in the spec. These are practically required for `unique_ptr<Editor>` with forward-declared Editor, but the spec doesn't document them. Consider updating spec for accuracy.
 **Blocking issues**:
 none
 
 ## adr-agent
 
 **Status**: completed
-**Summary**: Created ADR-027 documenting the editor architecture: editor as a separate static library (`buddd_editor`) in `src/editor/` with PIMPL pattern, reuse of existing App lifecycle via `EditorApp`, namespace `buddd::editor`, `buddd edit` CLI command, ImGui init failure changed to fatal in display mode (amends ADR-026), architecture boundary enforcement (no SDL3/OpenGL/GLM in src/editor/), and `--frame`/`--capture` as incidental features.
+**Summary**: Created ADR-027 documenting the editor architecture (original). **Fix round**: (1) Amended ADR-026 Decision 2 with an amendment note referencing ADR-027 — the original "Init failure is non-fatal" text is preserved with a blockquote pointing to ADR-027 Decision 5. (2) Updated ADR-027 Decision 4 from PIMPL pattern to direct member variables — changed heading, API declaration, rationale, and both Positive/Negative consequences that referenced PIMPL.
 **Artifacts**:
-- `docs/adr/ADR-027-editor-architecture.md`
-**Decisions needed**: None — all decisions are documented in ADR-027.
+- `docs/adr/ADR-026-imgui-integration.md` — amended (amendment note on Decision 2)
+- `docs/adr/ADR-027-editor-architecture.md` — modified (Decision 4: PIMPL → direct members)
+**Decisions needed**: none
 **Questions for human**: none
 **Warnings**:
-- ADR-027 amends ADR-026 Decision 2 (init failure non-fatal → fatal in display mode). ADR-026 should be updated to reflect this amendment.
 - Wiki docs (`overview.md`, `module-map.md`, `dependency-map.md`) still reference `buddd_editor` as an INTERFACE placeholder — these will be updated by the wiki-agent.
 **Blocking issues**: none
 
 ## wiki-agent
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Updated three wiki files to reflect the editor scaffolding changes: `overview.md` (CMake targets table + directory layout), `module-map.md` (replaced INTERFACE placeholder section with full Editor library documentation, added `buddd edit` subcommand, updated CLI dispatch count), and `dependency-map.md` (added `buddd_editor ──PRIVATE──► buddd_engine` edge, updated table and key constraints).
+
+**Second pass (governance-fix)**: Corrected `buddd_editor` → `buddd_engine` link type from PRIVATE to PUBLIC in the ASCII diagram, the target dependencies table, and the key constraints section, matching the actual CMakeLists.txt, spec, and contract.
 **Artifacts**:
-- <list of wiki files created or modified, or "none">
+- `docs/wiki/architecture/overview.md`
+- `docs/wiki/architecture/module-map.md`
+- `docs/wiki/architecture/dependency-map.md`
 **Changes made**:
-<none>
-**Questions for human**:
-<none>
-**Warnings**:
-<none>
-**Blocking issues**:
-<none>
+- **overview.md**: Changed `buddd_editor` from INTERFACE library to Static library in CMake targets table; updated description to reflect real editor library and `buddd_engine` link dependency. Changed directory layout comment from "Editor placeholder (INTERFACE lib)" to "Editor library (STATIC lib)".
+- **module-map.md**: Replaced placeholder section with full editor library section documenting `editor.h`, `editor.cpp`, `editor_app.h`, `editor_app.cpp` and their roles. Added `buddd edit` subcommand to CLI behavior listing. Updated CLI dispatch count from 3 to 4 commands. Referenced ADR-027.
+- **dependency-map.md**: Added `buddd_editor ──PRIVATE──► buddd_engine` edge to ASCII diagram, updated target dependencies table row, replaced "links nothing" constraint with correct "static library linking buddd_engine" statement.
+- **dependency-map.md (fix)**: Changed `buddd_editor` → `buddd_engine` link type from PRIVATE to PUBLIC in ASCII diagram, table row, and key constraints.
+**Questions for human**: none
+**Warnings**: none
+**Blocking issues**: none
 
 ## governance-reviewer
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-<none>
+Re-review confirms all 3 previously blocking issues are resolved: (1) ADR-026 Decision 2 now carries an amendment note referencing ADR-027. (2) ADR-027 Decision 4 now shows direct member variables instead of PIMPL. (3) Wiki dependency-map now correctly shows buddd_editor→buddd_engine as PUBLIC. No new blocking issues found. Two non-blocking warnings remain (overview.md key behaviors, EditorApp constructor/destructor). Governance review passes.
 **Artifacts**:
 - `.specs/sprint-2026-06/editor-scaffolding/governance-review.md`
 **Questions for human**:
-<none>
+none
 **Warnings**:
-<none>
+- Overview.md key behaviors still says "three commands (run, version, help)" — needs updating to four commands including `edit`.
+- EditorApp constructor/destructor declarations not shown in spec — minor documentation gap flagged in code review.
 **Blocking issues**:
-<none>
+none
 
 ---
 
