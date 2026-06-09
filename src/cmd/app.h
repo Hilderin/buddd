@@ -18,7 +18,7 @@ struct AppConfig {
 };
 
 /// Base class for all renderable applications.
-/// Lifecycle: config() -> setup() -> on_frame_begin() x N -> on_render() x N -> shutdown().
+/// Lifecycle: config() -> setup() -> on_frame_begin() x N -> update() x N -> on_render() x N -> shutdown().
 class App {
 public:
     virtual ~App() = default;
@@ -35,6 +35,12 @@ public:
     /// Called once per frame, before render_scene(), between begin_frame() and end_frame().
     /// Default no-op. Override for per-frame tasks like hot-reload polling or transform updates.
     virtual auto on_frame_begin(buddd::engine::EngineContext const& ctx) -> void {}
+
+    /// Called once per frame after world->update_updatables(ctx),
+    /// between on_frame_begin() and on_render(), before render_scene().
+    /// Dedicated to per-frame logic (shortcuts, state updates) separate from rendering.
+    /// Default no-op. Override to add per-frame logic.
+    virtual auto update(buddd::engine::EngineContext const& ctx) -> void {}
 
     /// Called once per frame after render_scene().
     /// Replaces render(RenderDevice&, int). Default no-op.

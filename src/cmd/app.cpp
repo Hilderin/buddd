@@ -79,6 +79,16 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
     int frame = 0;
     bool aborted_by_user = false;
 
+    // Helper: check exit request, end frame, log, and break. Returns true if exit was requested.
+    auto check_exit = [&](be::EngineContext const& ctx) -> bool {
+        if (!ctx.is_exit_requested())
+            return false;
+        aborted_by_user = true;
+        BUDDD_LOG_INFO("Scene aborted by user (frame {})", frame + 1);
+        eng.device().end_frame();
+        return true;
+    };
+
     while (true) {
         // Frame limit check
         if (has_limit && frame >= args.frame_limit)
@@ -105,29 +115,22 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
 
         // Frame start hook (hot-reload polling, transform updates, etc.)
         app.on_frame_begin(ctx);
-
-        // Exit check after on_frame_begin
-        if (ctx.is_exit_requested()) {
-            aborted_by_user = true;
-            BUDDD_LOG_INFO("Scene aborted by user (frame {})", frame + 1);
-            eng.device().end_frame();  // Must end frame before breaking
-            break;
-        }
+        if (check_exit(ctx)) break;
 
         // ── Updatable auto-dispatch ──
         world->update_updatables(ctx);
-        if (ctx.is_exit_requested()) {
-            aborted_by_user = true;
-            BUDDD_LOG_INFO("Scene aborted by user (frame {})", frame + 1);
-            eng.device().end_frame();
-            break;
-        }
+        if (check_exit(ctx)) break;
+
+        // ── App per-frame logic (shortcuts, state updates) ──
+        app.update(ctx);
+        if (check_exit(ctx)) break;
 
         // ── Automatic scene render ──
         render_system->render_scene();
 
         // ── Custom rendering (optional, default no-op) ──
         app.on_render(ctx);
+        if (check_exit(ctx)) break;
 
         // Render any active UI overlay (ImGui)
         eng.device().render_ui();

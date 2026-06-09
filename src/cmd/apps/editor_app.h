@@ -21,6 +21,8 @@ public:
 
     auto on_render(buddd::engine::EngineContext const& ctx) -> void override;
 
+    auto update(buddd::engine::EngineContext const& ctx) -> void override;
+
     auto shutdown() -> void override;
 
 private:

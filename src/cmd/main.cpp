@@ -68,7 +68,12 @@ auto main(int argc, char* argv[]) -> int {
 
     if (cmd == "edit") {
         bc::app::EditorApp editor_app;
-        return bc::run_app(editor_app, bc::RunningArgs{});
+        auto args = bc::parse_running_args(argc, argv, 2);
+        if (!args) {
+            BUDDD_LOG_ERROR("Error: {}", be::to_string(args.error()));
+            return EXIT_FAILURE;
+        }
+        return bc::run_app(editor_app, *args);
     }
 
     if (cmd != "run") {

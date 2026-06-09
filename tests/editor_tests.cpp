@@ -6,9 +6,142 @@
 #include "scene/world.h"
 #include "render/render_system.h"
 
+#include "command.h"
+#include "command_stack.h"
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <memory>
+#include <string_view>
+
+namespace ed = buddd::editor;
+
+// ── Helper: a test command that toggles a bool ──
+class ToggleCommand final : public ed::Command {
+public:
+    explicit ToggleCommand(bool* target, std::string_view name)
+        : target_(target), name_(name) {}
+
+    auto execute() -> void override { *target_ = true;  }
+    auto undo()    -> void override { *target_ = false; }
+    [[nodiscard]] auto name() const -> std::string_view override { return name_; }
+
+private:
+    bool* target_;
+    std::string_view name_;
+};
+
+TEST_CASE("CommandStack: fresh stack has no undo/redo", "[editor][command]") {
+    ed::CommandStack stack;
+    REQUIRE_FALSE(stack.can_undo());
+    REQUIRE_FALSE(stack.can_redo());
+    REQUIRE(stack.undo_name().empty());
+    REQUIRE(stack.redo_name().empty());
+    REQUIRE_FALSE(stack.undo());
+    REQUIRE_FALSE(stack.redo());
+}
+
+TEST_CASE("CommandStack: execute pushes to undo stack", "[editor][command]") {
+    ed::CommandStack stack;
+    bool flag = false;
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "Toggle"));
+    REQUIRE(flag == true);               // execute() was called
+    REQUIRE(stack.can_undo());
+    REQUIRE_FALSE(stack.can_redo());     // redo cleared
+    REQUIRE(stack.undo_name() == "Toggle");
+}
+
+TEST_CASE("CommandStack: undo then redo cycle", "[editor][command]") {
+    ed::CommandStack stack;
+    bool flag = false;
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "Toggle"));
+
+    // Undo
+    flag = false;  // reset for verification
+    REQUIRE(stack.undo());
+    REQUIRE_FALSE(flag);                  // undo() was called
+    REQUIRE_FALSE(stack.can_undo());
+    REQUIRE(stack.can_redo());
+    REQUIRE(stack.redo_name() == "Toggle");
+
+    // Redo
+    REQUIRE(stack.redo());
+    REQUIRE(flag);                        // execute() called again
+    REQUIRE(stack.can_undo());
+    REQUIRE_FALSE(stack.can_redo());
+}
+
+TEST_CASE("CommandStack: new command clears redo stack", "[editor][command]") {
+    ed::CommandStack stack;
+    bool flag1 = false, flag2 = false;
+
+    stack.execute(std::make_unique<ToggleCommand>(&flag1, "C1"));
+    [[maybe_unused]] auto _1 = stack.undo();   // redo stack has C1
+    REQUIRE(stack.can_redo());
+
+    stack.execute(std::make_unique<ToggleCommand>(&flag2, "C2"));
+    REQUIRE_FALSE(stack.can_redo());           // redo cleared
+    REQUIRE(stack.can_undo());
+    REQUIRE(stack.undo_name() == "C2");        // C2 is now on top
+}
+
+TEST_CASE("CommandStack: max_history bound enforced", "[editor][command]") {
+    ed::CommandStack stack(2);  // max 2
+    bool f1 = false, f2 = false, f3 = false;
+
+    stack.execute(std::make_unique<ToggleCommand>(&f1, "C1"));
+    stack.execute(std::make_unique<ToggleCommand>(&f2, "C2"));
+    stack.execute(std::make_unique<ToggleCommand>(&f3, "C3"));
+
+    // Stack has 2 entries: C2 (bottom) and C3 (top)
+    REQUIRE(stack.can_undo());
+    REQUIRE(stack.undo());
+    REQUIRE(stack.undo_name() == "C2");  // C2 should be on top after undoing C3
+    REQUIRE(stack.undo());
+    REQUIRE_FALSE(stack.can_undo());     // Both undone
+}
+
+TEST_CASE("CommandStack: clear empties both stacks", "[editor][command]") {
+    ed::CommandStack stack;
+    bool flag = false;
+
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "C1"));
+    REQUIRE(stack.undo());               // Now undo is empty, redo has C1
+    REQUIRE_FALSE(stack.can_undo());
+    REQUIRE(stack.can_redo());
+
+    stack.clear();
+    REQUIRE_FALSE(stack.can_undo());
+    REQUIRE_FALSE(stack.can_redo());
+}
+
+TEST_CASE("CommandStack: max_history clamped to minimum 1", "[editor][command]") {
+    ed::CommandStack stack(0);  // Should clamp to 1
+    bool f1 = false, f2 = false;
+
+    stack.execute(std::make_unique<ToggleCommand>(&f1, "C1"));
+    stack.execute(std::make_unique<ToggleCommand>(&f2, "C2"));
+
+    // With max_history=1, only C2 should remain
+    REQUIRE(stack.can_undo());
+    REQUIRE(stack.undo());
+    // After undoing C2, stack should be empty (C1 was dropped)
+    REQUIRE_FALSE(stack.can_undo());
+}
+
+TEST_CASE("CommandStack: undo_name returns empty on empty stack", "[editor][command]") {
+    ed::CommandStack stack;
+    REQUIRE(stack.undo_name().empty());
+    REQUIRE(stack.redo_name().empty());
+}
+
+TEST_CASE("CommandStack: redo_name returns command name after undo", "[editor][command]") {
+    ed::CommandStack stack;
+    bool flag = false;
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "MyCommand"));
+    REQUIRE(stack.undo());
+    REQUIRE(stack.redo_name() == "MyCommand");
+}
 
 TEST_CASE("Editor can be constructed, set up, and shut down headlessly", "[editor]") {
     // Create a headless engine

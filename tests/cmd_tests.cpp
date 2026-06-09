@@ -31,9 +31,9 @@ TEST_CASE("buddd help outputs usage text", "[cli]") {
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
     REQUIRE(res.stdout_str.find("version") != std::string::npos);
     REQUIRE(res.stdout_str.find("help") != std::string::npos);
-    // demo was removed; capture should not appear either
+    // demo was removed; capture now appears in edit command description
     REQUIRE(res.stdout_str.find("demo") == std::string::npos);
-    REQUIRE(res.stdout_str.find("capture") == std::string::npos);
+    REQUIRE(res.stdout_str.find("capture") != std::string::npos);
 }
 
 TEST_CASE("buddd unknowncommand exits with code 1", "[cli]") {

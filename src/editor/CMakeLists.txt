@@ -1,5 +1,7 @@
 add_library(buddd_editor STATIC
     editor.cpp
+    command.cpp
+    command_stack.cpp
 )
 
 target_link_libraries(buddd_editor

@@ -11,9 +11,11 @@ inline constexpr std::string_view k_usage_text =
     "\n"
     "Commands:\n"
     "  run       Run a scene or the interactive window (default)\n"
+    "  edit      Open the editor [--frame N] [--capture N:path]\n"
     "  version   Print version information\n"
     "  help      Show this help message\n"
     "\n"
+    "Flags for run/edit: --frame N, --capture N:path\n"
     "For scene usage: buddd run --help\n";
 
 class HelpCommand {

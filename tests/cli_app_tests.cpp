@@ -67,7 +67,8 @@ TEST_CASE("buddd help shows updated usage", "[cli][app]") {
     REQUIRE(res.stdout_str.find("run") != std::string::npos);
     // 'demo' was removed, should NOT appear in help text
     REQUIRE(res.stdout_str.find("demo") == std::string::npos);
-    REQUIRE(res.stdout_str.find("capture") == std::string::npos);
+    // 'capture' now appears in edit command description
+    REQUIRE(res.stdout_str.find("capture") != std::string::npos);
 }
 
 TEST_CASE("buddd run with no args runs empty window", "[cli][app]") {

@@ -29,6 +29,12 @@ auto buddd::cmd::app::EditorApp::on_render(be::EngineContext const& ctx) -> void
     }
 }
 
+auto buddd::cmd::app::EditorApp::update(be::EngineContext const& ctx) -> void {
+    if (editor_) {
+        editor_->update(ctx);
+    }
+}
+
 auto buddd::cmd::app::EditorApp::shutdown() -> void {
     if (editor_) {
         editor_->shutdown();
