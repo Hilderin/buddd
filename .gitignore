@@ -56,3 +56,7 @@ Testing/
 # Hot-reload test: these files are swapped during tests/demos
 assets/textures/hot_reload_live.png
 assets/models/hot-reload/live.yaml
+
+# Editor configs
+*.ini
+
