@@ -101,6 +101,30 @@ The GLM boundary specifically:
 - Outside `src/engine/math/`, all math operations go through the wrapper types — the `.glm()` accessor is the sole interop path.
 - Test files comparing against GLM reference output include GLM headers directly; this is acknowledged as a design tension but accepted at this stage (no automated guard).
 
+## Component Registry dependencies
+
+The `component_registry/` submodule (in `src/engine/scene/component_registry/`) introduces the following internal dependencies:
+
+- `TypeRegistry` is a static class — no instance dependency. It stores a `std::unordered_map<std::type_index, TypeEntry>` mapping C++ types to their five callbacks. It depends on `yaml-cpp` (for `YAML::Node` in encode/decode) and `error.h`/`Result<T>` (for decode/string/validate return types).
+- `ComponentRegistry` owns a `std::unordered_map<std::string, std::unique_ptr<ComponentInfoBase>>`. It depends on `ComponentInfoBase`/`ComponentInfo<T>` (which depend on `Property`, `SerializationContext`, `TypeRegistry`, and `Component`).
+- `Property` (internal) stores type-erased getter/setter callbacks and delegates serialization/validation to `TypeRegistry`. It forward-declares `YAML::Node` — no yaml-cpp include in the header (only in `.cpp` and `component_info.h`).
+- `SerializationContext` is a lightweight struct holding an `AssetManager&` reference, creating a dependency from `component_registry/` → `asset/`.
+- `serialize_component()` / `deserialize_component()` free functions produce/consume `YAML::Node` and depend on `yaml-cpp` and `ComponentInfoBase`.
+- `register_all_components()` depends on all five engine component headers (`camera_component.h`, `point_light_component.h`, `directional_light_component.h`, `spot_light_component.h`, `mesh_renderer.h`).
+
+```
+component_registry/
+├── type_registry ──► yaml-cpp, error.h
+├── property ──► TypeRegistry (static), error.h
+├── component_info ──► Property, SerializationContext, TypeRegistry, Component, yaml-cpp
+├── component_registry ──► ComponentInfoBase, error.h
+├── serialization_context ──► AssetManager (forward decl, reference)
+├── serialization ──► ComponentInfoBase, yaml-cpp (forward decl)
+└── register_all_components ──► ComponentRegistry, all component headers
+```
+
+Note: `component_info.h` includes `<yaml-cpp/yaml.h>` directly because its template function bodies require the complete `YAML::Node` type. This is a necessary deviation from the general yaml-cpp convention (headers only in `.cpp` files) for template inline definitions.
+
 ## Reference
 
 - Spec: [SPEC-001](/.specs/sprint-2026-05/project-setup/spec.md) — Assumptions A-05 through A-10

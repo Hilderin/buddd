@@ -26,6 +26,13 @@ target_include_directories(buddd_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src/engine
 )
 
+# yaml-cpp include path (fetched in src/engine/CMakeLists.txt)
+if(EXISTS "${CMAKE_BINARY_DIR}/_deps/yaml-cpp-src/include")
+    target_include_directories(buddd_tests PRIVATE
+        ${CMAKE_BINARY_DIR}/_deps/yaml-cpp-src/include
+    )
+endif()
+
 target_link_libraries(buddd_tests PRIVATE
     buddd_engine
     buddd_editor

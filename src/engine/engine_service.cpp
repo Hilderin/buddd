@@ -4,6 +4,8 @@
 #include "window/window.h"
 #include "render/render_device.h"
 #include "asset/asset_manager.h"
+#include "scene/component_registry/register_all_components.h"
+#include "scene/component_registry/component_registry.h"
 
 namespace buddd::engine {
 
@@ -44,6 +46,13 @@ auto EngineService::create(Backend backend, const WindowConfig& config)
         return make_error(asset_mgr);
     }
     engine->asset_manager_ = std::move(*asset_mgr);
+
+    // Register built-in types in TypeRegistry
+    register_builtin_types();
+
+    // Register all engine components
+    auto registry = ComponentRegistry();
+    register_all_components(registry);
 
     return engine;
 }

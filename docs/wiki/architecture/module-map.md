@@ -129,6 +129,20 @@ Component dispatch uses `dynamic_cast<T*>()` (RTTI-based) for type-safe retrieva
 | `spot_light_component.h` | `SpotLightComponent` — conical light with position, direction, and cone angles. Properties: `colour`, `intensity`, `range`, `inner_angle` (default 0.785 rad ≈ 45°), `outer_angle` (default 1.047 rad ≈ 60°). `on_attach()` no-op. |
 | `spot_light_component.cpp` | Constructor and accessor implementations. |
 
+### Component Registry submodule (`component_registry/`)
+
+All types in namespace `buddd::engine`. Provides a runtime type registry, component metadata system, property descriptors, and generic YAML serialization for components. See [SPEC component-registry](/.specs/sprint-2026-06/component-registry/spec.md) for the full specification.
+
+| File | Role |
+|---|---|
+| `type_registry.h` / `type_registry.cpp` | `TypeRegistry` — static class mapping each C++ type to YAML encode/decode, string conversion, and validation callbacks. Eight built-in types pre-registered at startup (`float`, `int32_t`, `bool`, `std::string`, `Vec3`, `Vec4`, `Quat`, `std::shared_ptr<Model>`). External code registers custom types via `TypeRegistry::register_type<T>(TypeInfo<T>)`. |
+| `property.h` / `property.cpp` | `Property` — internal type-erased descriptor wrapping a component field's name, getter/setter lambdas, serialization callbacks (delegating to TypeRegistry), and optional `PropertyFlags` constraints. `PropertyFlags` struct provides numeric min/max/step and enum choices. Not user-facing. |
+| `component_info.h` | `ComponentInfoBase` (type-erased base) and `ComponentInfo<T>` (typed template). Each component type has one info object holding its canonical string name, factory function, and property descriptors. `ComponentInfo<T>` provides three `add_property<PropType>()` overloads: (A) convention-based (deferred for v1), (B) simple lambdas, (C) context-aware lambdas. |
+| `component_registry.h` / `component_registry.cpp` | `ComponentRegistry` — maps string type names to `ComponentInfoBase*`. Key API: `register_component<T>(name)`, `create(name)`, `describe(name)`, `all_types()`. Populated once at startup via `register_all_components()`. |
+| `serialization_context.h` | `SerializationContext` — struct holding an `AssetManager&` reference, passed to all TypeRegistry callbacks and serialize/deserialize functions for context-dependent operations (e.g., asset ID resolution). |
+| `serialization.h` / `serialization.cpp` | Free functions `serialize_component()` and `deserialize_component()` — iterate a component's properties and delegate to TypeRegistry for YAML I/O. Produce YAML mapping nodes with one key per property. Unknown keys produce a warning (skipped). |
+| `register_all_components.h` / `register_all_components.cpp` | Registration entry point: `register_builtin_types()` pre-registers the eight built-in TypeRegistry types; `register_all_components(ComponentRegistry&)` registers all five engine components (`CameraComponent`, `PointLightComponent`, `DirectionalLightComponent`, `SpotLightComponent`, `MeshRenderer`) with their properties. Called from `EngineService` initialization. |
+
 ### Image submodule (`image/`)
 
 All types in namespace `buddd::engine`. Provides pixel buffer representation and PNG I/O via stb_image/stb_image_write. Depends on `error.h` for `Result<T>` types.

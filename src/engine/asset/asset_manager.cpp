@@ -102,6 +102,39 @@ auto AssetManager::set_file_watcher_enabled(bool enabled) -> void {
 }
 
 // ============================================================================
+// Asset ID resolution (for component registry TypeRegistry)
+// ============================================================================
+
+auto AssetManager::find_asset_id(const Model& model) const -> std::string {
+    for (const auto& [id, asset] : cache_) {
+        auto* model_asset = dynamic_cast<ModelAsset*>(asset.get());
+        if (!model_asset) continue;
+        if (!model_asset->root_node().model.has_value()) continue;
+        if (&model_asset->root_node().model.value() == &model) {
+            return id;
+        }
+    }
+    return {};
+}
+
+auto AssetManager::resolve_model(const std::string& id) -> Result<std::shared_ptr<Model>> {
+    auto asset_result = create<ModelAsset>(id);
+    if (!asset_result) {
+        return make_error(Error::Category::InvalidArgument,
+            "Failed to resolve model asset '" + id + "': " + asset_result.error().message);
+    }
+    auto* model_asset = asset_result->get();
+    auto& root = model_asset->root_node();
+    if (!root.model.has_value()) {
+        return make_error(Error::Category::InvalidArgument,
+            "Model asset '" + id + "' has no root model");
+    }
+    auto model = std::make_shared<Model>(std::move(*root.model));
+    root.model.reset();
+    return model;
+}
+
+// ============================================================================
 // Public introspection and reload API
 // ============================================================================
 

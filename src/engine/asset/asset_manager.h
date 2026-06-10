@@ -57,6 +57,14 @@ public:
     auto poll_file_events() -> void;
     auto set_file_watcher_enabled(bool enabled) -> void;
 
+    /// Reverse lookup: find the asset ID string for a given Model.
+    /// Returns empty string if the model is not owned by any registered ModelAsset.
+    [[nodiscard]] virtual auto find_asset_id(const Model& model) const -> std::string;
+
+    /// Resolve an asset ID string to a shared_ptr<Model>.
+    /// Returns error if the ID is not registered or the asset is not a ModelAsset.
+    [[nodiscard]] virtual auto resolve_model(const std::string& id) -> Result<std::shared_ptr<Model>>;
+
     /// Returns a const reference to the internal dependency map.
     /// Useful for diagnostics, tooling, crash reporting, and editor features.
     [[nodiscard]] auto dependency_map() const noexcept -> const DependencyMap&;
@@ -83,8 +91,10 @@ public:
     AssetManager(AssetManager&&) = delete;
     auto operator=(AssetManager&&) -> AssetManager& = delete;
 
-private:
+protected:
     AssetManager(RenderDevice& device, std::string base_path);
+
+private:
 
     // Resolve a path from YAML. If absolute, return as-is.
     // If relative, strip the base_path_/ prefix so the returned path

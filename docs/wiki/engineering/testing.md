@@ -218,6 +218,22 @@ Tags used: `[window]`, `[headless]`, `[resize]`, `[device]`, `[boundary]`.
 | `RenderDeviceHeadless::size reflects on_resize` | Create engine service at 640×480, call `window.on_resize(800,600)`, verify `device.size()=={800,600}` |
 | `WindowHeadless::on_resize with boundary values` | Create headless window at 320×240, call `on_resize(320,240)`, verify dimensions unchanged |
 
+### Component registry tests
+
+The component registry test suite (`tests/component_registry_tests.cpp`) provides 36 Catch2 v3 test cases covering all acceptance criteria AC-001 through AC-039 from [SPEC component-registry](/.specs/sprint-2026-06/component-registry/spec.md). All tests are run headlessly (display/GPU not required for core tests; YAML round-trip is in-memory only).
+
+Tag used: `[component-registry]`.
+
+| Category | Test range | Coverage |
+|---|---|---|
+| ComponentRegistry queries | 7 tests | Register and query, duplicate registration warning, create unknown returns error, describe unknown returns nullptr, all_types count, factory creates correct type |
+| TypeRegistry operations | 6 tests | Register+encode/decode round-trip, string round-trip, validation, overwrite warning, built-in float/Vec3/shared_ptr<Model>, unregistered type runtime error |
+| Property access | 4 tests | Property metadata (name, type index), get/set round-trip, validation min/max constraints |
+| Engine component properties | 5 tests | CameraComponent (4 float properties), PointLightComponent (Vec3 + 2 floats), DirectionalLightComponent (Vec3 + float), SpotLightComponent (Vec3 + 4 floats), MeshRenderer (shared_ptr<Model>) |
+| YAML round-trip | 5 tests | CameraComponent, PointLightComponent, DirectionalLightComponent, SpotLightComponent, MeshRenderer — each serializes to YAML and deserializes back |
+| YAML::convert math types | 3 tests | Vec3, Vec4, Quat — convert to YAML node and back |
+| Deserialization errors | 3 tests | Unknown key produces warning (not error), type mismatch returns error, out-of-range value returns error |
+
 ### Assertion tests
 
 The assertion system test suite (`tests/assertion_tests.cpp`) provides 12 test cases covering all acceptance criteria from SPEC-023. Tests exercise: `LogLevel::Fatal` enum ordering, `debug_break()` compilation, `format_assertion_failure_message()` formatting (with and without custom message), Fatal-level log capture via `ScopedMemoryLogger`, `BUDDD_VERIFY` expression evaluation in all builds, non-double-evaluation of `BUDDD_ASSERT` / `BUDDD_VERIFY`, release-build expression omission for `BUDDD_ASSERT`, `BUDDD_FAIL_MSG` formatting, and the fixed `"Assert"` tag convention.

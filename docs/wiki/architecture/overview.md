@@ -83,7 +83,8 @@ src/engine/
 │   ├── point_light_component.h/.cpp        # PointLightComponent — omni-directional light with position and range
 │   ├── spot_light_component.h/.cpp         # SpotLightComponent — conical light with position, direction, and cone angles
 │   ├── updatable.h                         # Updatable — pure abstract interface orthogonal to Component, `update(const EngineContext&) -> void`. See ADR-023.
-│   └── free_camera_movement.h/.cpp         # FreeCameraMovement — component inheriting Component + Updatable, free-camera controls (WASD, mouse, ESC exit)
+│   ├── free_camera_movement.h/.cpp         # FreeCameraMovement — component inheriting Component + Updatable, free-camera controls (WASD, mouse, ESC exit)
+│   └── component_registry/                 # Component registration and property system (TypeRegistry, ComponentInfo, ComponentRegistry, serialization)
 ├── platform/
 │   ├── platform.h           # Abstract Platform class, Backend enum
 │   ├── platform.cpp         # Platform::create() factory
