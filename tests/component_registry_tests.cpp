@@ -377,6 +377,7 @@ TEST_CASE("TYPE_REGISTRY_UNREGISTERED_RUNTIME_ERROR", "[component-registry]") {
 // ===========================================================================
 
 TEST_CASE("PROPERTY_METADATA", "[component-registry]") {
+    register_builtin_types();
     ComponentRegistry registry;
     auto& info = registry.register_component<TestComponent>("test");
 
@@ -392,6 +393,7 @@ TEST_CASE("PROPERTY_METADATA", "[component-registry]") {
 }
 
 TEST_CASE("PROPERTY_GET_SET", "[component-registry]") {
+    register_builtin_types();
     ComponentRegistry registry;
     auto& info = registry.register_component<TestComponent>("test");
 
@@ -421,6 +423,7 @@ TEST_CASE("PROPERTY_GET_SET", "[component-registry]") {
 }
 
 TEST_CASE("PROPERTY_VALIDATION_MIN", "[component-registry]") {
+    register_builtin_types();
     ComponentRegistry registry;
     auto& info = registry.register_component<TestComponent>("test");
 
@@ -445,6 +448,7 @@ TEST_CASE("PROPERTY_VALIDATION_MIN", "[component-registry]") {
 }
 
 TEST_CASE("PROPERTY_VALIDATION_MAX", "[component-registry]") {
+    register_builtin_types();
     ComponentRegistry registry;
     auto& info = registry.register_component<TestComponent>("test");
 
