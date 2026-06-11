@@ -179,10 +179,10 @@ none
 **Blocking issues**:
 none
 
-### Loop 5 — Vec3/Vec4/Quat array format, colour→color, u_light_colours→u_light_colors
+### Loop 5 — Vec3/Vec4/Quat array format, colour→color, u_light_colours→u_light_colors, ModelNode shared_ptr<Model>
 
 **Status**: completed
-**Summary**: Updated wiki to reflect the Vec3/Vec4/Quat YAML sequence format, colour→color rename in C++ API, and u_light_colours→u_light_colors uniform rename. Key changes: (1) business-rules.md — documented Vec3/Vec4/Quat array format with backward-compat legacy mapping table, light component `color` property, renamed `u_light_colours`→`u_light_colors` and `colour`→`color` in shader rules. (2) module-map.md — updated all light component property descriptions `colour`→`color`, `LightData.colour`→`LightData.color`, `u_light_colours`→`u_light_colors` in phong_shaders.h description. (3) data-flow.md — updated uniform names, variable names, and field references (`u_light_colours`→`u_light_colors`, `ld.colour`→`ld.color`, `diffuse_colour`→`diffuse_color`, `final_colour`→`final_color`). (4) glossary.md — updated `Float3 colour`→`Float3 color` in primitive descriptions. (5) testing.md — updated test case name `"Light colour * intensity premultiplied"`→`"Light color * intensity premultiplied"`.
+**Summary**: Updated wiki to reflect the Vec3/Vec4/Quat YAML sequence format, colour→color rename in C++ API, u_light_colours→u_light_colors uniform rename, and ModelNode `shared_ptr<Model>` change. Key changes: (1) business-rules.md — documented Vec3/Vec4/Quat array format with backward-compat legacy mapping table, light component `color` property, renamed `u_light_colours`→`u_light_colors` and `colour`→`color` in shader rules. (2) module-map.md — updated all light component property descriptions `colour`→`color`, `LightData.colour`→`LightData.color`, `u_light_colours`→`u_light_colors` in phong_shaders.h description, updated ModelNode `std::optional<Model>`→`std::shared_ptr<Model>` with sharing semantics. (3) data-flow.md — updated uniform names, variable names, and field references (`u_light_colours`→`u_light_colors`, `ld.colour`→`ld.color`, `diffuse_colour`→`diffuse_color`, `final_colour`→`final_color`). (4) glossary.md — updated `Float3 colour`→`Float3 color` in primitive descriptions, updated ModelNode `std::optional<Model>`→`std::shared_ptr<Model>` with GPU buffer sharing note. (5) testing.md — updated test case name `"Light colour * intensity premultiplied"`→`"Light color * intensity premultiplied"`.
 **Artifacts**:
 - `docs/wiki/domain/business-rules.md`
 - `docs/wiki/architecture/module-map.md`
@@ -191,9 +191,9 @@ none
 - `docs/wiki/engineering/testing.md`
 **Changes made**:
 - business-rules.md: (a) Added Vec3/Vec4/Quat YAML format table documenting sequence format and legacy mapping backward compat. (b) Added light component `color` property example. (c) Documented `parse_transform()` uses `TypeRegistry::yaml_decode<T>()`. (d) Renamed `u_light_colours[i]`→`u_light_colors[i]` and `colour`→`color` in light premultiply rule. (e) Updated `normalize_uniform_name()` example from `u_light_colours`→`u_light_colors`.
-- module-map.md: (a) `colour`→`color` in DirectionalLightComponent, PointLightComponent, SpotLightComponent property lists. (b) `LightData.colour`→`LightData.color` with updated description. (c) `u_light_colours`→`u_light_colors` in phong_shaders.h entry. (d) `Float3 colour`→`Float3 color` in primitives.h entry.
+- module-map.md: (a) `colour`→`color` in DirectionalLightComponent, PointLightComponent, SpotLightComponent property lists. (b) `LightData.colour`→`LightData.color` with updated description. (c) `u_light_colours`→`u_light_colors` in phong_shaders.h entry. (d) `Float3 colour`→`Float3 color` in primitives.h entry. (e) Updated ModelNode `std::optional<Model> model` → `std::shared_ptr<Model> model` with sharing semantics note.
 - data-flow.md: (a) `colour`→`color` in light collection comments. (b) `u_light_colours[i]`→`u_light_colors[i]` and `ld.colour`→`ld.color` in uniform setting. (c) `diffuse_colour`→`diffuse_color`, `final_colour`→`final_color` in shader fragment flow. (d) `u_light_colours[0/1]`→`u_light_colors[0/1]` in LightData array naming section.
-- glossary.md: `Float3 colour`→`Float3 color` in create_cube/create_triangle/create_quad entries.
+- glossary.md: `Float3 colour`→`Float3 color` in create_cube/create_triangle/create_quad entries. Updated ModelNode `std::optional<Model>`→`std::shared_ptr<Model>` with GPU buffer sharing note.
 - testing.md: `"Light colour * intensity premultiplied"`→`"Light color * intensity premultiplied"`.
 **Questions for human**:
 none
