@@ -109,8 +109,8 @@ auto AssetManager::find_asset_id(const Model& model) const -> std::string {
     for (const auto& [id, asset] : cache_) {
         auto* model_asset = dynamic_cast<ModelAsset*>(asset.get());
         if (!model_asset) continue;
-        if (!model_asset->root_node().model.has_value()) continue;
-        if (&model_asset->root_node().model.value() == &model) {
+        if (!model_asset->root_node().model) continue;
+        if (model_asset->root_node().model.get() == &model) {
             return id;
         }
     }
@@ -123,15 +123,28 @@ auto AssetManager::resolve_model(const std::string& id) -> Result<std::shared_pt
         return make_error(Error::Category::InvalidArgument,
             "Failed to resolve model asset '" + id + "': " + asset_result.error().message);
     }
-    auto* model_asset = asset_result->get();
-    auto& root = model_asset->root_node();
-    if (!root.model.has_value()) {
+    auto& root = (*asset_result)->root_node();
+
+    // Depth-first traversal to find first node with a model
+    // Lambda must be std::function because it captures itself recursively
+    std::function<auto(const ModelNode&)->std::shared_ptr<Model>> find_first_model;
+    find_first_model = [&](const ModelNode& node) -> std::shared_ptr<Model> {
+        if (node.model) {
+            return node.model;  // shared_ptr copy — shares GPU data
+        }
+        for (const auto& child : node.children) {
+            auto result = find_first_model(child);
+            if (result) return result;
+        }
+        return nullptr;
+    };
+
+    auto found = find_first_model(root);
+    if (!found) {
         return make_error(Error::Category::InvalidArgument,
-            "Model asset '" + id + "' has no root model");
+            "Model asset '" + id + "' has no model in any node");
     }
-    auto model = std::make_shared<Model>(std::move(*root.model));
-    root.model.reset();
-    return model;
+    return found;
 }
 
 // ============================================================================
@@ -537,7 +550,7 @@ auto AssetManager::load_model(const std::string& id, const std::string& yaml_pat
     size_t root_children_count = load_result->root.children.size();
     // Simple recursive count
     std::function<void(const ModelNode&)> count_verts = [&](const ModelNode& n) {
-        if (n.model.has_value()) {
+        if (n.model) {
             vertex_count += n.model->vertex_count();
         }
         for (const auto& c : n.children) {

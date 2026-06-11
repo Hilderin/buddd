@@ -106,7 +106,7 @@ TEST_CASE("ModelAsset stores and returns root ModelNode", "[model][headless]") {
     ModelAsset asset(std::move(root));
     REQUIRE(asset.root_node().name == "test_root");
     REQUIRE(asset.root_node().children.empty());
-    REQUIRE_FALSE(asset.root_node().model.has_value());
+    REQUIRE_FALSE(asset.root_node().model != nullptr);
 }
 
 // ===========================================================================
@@ -192,7 +192,7 @@ TEST_CASE("Load Khronos Box from YAML", "[model][headless]") {
     // Find the mesh node (may be nested: root -> transform node -> mesh node)
     const ModelNode* mesh_node = nullptr;
     std::function<void(const ModelNode&)> find_mesh = [&](const ModelNode& n) {
-        if (n.model.has_value()) {
+        if (n.model != nullptr) {
             mesh_node = &n;
             return;
         }
@@ -202,7 +202,7 @@ TEST_CASE("Load Khronos Box from YAML", "[model][headless]") {
     };
     find_mesh(root);
     REQUIRE(mesh_node != nullptr);
-    REQUIRE(mesh_node->model.has_value());
+    REQUIRE(mesh_node->model != nullptr);
 
     auto& model = *mesh_node->model;
     REQUIRE(model.vertex_count() == 24);
@@ -245,7 +245,7 @@ TEST_CASE("Load DamagedHelmet from YAML", "[model][headless]") {
     // Should have at least one mesh node
     bool found_mesh = false;
     std::function<void(const ModelNode&)> find_mesh = [&](const ModelNode& n) -> void {
-        if (n.model.has_value()) {
+        if (n.model != nullptr) {
             found_mesh = true;
             // Verify materials
             for (const auto& mat : n.model->materials()) {
@@ -299,7 +299,7 @@ TEST_CASE("Each ModelNode with a model has valid submeshes and materials",
     REQUIRE(result.has_value());
 
     std::function<void(const ModelNode&)> check_node = [&](const ModelNode& n) {
-        if (n.model.has_value()) {
+        if (n.model != nullptr) {
             REQUIRE(n.model->submeshes().size() > 0);
             REQUIRE(n.model->materials().size() > 0);
         }
@@ -473,7 +473,7 @@ TEST_CASE("add_model_to_world returns Entity_none for nodes without mesh",
     World world;
     ModelNode empty_node;
     empty_node.name = "empty";
-    REQUIRE_FALSE(empty_node.model.has_value());
+    REQUIRE_FALSE(empty_node.model != nullptr);
 
     auto entity = add_model_to_world(world, empty_node);
     REQUIRE(entity.id() == EntityId::none());
@@ -555,7 +555,7 @@ TEST_CASE("Missing texture URI — magenta fallback used", "[model][headless]") 
     // Find the mesh node
     const ModelNode* mesh_node = nullptr;
     std::function<void(const ModelNode&)> find_mesh = [&](const ModelNode& n) {
-        if (n.model.has_value()) {
+        if (n.model != nullptr) {
             mesh_node = &n;
             return;
         }
@@ -565,7 +565,7 @@ TEST_CASE("Missing texture URI — magenta fallback used", "[model][headless]") 
     };
     find_mesh(root);
     REQUIRE(mesh_node != nullptr);
-    REQUIRE(mesh_node->model.has_value());
+    REQUIRE(mesh_node->model != nullptr);
 
     // Get the material and check texture is magenta
     REQUIRE(mesh_node->model->materials().size() >= 1);
@@ -611,7 +611,7 @@ TEST_CASE("settings.scale 2.0 doubles vertex positions", "[model][headless]") {
     auto find_first_mesh = [](const ModelNode& root) -> const Model* {
         const ModelNode* mesh_node = nullptr;
         std::function<void(const ModelNode&)> find = [&](const ModelNode& n) {
-            if (n.model.has_value()) { mesh_node = &n; return; }
+            if (n.model != nullptr) { mesh_node = &n; return; }
             for (const auto& c : n.children) { find(c); }
         };
         find(root);
@@ -674,7 +674,7 @@ TEST_CASE("Transform-only node model is nullopt children preserved", "[model][he
 
     // Root's child is node 0 (transform-only, no mesh)
     const auto& transform_node = root.children[0];
-    REQUIRE_FALSE(transform_node.model.has_value());
+    REQUIRE_FALSE(transform_node.model != nullptr);
     REQUIRE(transform_node.translation.x == Approx(2.0f));
     REQUIRE(transform_node.translation.y == Approx(3.0f));
     REQUIRE(transform_node.translation.z == Approx(4.0f));
@@ -682,7 +682,7 @@ TEST_CASE("Transform-only node model is nullopt children preserved", "[model][he
     // Transform node should have one child (node 1 with mesh)
     REQUIRE(transform_node.children.size() == 1);
     const auto& mesh_node = transform_node.children[0];
-    REQUIRE(mesh_node.model.has_value());
+    REQUIRE(mesh_node.model != nullptr);
     REQUIRE(mesh_node.model->vertex_count() == 3);
 }
 
@@ -704,7 +704,7 @@ TEST_CASE("Unsupported primitive mode POINTS skipped with warning", "[model][hea
     // Find the mesh node — it should have no model (POINTS were skipped)
     bool found_mesh = false;
     std::function<void(const ModelNode&)> check = [&](const ModelNode& n) {
-        if (n.model.has_value()) {
+        if (n.model != nullptr) {
             found_mesh = true;
         }
         for (const auto& c : n.children) {
@@ -769,12 +769,12 @@ TEST_CASE("COLOR_0 VEC3 expanded to VEC4 with alpha 1.0", "[model][headless]") {
     auto& root = (*result)->root_node();
     const ModelNode* mesh_node = nullptr;
     std::function<void(const ModelNode&)> find_mesh = [&](const ModelNode& n) {
-        if (n.model.has_value()) { mesh_node = &n; return; }
+        if (n.model != nullptr) { mesh_node = &n; return; }
         for (const auto& c : n.children) { find_mesh(c); }
     };
     find_mesh(root);
     REQUIRE(mesh_node != nullptr);
-    REQUIRE(mesh_node->model.has_value());
+    REQUIRE(mesh_node->model != nullptr);
 
     auto& vb = mesh_node->model->vertices();
     auto* hb = dynamic_cast<const VertexBufferHeadless*>(&vb);
@@ -814,12 +814,12 @@ TEST_CASE("Missing NORMAL defaults to 0 0 1", "[model][headless]") {
     auto& root = (*result)->root_node();
     const ModelNode* mesh_node = nullptr;
     std::function<void(const ModelNode&)> find_mesh = [&](const ModelNode& n) {
-        if (n.model.has_value()) { mesh_node = &n; return; }
+        if (n.model != nullptr) { mesh_node = &n; return; }
         for (const auto& c : n.children) { find_mesh(c); }
     };
     find_mesh(root);
     REQUIRE(mesh_node != nullptr);
-    REQUIRE(mesh_node->model.has_value());
+    REQUIRE(mesh_node->model != nullptr);
 
     auto& vb = mesh_node->model->vertices();
     auto* hb = dynamic_cast<const VertexBufferHeadless*>(&vb);
@@ -855,12 +855,12 @@ TEST_CASE("Uint32 indices supported", "[model][headless]") {
     auto& root = (*result)->root_node();
     const ModelNode* mesh_node = nullptr;
     std::function<void(const ModelNode&)> find_mesh = [&](const ModelNode& n) {
-        if (n.model.has_value()) { mesh_node = &n; return; }
+        if (n.model != nullptr) { mesh_node = &n; return; }
         for (const auto& c : n.children) { find_mesh(c); }
     };
     find_mesh(root);
     REQUIRE(mesh_node != nullptr);
-    REQUIRE(mesh_node->model.has_value());
+    REQUIRE(mesh_node->model != nullptr);
 
     auto& model = *mesh_node->model;
     REQUIRE(model.vertex_count() == 3);

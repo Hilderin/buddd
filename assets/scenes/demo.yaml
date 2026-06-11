@@ -1,0 +1,29 @@
+type: Scene
+version: 1
+entities:
+  - prefab: prefabs/free_camera
+    name: main_camera
+    transform:
+      position: [-3, -2, 2]
+
+  - name: box_via_directive
+    model: models/box/Box
+    transform:
+      position: [-2, 0, 0]
+
+  - name: box_via_component
+    components:
+      - type: mesh_renderer
+        properties:
+          model: models/box/Box
+    transform:
+      position: [2, 0, 0]
+
+  - name: light
+    components:
+      - type: directional_light
+        properties:
+          color: [1.0, 1.0, 1.0]
+          intensity: 1.0
+    transform:
+      rotation: [0.707, -0.707, 0.0, 0.0]

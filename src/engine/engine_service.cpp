@@ -51,8 +51,8 @@ auto EngineService::create(Backend backend, const WindowConfig& config)
     register_builtin_types();
 
     // Register all engine components
-    auto registry = ComponentRegistry();
-    register_all_components(registry);
+    engine->registry_ = std::make_unique<ComponentRegistry>();
+    register_all_components(*engine->registry_);
 
     return engine;
 }
@@ -75,6 +75,11 @@ auto EngineService::device() noexcept -> RenderDevice& {
 auto EngineService::assets() noexcept -> AssetManager& {
     BUDDD_ASSERT(asset_manager_ != nullptr);
     return *asset_manager_;
+}
+
+auto EngineService::registry() noexcept -> ComponentRegistry& {
+    BUDDD_ASSERT(registry_ != nullptr);
+    return *registry_;
 }
 
 } // namespace buddd::engine

@@ -9,6 +9,14 @@ Entity::Entity(World& world, EntityId id) noexcept
     , id_(id)
 {}
 
+auto Entity::name() const noexcept -> const std::string& {
+    return world_->get_name(id_);
+}
+
+auto Entity::set_name(const std::string& name) -> void {
+    world_->set_name(id_, name);
+}
+
 void Entity::destroy() {
     world_->destroy_entity(*this);
 }

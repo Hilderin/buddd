@@ -30,7 +30,7 @@ static auto build_known_uniform_names() -> std::vector<std::string> {
     // Fragment shader
     names.emplace_back("u_light_count");
     names.emplace_back("u_light_positions_or_dir");
-    names.emplace_back("u_light_colours");
+    names.emplace_back("u_light_colors");
     names.emplace_back("u_light_ranges");
     names.emplace_back("u_light_spot_directions");
     names.emplace_back("u_light_inner_cones");
@@ -178,7 +178,7 @@ auto PhongMaterial::set_lights(const detail::LightData* lights, int count) -> vo
         std::string idx = "[" + std::to_string(i) + "]";
 
         (void)impl_->inner->set_uniform("u_light_positions_or_dir" + idx, ld.position_or_dir);
-        (void)impl_->inner->set_uniform("u_light_colours" + idx, ld.colour);
+        (void)impl_->inner->set_uniform("u_light_colors" + idx, ld.color);
         (void)impl_->inner->set_uniform("u_light_ranges" + idx, ld.range);
         (void)impl_->inner->set_uniform("u_light_spot_directions" + idx, ld.spot_direction);
         (void)impl_->inner->set_uniform("u_light_inner_cones" + idx, ld.inner_cone_cos);

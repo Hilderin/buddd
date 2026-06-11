@@ -16,6 +16,10 @@
 | `buddd run phong` | `PhongApp` | Interactive, ESC to exit |
 | `buddd run asset-demo` | `AssetDemoApp` | Runs until window close (120 frames) |
 | `buddd run hot-reload` | `HotReloadApp` | Runs until window close (60 frames), swaps texture at frame 30 |
+| `buddd run <path.yaml>` | `SceneApp` | Loads scene from YAML file, interactive via FreeCameraMovement |
+| `buddd run <path.yaml> --frame N` | `SceneApp` | Loads scene from YAML, limit to N frames |
+| `buddd run <path.yaml> --capture N:path` | `SceneApp` | Loads scene from YAML, capture frame N |
+| `buddd run <nonexistent>.yaml` | — | Error "file not found" + exit 1 |
 | `buddd run <scene> --frame N` | (same App) | Limit to N frames |
 | `buddd run <scene> --capture N:path` | (same App) | Capture frame N to path |
 | `buddd version` | — | Prints version to stdout |
@@ -40,6 +44,95 @@
 | gltf-helmet | Loads DamagedHelmet model with free-camera controls (FreeCameraMovement via Updatable system) | Interactive, ESC to exit |
 | hot-reload-gltf | Hot-reload verification for glTF models: swaps model file at frame N | Runs until window close (60+ frames) |
 | multi-material | Cube with 3 submeshes (red/green/blue face pairs) using Model::create_indexed() | Runs until window close (120 frames) |
+| `<path.yaml>` | Loads a scene from a YAML file — see Scene YAML Loader format below | Interactive, ESC to exit via FreeCameraMovement |
+
+### YAML scene file auto-detection
+
+When the argument after `run` ends with `.yaml` or `.yml` (case-insensitive), the CLI routes to `SceneApp` instead of the named-scene dispatch. This check is the **first** branch in the dispatch chain — it takes priority over all named scenes.
+
+- If the file ends with `.yaml`/`.yml` and exists → `SceneApp` is created and the YAML file is loaded.
+- If the file ends with `.yaml`/`.yml` but does not exist → error printed to stderr, exit code 1.
+- If the file does not end with `.yaml`/`.yml` → falls through to the existing named-scene dispatch (which prints "Unknown scene" for unrecognised names).
+
+### Scene YAML format
+
+**Scene file** (`type: Scene`, `version: 1`):
+```yaml
+type: Scene
+version: 1
+entities:
+  - name: my_entity
+    transform:
+      position: [x, y, z]
+      rotation: [w, x, y, z]    # optional, default [1,0,0,0]
+      scale: [x, y, z]          # optional, default [1,1,1]
+    components:
+      - type: component_name
+        properties:
+          prop_name: value
+    children:
+      - name: child_entity
+        ...
+```
+
+**Vec3/Vec4/Quat YAML format**: Vector and quaternion types use YAML **sequence/array** format as the primary representation:
+| Type | Format | Example | Legacy mapping |
+|---|---|---|---|
+| `Vec3` | `[x, y, z]` | `position: [1.0, 2.0, 3.0]` | `{x: 1.0, y: 2.0, z: 3.0}` |
+| `Vec4` | `[x, y, z, w]` | `color: [1.0, 0.5, 0.0, 1.0]` | `{x: 1.0, y: 0.5, z: 0.0, w: 1.0}` |
+| `Quat` | `[w, x, y, z]` | `rotation: [0.707, 0.0, 0.707, 0.0]` | `{x: 0.0, y: 0.707, z: 0.0, w: 0.707}` |
+
+The legacy YAML mapping format (`{x: , y: , z: }`) is still supported for backward compatibility. The sequence format is preferred for new files. Transform parsing (`position`, `rotation`, `scale` fields) uses `TypeRegistry::yaml_decode<T>()` — the same machinery used for component property deserialization.
+
+**Light component `color` property**: Light component properties use `color` (American spelling), not `colour`. Example:
+```yaml
+  - name: light
+    components:
+      - type: directional_light
+        properties:
+          color: [1.0, 1.0, 0.9]   # Vec3 RGB
+          intensity: 1.0
+```
+
+**Prefab file** (`type: Prefab`, `version: 1`):
+```yaml
+type: Prefab
+version: 1
+entities:
+  - name: root
+    components: ...
+    transform: ...
+```
+
+Prefabs are reusable entity templates referenced via `prefab:` in scene files:
+```yaml
+  - prefab: prefabs/free_camera
+    name: main_camera
+    transform:
+      position: [0, 0, 0]
+```
+
+### Transform composition (prefab + instance)
+
+When `prefab:` and `transform:` are both present on an entity, the prefab root entity's transform is composed with the instance transform:
+- `position` = prefab_position + instance_position (additive)
+- `scale` = prefab_scale * instance_scale (multiplicative, element-wise)
+- `rotation` = prefab_rotation * instance_rotation (quaternion multiplication)
+
+All three fields are optional — missing fields use defaults:
+| Field | Default |
+|---|---|
+| `position` | `[0, 0, 0]` |
+| `rotation` | `[1, 0, 0, 0]` (identity quaternion, w, x, y, z) |
+| `scale` | `[1, 1, 1]` |
+
+### Entity naming conventions
+
+- Every entity in the `World` has a `std::string name_` field, accessible via `Entity::name()` / `Entity::set_name()`.
+- Default name is empty string `""`.
+- Names are set from YAML scene files via the `name:` property.
+- No validation is performed on names — special characters are stored as-is.
+- Entity names serve identification and debugging purposes; they are not used for entity lookup.
 
 ### Flags for `buddd run`
 
@@ -246,7 +339,7 @@ A hard architecture boundary is enforced: **no code outside `src/engine/`** may 
 
 - **Three distinct types**: `DirectionalLightComponent` (infinite, direction from entity rotation), `PointLightComponent` (omni-directional, position from entity translation, range-limited), `SpotLightComponent` (conical, direction from rotation, inner/outer cone angles).
 - **Light lifecycle**: Light components do NOT register with `World` — they are collected fresh each frame via `World::each<T>()` during `RenderSystem::render()`. Entity destruction is reflected on the next render call.
-- **Colour * intensity pre-multiplied**: The GPU uniform `u_light_colours[i]` stores `(colour.r * intensity, colour.g * intensity, colour.b * intensity, 1.0)`. Zero intensity → black contribution.
+- **Color * intensity pre-multiplied**: The GPU uniform `u_light_colors[i]` stores `(color.r * intensity, color.g * intensity, color.b * intensity, 1.0)`. Zero intensity → black contribution.
 
 ### Light count limit
 
@@ -286,7 +379,7 @@ All three light components follow the `CameraComponent` pattern (as of ADR-024):
 ### glsl_util rules
 
 - `extract_uniform_names()` parses GLSL source for `uniform` declarations, handling: `uniform type name;`, `uniform type name[N];`, `uniform type name = default;`, `uniform type name[N] = default;`, and `layout(...) uniform type name;`.
-- `normalize_uniform_name()` strips `[N]` array subscript suffixes (e.g., `"u_light_colours[3]"` → `"u_light_colours"`).
+- `normalize_uniform_name()` strips `[N]` array subscript suffixes (e.g., `"u_light_colors[3]"` → `"u_light_colors"`).
 - Both functions are shared by `RenderDeviceOpenGL` and `RenderDeviceHeadless` — replacing previously duplicated code.
 
 ## Asset Manager Rules (SPEC-019)

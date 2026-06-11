@@ -36,16 +36,14 @@ inline auto add_model_to_world_impl(
 {
     Entity entity = Entity::none();
 
-    if (node.model.has_value()) {
+    if (node.model) {
         entity = world.add_entity();
         entity.transform().position = node.translation;
         entity.transform().rotation = node.rotation;
         entity.transform().scale = node.scale;
 
-        // Create a shared_ptr<Model> by moving the Model out of the node.
-        // Note: this consumes the Model from the node (Model is move-only).
-        auto model_ptr = std::make_shared<Model>(std::move(*node.model));
-        entity.add_component<MeshRenderer>(std::move(model_ptr));
+        // Share the Model via shared_ptr (model data is shared between instances).
+        entity.add_component<MeshRenderer>(node.model);
 
         if (parent.id() != EntityId::none()) {
             entity.reparent(parent);

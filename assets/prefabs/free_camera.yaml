@@ -1,0 +1,17 @@
+type: Prefab
+version: 1
+entities:
+  - name: free_camera
+    components:
+      - type: camera
+        properties:
+          fov_y: 1.047
+          aspect: 1.333
+          near: 0.1
+          far: 100.0
+      - type: free_camera_movement
+        properties:
+          move_speed: 5.0
+          mouse_sensitivity: 0.002
+    transform:
+      position: [3.0, 2.0, 3.0]

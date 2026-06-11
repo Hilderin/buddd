@@ -2,6 +2,7 @@
 #include "engine_context.h"
 #include "engine_service.h"
 #include "log/log.h"
+#include "scene/world.h"
 #include "math/math.h"
 #include "math/quat.h"
 #include "math/vec3.h"

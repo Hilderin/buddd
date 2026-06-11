@@ -40,7 +40,7 @@ out vec4 frag_color;
 
 uniform int      u_light_count;
 uniform vec4     u_light_positions_or_dir[MAX_LIGHTS];
-uniform vec4     u_light_colours[MAX_LIGHTS];
+uniform vec4     u_light_colors[MAX_LIGHTS];
 uniform float    u_light_ranges[MAX_LIGHTS];
 uniform vec4     u_light_spot_directions[MAX_LIGHTS];
 uniform float    u_light_inner_cones[MAX_LIGHTS];
@@ -72,7 +72,7 @@ void main() {
 
     for (int i = 0; i < u_light_count; ++i) {
         vec4 pos_or_dir = u_light_positions_or_dir[i];
-        vec3 light_col  = u_light_colours[i].rgb;
+        vec3 light_col  = u_light_colors[i].rgb;
         float range     = u_light_ranges[i];
         vec3 L;
         float attenuation = 1.0;

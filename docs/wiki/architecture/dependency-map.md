@@ -101,6 +101,23 @@ The GLM boundary specifically:
 - Outside `src/engine/math/`, all math operations go through the wrapper types — the `.glm()` accessor is the sole interop path.
 - Test files comparing against GLM reference output include GLM headers directly; this is acknowledged as a design tension but accepted at this stage (no automated guard).
 
+## SceneLoader dependencies
+
+The `SceneLoader` class (in `src/engine/scene/scene_loader.h/.cpp`) introduces the following internal dependencies:
+
+- `SceneLoader` stores a `World&` reference — it depends on `scene/` (World, Entity, Transform, Component).
+- `SceneLoader` stores a `ComponentRegistry&` reference — it depends on `component_registry/` (for `registry_.describe()`, `registry_.create()`, and `deserialize_component()`).
+- `SceneLoader` stores an `AssetManager&` reference — it depends on `asset/` (for `assets_.base_path()` and constructing `SerializationContext`).
+- `SceneLoader` uses yaml-cpp directly (`YAML::LoadFile()`, `YAML::Node`) — inherits the existing `buddd_engine` dependency on yaml-cpp (already fetched and available via component_registry).
+
+```
+scene_loader ──► scene/ (World, Entity, Transform, Component)
+scene_loader ──► component_registry/ (ComponentRegistry, deserialize_component, SerializationContext)
+scene_loader ──► asset/ (AssetManager::base_path)
+```
+
+The `SceneLoader` is auto-globbed by the existing `buddd_engine` CMakeLists.txt — no new CMake target or dependency is needed.
+
 ## Component Registry dependencies
 
 The `component_registry/` submodule (in `src/engine/scene/component_registry/`) introduces the following internal dependencies:

@@ -2,15 +2,15 @@
 
 namespace buddd::engine {
 
-PointLightComponent::PointLightComponent(math::Vec3 colour, float intensity, float range)
-    : colour_(colour), intensity_(intensity), range_(range) {}
+PointLightComponent::PointLightComponent(math::Vec3 color, float intensity, float range)
+    : color_(color), intensity_(intensity), range_(range) {}
 
-auto PointLightComponent::colour() noexcept -> math::Vec3& {
-    return colour_;
+auto PointLightComponent::color() noexcept -> math::Vec3& {
+    return color_;
 }
 
-auto PointLightComponent::colour() const noexcept -> const math::Vec3& {
-    return colour_;
+auto PointLightComponent::color() const noexcept -> const math::Vec3& {
+    return color_;
 }
 
 auto PointLightComponent::intensity() noexcept -> float& {

@@ -14,6 +14,7 @@
 #include "apps/gltf_helmet_app.h"
 #include "apps/editor_app.h"
 #include "apps/run_app.h"
+#include "apps/scene_app.h"
 #include "apps/textured_cube_app.h"
 #include "apps/triangle_app.h"
 #include "apps/multi_material_app.h"
@@ -23,6 +24,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -93,7 +95,27 @@ auto main(int argc, char* argv[]) -> int {
         std::string_view scene{argv[2]};
         flags_start = 3;
 
-        if (scene == "triangle")
+        // Priority 1: YAML scene file auto-detection (check BEFORE named scenes)
+        auto is_yaml_file = [](std::string_view path) -> bool {
+            auto pos = path.rfind('.');
+            if (pos == std::string_view::npos || pos == path.size() - 1)
+                return false;
+            std::string_view ext = path.substr(pos + 1);
+            std::string lower_ext;
+            for (auto c : ext)
+                lower_ext.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+            return (lower_ext == "yaml" || lower_ext == "yml");
+        };
+
+        if (is_yaml_file(scene)) {
+            if (std::filesystem::exists(scene)) {
+                app = std::make_unique<bc::app::SceneApp>(std::string(scene));
+            } else {
+                BUDDD_LOG_ERROR("Scene file not found: '{}'", argv[2]);
+                return EXIT_FAILURE;
+            }
+        }
+        else if (scene == "triangle")
             app = std::make_unique<bc::app::TriangleApp>();
         else if (scene == "cube")
             app = std::make_unique<bc::app::CubeApp>();

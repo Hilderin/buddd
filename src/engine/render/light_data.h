@@ -12,7 +12,7 @@ constexpr int k_max_lights = 8;
 /// Each field maps to the corresponding GLSL flat array.
 struct LightData {
     math::Vec4 position_or_dir; // .xyz = position/direction, .w = type: 0=directional, 1=point, 2=spot
-    math::Vec4 colour;          // .rgb = colour * intensity pre-multiplied, .a = unused
+    math::Vec4 color;          // .rgb = color * intensity pre-multiplied, .a = unused
     float range;                // Attenuation range (ignored for directional)
     math::Vec4 spot_direction;  // For spot lights: normalized direction (.w unused)
     float inner_cone_cos;       // Cosine of inner half-angle (spot only)

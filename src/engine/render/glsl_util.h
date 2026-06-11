@@ -17,7 +17,7 @@ namespace buddd::engine::detail {
 auto extract_uniform_names(std::string_view glsl_source) -> std::unordered_set<std::string>;
 
 /// Strips trailing `[N]` array subscript suffix.
-/// E.g., "u_light_colours[3]" → "u_light_colours".
+/// E.g., "u_light_colors[3]" → "u_light_colors".
 /// Returns name unchanged if no array subscript suffix.
 auto normalize_uniform_name(std::string_view name) -> std::string;
 

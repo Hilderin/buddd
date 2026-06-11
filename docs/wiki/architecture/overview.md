@@ -69,7 +69,7 @@ src/engine/
 │   ├── vec4.h               # Vec4 — 4D vector wrapper around glm::vec4
 │   ├── mat4.h               # Mat4 — 4×4 column-major matrix wrapper around glm::mat4
 │   └── quat.h               # Quat — quaternion wrapper around glm::quat
-├── scene/                    # Scene graph (World, Entity, Transform, Component, CameraComponent)
+├── scene/                    # Scene graph (World, Entity, Transform, Component, CameraComponent, SceneLoader)
 │   ├── entity_id.h           # EntityId — 8-byte handle (index + generation)
 │   ├── transform.h           # Transform — position/rotation/scale with matrix computation
 │   ├── component.h           # Component — polymorphic base class with entity awareness (world_, entity_id_, entity(), on_attach())
@@ -84,6 +84,7 @@ src/engine/
 │   ├── spot_light_component.h/.cpp         # SpotLightComponent — conical light with position, direction, and cone angles
 │   ├── updatable.h                         # Updatable — pure abstract interface orthogonal to Component, `update(const EngineContext&) -> void`. See ADR-023.
 │   ├── free_camera_movement.h/.cpp         # FreeCameraMovement — component inheriting Component + Updatable, free-camera controls (WASD, mouse, ESC exit)
+│   ├── scene_loader.h/.cpp                 # SceneLoader — parses YAML scene/prefab files and populates a World with entities, transforms, and deserialized components
 │   └── component_registry/                 # Component registration and property system (TypeRegistry, ComponentInfo, ComponentRegistry, serialization)
 ├── platform/
 │   ├── platform.h           # Abstract Platform class, Backend enum
@@ -176,7 +177,9 @@ src/engine/
 - `./build/debug/src/cmd/buddd run cube --frame 60` — runs exactly 60 frames of the cube, then exits automatically.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd run imgui-demo` — opens a 1280×720 window (title "Buddd Engine — ImGui Demo"), runs for 300 frames showing `ImGui::ShowDemoWindow()` and a custom "ImGui Demo" panel with FPS counter on a cleared background. Supports `--capture` for CI verification.
-- `./build/debug/src/cmd/buddd help` — prints usage information listing three commands (`run`, `version`, `help`)
+- `./build/debug/src/cmd/buddd run assets/scenes/demo.yaml` — YAML auto-detection branches to `SceneApp`. Loads the scene YAML file, creates entities (free camera prefab, Box model, directional light) in the World, and renders the scene. `--frame N` and `--capture N:path` work via `run_app()` infrastructure.
+- `./build/debug/src/cmd/buddd run nonexistent.yaml` — if the argument ends with `.yaml`/`.yml` (case-insensitive) but the file does not exist, prints error and exits with code 1.
+- `./build/debug/src/cmd/buddd help` — prints usage information listing four commands (`run`, `edit`, `version`, `help`)
 - `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
 - `buddd demo`, `buddd capture`, `buddd test` are **removed** — they produce an unknown command error
 - Old `--test` and `--version` flags are removed (produce an unknown command error)
@@ -225,6 +228,9 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - Entity destruction is deferred: `entity.destroy()` marks for destruction; `world.flush_destroyed()` reclaims resources in reverse depth order.
 - The scene graph uses per-entity `std::vector<std::unique_ptr<Component>>` storage (no ECS flat arrays in v1). The storage strategy is hidden behind the `World` implementation for forward compatibility.
 - Scene graph types are pure memory management and spatial computation — no display, GPU, or external dependencies beyond math wrappers.
+- **New**: `World::add_component_raw(EntityId, unique_ptr<Component>)` provides runtime-type component injection for deserialization (used by `SceneLoader`). Sets `world_`/`entity_id_`, stores in node, calls `on_attach()`, and auto-registers `Updatable` subclasses — same lifecycle as the template-based `add_component<T>()`.
+- **New**: `World::entity_count() -> size_t` returns the number of currently alive (not pending destroy) entities.
+- **New**: `Entity::name()` / `Entity::set_name()` allow reading and writing a per-entity `std::string` name. Default is empty string. Names are set from YAML scene files via the `name:` property.
 
 ## Reference
 

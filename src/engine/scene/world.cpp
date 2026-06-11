@@ -1,6 +1,9 @@
 #include "scene/world.h"
+#include "debug/assert.h"
 #include "scene/camera_component.h"
 #include "scene/updatable.h"
+
+#include <string>
 
 #include <algorithm>
 
@@ -156,6 +159,41 @@ auto World::get_transform(EntityId id) const noexcept -> const Transform& {
 }
 
 // ---------------------------------------------------------------------------
+// Entity name
+// ---------------------------------------------------------------------------
+auto World::get_name(EntityId id) const noexcept -> const std::string& {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr);
+    return node->name_;
+}
+
+auto World::set_name(EntityId id, const std::string& name) -> void {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr);
+    node->name_ = name;
+}
+
+// ---------------------------------------------------------------------------
+// Raw component injection
+// ---------------------------------------------------------------------------
+auto World::add_component_raw(EntityId id, std::unique_ptr<Component> component) -> Component& {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr && !node->pending_destroy_);
+    Component* ptr = component.get();
+    ptr->world_ = this;
+    ptr->entity_id_ = id;
+    node->components_.push_back(std::move(component));
+    ptr->on_attach();
+
+    // Auto-register Updatable components
+    if (auto* upd = dynamic_cast<Updatable*>(ptr)) {
+        updatables_.push_back(upd);
+    }
+
+    return *ptr;
+}
+
+// ---------------------------------------------------------------------------
 // Hierarchy
 // ---------------------------------------------------------------------------
 auto World::create_child(EntityId parent_id) -> Entity {
@@ -283,6 +321,14 @@ void World::update_updatables(const EngineContext& ctx) {
     for (auto* upd : updatables_) {
         upd->update(ctx);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Entity introspection
+// ---------------------------------------------------------------------------
+auto World::entity_count() const noexcept -> size_t {
+    return static_cast<size_t>(std::count_if(slots_.begin(), slots_.end(),
+        [](const Slot& s) { return s.alive; }));
 }
 
 // ---------------------------------------------------------------------------

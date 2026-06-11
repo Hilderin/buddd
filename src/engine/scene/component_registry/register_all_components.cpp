@@ -4,6 +4,7 @@
 #include "scene/component_registry/property.h"
 #include "scene/component_registry/serialization_context.h"
 #include "scene/camera_component.h"
+#include "scene/free_camera_movement.h"
 #include "scene/point_light_component.h"
 #include "scene/directional_light_component.h"
 #include "scene/spot_light_component.h"
@@ -326,9 +327,9 @@ void register_all_components(ComponentRegistry& registry) {
     {
         auto& info = registry.register_component<PointLightComponent>("point_light");
 
-        info.add_property<math::Vec3>("colour",
-            [](const PointLightComponent& c) -> math::Vec3 { return c.colour(); },
-            [](PointLightComponent& c, const math::Vec3& v) -> Result<void> { c.colour() = v; return {}; }
+        info.add_property<math::Vec3>("color",
+            [](const PointLightComponent& c) -> math::Vec3 { return c.color(); },
+            [](PointLightComponent& c, const math::Vec3& v) -> Result<void> { c.color() = v; return {}; }
         );
 
         info.add_property<float>("intensity",
@@ -348,9 +349,9 @@ void register_all_components(ComponentRegistry& registry) {
     {
         auto& info = registry.register_component<DirectionalLightComponent>("directional_light");
 
-        info.add_property<math::Vec3>("colour",
-            [](const DirectionalLightComponent& c) -> math::Vec3 { return c.colour(); },
-            [](DirectionalLightComponent& c, const math::Vec3& v) -> Result<void> { c.colour() = v; return {}; }
+        info.add_property<math::Vec3>("color",
+            [](const DirectionalLightComponent& c) -> math::Vec3 { return c.color(); },
+            [](DirectionalLightComponent& c, const math::Vec3& v) -> Result<void> { c.color() = v; return {}; }
         );
 
         info.add_property<float>("intensity",
@@ -364,9 +365,9 @@ void register_all_components(ComponentRegistry& registry) {
     {
         auto& info = registry.register_component<SpotLightComponent>("spot_light");
 
-        info.add_property<math::Vec3>("colour",
-            [](const SpotLightComponent& c) -> math::Vec3 { return c.colour(); },
-            [](SpotLightComponent& c, const math::Vec3& v) -> Result<void> { c.colour() = v; return {}; }
+        info.add_property<math::Vec3>("color",
+            [](const SpotLightComponent& c) -> math::Vec3 { return c.color(); },
+            [](SpotLightComponent& c, const math::Vec3& v) -> Result<void> { c.color() = v; return {}; }
         );
 
         info.add_property<float>("intensity",
@@ -406,6 +407,38 @@ void register_all_components(ComponentRegistry& registry) {
                 c.set_model(std::move(model));
                 return {};
             }
+        );
+    }
+
+    // ── FreeCameraMovement: uses overload (B) — no SerializationContext needed ──
+    {
+        auto& info = registry.register_component<FreeCameraMovement>("free_camera_movement");
+
+        info.add_property<float>("move_speed",
+            [](const FreeCameraMovement& c) { return c.move_speed; },
+            [](FreeCameraMovement& c, float v) -> Result<void> { c.move_speed = v; return {}; },
+            PropertyFlags{}.min(0.0f)
+        );
+
+        info.add_property<float>("mouse_sensitivity",
+            [](const FreeCameraMovement& c) { return c.mouse_sensitivity; },
+            [](FreeCameraMovement& c, float v) -> Result<void> { c.mouse_sensitivity = v; return {}; },
+            PropertyFlags{}.min(0.0f)
+        );
+
+        info.add_property<float>("pitch_clamp_degrees",
+            [](const FreeCameraMovement& c) { return c.pitch_clamp_degrees; },
+            [](FreeCameraMovement& c, float v) -> Result<void> { c.pitch_clamp_degrees = v; return {}; }
+        );
+
+        info.add_property<bool>("invert_yaw",
+            [](const FreeCameraMovement& c) { return c.invert_yaw; },
+            [](FreeCameraMovement& c, bool v) -> Result<void> { c.invert_yaw = v; return {}; }
+        );
+
+        info.add_property<bool>("invert_pitch",
+            [](const FreeCameraMovement& c) { return c.invert_pitch; },
+            [](FreeCameraMovement& c, bool v) -> Result<void> { c.invert_pitch = v; return {}; }
         );
     }
 }

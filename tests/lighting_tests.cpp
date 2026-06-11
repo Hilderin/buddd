@@ -128,17 +128,17 @@ TEST_CASE("DirectionalLightComponent construction and accessors", "[lighting]") 
     DirectionalLightComponent lc(math::Vec3{0.2f, 0.4f, 0.6f}, 2.5f);
 
     // Const accessors
-    REQUIRE(lc.colour().x == Approx(0.2f).margin(TOL));
-    REQUIRE(lc.colour().y == Approx(0.4f).margin(TOL));
-    REQUIRE(lc.colour().z == Approx(0.6f).margin(TOL));
+    REQUIRE(lc.color().x == Approx(0.2f).margin(TOL));
+    REQUIRE(lc.color().y == Approx(0.4f).margin(TOL));
+    REQUIRE(lc.color().z == Approx(0.6f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(2.5f).margin(TOL));
 
     // Mutate
-    lc.colour() = math::Vec3{1.0f, 0.0f, 0.0f};
+    lc.color() = math::Vec3{1.0f, 0.0f, 0.0f};
     lc.intensity() = 0.5f;
-    REQUIRE(lc.colour().x == Approx(1.0f).margin(TOL));
-    REQUIRE(lc.colour().y == Approx(0.0f).margin(TOL));
-    REQUIRE(lc.colour().z == Approx(0.0f).margin(TOL));
+    REQUIRE(lc.color().x == Approx(1.0f).margin(TOL));
+    REQUIRE(lc.color().y == Approx(0.0f).margin(TOL));
+    REQUIRE(lc.color().z == Approx(0.0f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(0.5f).margin(TOL));
 }
 
@@ -148,9 +148,9 @@ TEST_CASE("DirectionalLightComponent construction and accessors", "[lighting]") 
 TEST_CASE("PointLightComponent construction and accessors", "[lighting]") {
     PointLightComponent lc(math::Vec3{0.1f, 0.2f, 0.3f}, 1.5f, 20.0f);
 
-    REQUIRE(lc.colour().x == Approx(0.1f).margin(TOL));
-    REQUIRE(lc.colour().y == Approx(0.2f).margin(TOL));
-    REQUIRE(lc.colour().z == Approx(0.3f).margin(TOL));
+    REQUIRE(lc.color().x == Approx(0.1f).margin(TOL));
+    REQUIRE(lc.color().y == Approx(0.2f).margin(TOL));
+    REQUIRE(lc.color().z == Approx(0.3f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(1.5f).margin(TOL));
     REQUIRE(lc.range() == Approx(20.0f).margin(TOL));
 
@@ -169,7 +169,7 @@ TEST_CASE("PointLightComponent construction and accessors", "[lighting]") {
 TEST_CASE("SpotLightComponent construction and accessors", "[lighting]") {
     SpotLightComponent lc(math::Vec3{0.5f, 0.5f, 0.5f}, 2.0f, 15.0f, 0.5f, 1.0f);
 
-    REQUIRE(lc.colour().x == Approx(0.5f).margin(TOL));
+    REQUIRE(lc.color().x == Approx(0.5f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(2.0f).margin(TOL));
     REQUIRE(lc.range() == Approx(15.0f).margin(TOL));
     REQUIRE(lc.inner_angle() == Approx(0.5f).margin(TOL));
@@ -196,7 +196,7 @@ TEST_CASE("Light component on_attach no-op", "[lighting]") {
     // DirectionalLightComponent
     auto e1 = world.add_entity();
     auto& dlc = e1.add_component<DirectionalLightComponent>();
-    REQUIRE(dlc.colour().x == Approx(1.0f).margin(TOL));
+    REQUIRE(dlc.color().x == Approx(1.0f).margin(TOL));
 
     // PointLightComponent
     auto e2 = world.add_entity();
@@ -242,7 +242,7 @@ TEST_CASE("PhongMaterial convenience setters", "[lighting]") {
     // set_lights
     detail::LightData ld{};
     ld.position_or_dir = {0.0f, 0.0f, -1.0f, 0.0f};
-    ld.colour = {1.0f, 1.0f, 1.0f, 1.0f};
+    ld.color = {1.0f, 1.0f, 1.0f, 1.0f};
     mat.set_lights(&ld, 1);
 
     // set_transforms
@@ -268,7 +268,7 @@ TEST_CASE("PhongMaterial known_uniform_names", "[lighting]") {
     REQUIRE(name_set.count("u_camera_pos") > 0);
     REQUIRE(name_set.count("u_light_count") > 0);
     REQUIRE(name_set.count("u_light_positions_or_dir") > 0);
-    REQUIRE(name_set.count("u_light_colours") > 0);
+    REQUIRE(name_set.count("u_light_colors") > 0);
     REQUIRE(name_set.count("u_light_ranges") > 0);
     REQUIRE(name_set.count("u_light_spot_directions") > 0);
     REQUIRE(name_set.count("u_light_inner_cones") > 0);
@@ -336,7 +336,7 @@ TEST_CASE("glsl_util normalize_uniform_name", "[lighting]") {
     REQUIRE(detail::normalize_uniform_name("foo[0]") == "foo");
     REQUIRE(detail::normalize_uniform_name("foo[123]") == "foo");
     REQUIRE(detail::normalize_uniform_name("foo") == "foo");
-    REQUIRE(detail::normalize_uniform_name("u_light_colours[3]") == "u_light_colours");
+    REQUIRE(detail::normalize_uniform_name("u_light_colors[3]") == "u_light_colors");
     REQUIRE(detail::normalize_uniform_name("") == "");
     // Name starting with [ — shouldn't strip (no alphanumeric prefix to keep)
     REQUIRE(detail::normalize_uniform_name("[0]") == "");
@@ -352,14 +352,14 @@ TEST_CASE("LightData struct", "[lighting]") {
 
     detail::LightData ld{};
     ld.position_or_dir = {1.0f, 2.0f, 3.0f, 0.0f};
-    ld.colour = {0.5f, 0.5f, 0.5f, 1.0f};
+    ld.color = {0.5f, 0.5f, 0.5f, 1.0f};
     ld.range = 10.0f;
     ld.spot_direction = {0.0f, 0.0f, -1.0f, 0.0f};
     ld.inner_cone_cos = 0.8f;
     ld.outer_cone_cos = 0.5f;
 
     REQUIRE(ld.position_or_dir.x == Approx(1.0f).margin(TOL));
-    REQUIRE(ld.colour.y == Approx(0.5f).margin(TOL));
+    REQUIRE(ld.color.y == Approx(0.5f).margin(TOL));
     REQUIRE(ld.range == Approx(10.0f).margin(TOL));
 }
 
@@ -541,9 +541,9 @@ TEST_CASE("RenderSystem caps at 8 lights", "[lighting]") {
 }
 
 // ============================================================================
-// AC-017: Light colour * intensity premultiplied
+// AC-017: Light color * intensity premultiplied
 // ============================================================================
-TEST_CASE("Light colour * intensity premultiplied", "[lighting]") {
+TEST_CASE("Light color * intensity premultiplied", "[lighting]") {
     auto engine = make_headless_engine();
     auto& device = engine->device();
     World world;
@@ -552,7 +552,7 @@ TEST_CASE("Light colour * intensity premultiplied", "[lighting]") {
     auto& cam_comp = cam_entity.add_component<CameraComponent>();
     cam_comp.set_perspective(math::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-    // Directional light with colour (0.5, 0.5, 0.5), intensity 2.0
+    // Directional light with color (0.5, 0.5, 0.5), intensity 2.0
     auto dl = world.add_entity();
     dl.add_component<DirectionalLightComponent>(
         math::Vec3{0.5f, 0.5f, 0.5f}, 2.0f);
@@ -566,8 +566,8 @@ TEST_CASE("Light colour * intensity premultiplied", "[lighting]") {
     RenderSystem render_system(device, world);
     render_system.render();
 
-    // u_light_colours[0].rgb should be (1.0, 1.0, 1.0)
-    auto col_opt = headless_mat->get_uniform_vec4("u_light_colours[0]");
+    // u_light_colors[0].rgb should be (1.0, 1.0, 1.0)
+    auto col_opt = headless_mat->get_uniform_vec4("u_light_colors[0]");
     REQUIRE(col_opt.has_value());
     REQUIRE(col_opt->x == Approx(1.0f).margin(TOL));
     REQUIRE(col_opt->y == Approx(1.0f).margin(TOL));

@@ -815,7 +815,7 @@ auto build_node(const tinygltf::Model& model,
             device, model, gltf_node.mesh, base_dir, scale, out_materials);
         if (model_result) {
             if (*model_result) {
-                node.model = std::move(**model_result);
+                node.model = std::make_shared<Model>(std::move(**model_result));
             }
         } else {
             return make_error(model_result);

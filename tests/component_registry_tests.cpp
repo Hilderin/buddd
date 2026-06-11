@@ -9,6 +9,7 @@
 #include "scene/point_light_component.h"
 #include "scene/directional_light_component.h"
 #include "scene/spot_light_component.h"
+#include "scene/free_camera_movement.h"
 #include "render/mesh_renderer.h"
 #include "render/model.h"
 #include "asset/asset_manager.h"
@@ -334,9 +335,11 @@ TEST_CASE("TYPE_REGISTRY_BUILTIN_VEC3", "[component-registry]") {
 
     auto encoded = TypeRegistry::yaml_encode<math::Vec3>({1.0f, 2.0f, 3.0f}, ctx);
     REQUIRE(encoded.has_value());
-    REQUIRE((*encoded)["x"].as<float>() == Approx(1.0f).margin(1e-5f));
-    REQUIRE((*encoded)["y"].as<float>() == Approx(2.0f).margin(1e-5f));
-    REQUIRE((*encoded)["z"].as<float>() == Approx(3.0f).margin(1e-5f));
+    REQUIRE((*encoded).IsSequence());
+    REQUIRE((*encoded).size() == 3);
+    REQUIRE((*encoded)[0].as<float>() == Approx(1.0f).margin(1e-5f));  // x
+    REQUIRE((*encoded)[1].as<float>() == Approx(2.0f).margin(1e-5f));  // y
+    REQUIRE((*encoded)[2].as<float>() == Approx(3.0f).margin(1e-5f));  // z
 }
 
 TEST_CASE("TYPE_REGISTRY_BUILTIN_SHARED_PTR_MODEL", "[component-registry]") {
@@ -506,7 +509,7 @@ TEST_CASE("POINT_LIGHT_COMPONENT_PROPERTIES", "[component-registry]") {
     REQUIRE(info != nullptr);
     REQUIRE(info->property_count() == 3);
 
-    REQUIRE(info->property_name(0) == "colour");
+    REQUIRE(info->property_name(0) == "color");
     REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Vec3)));
 
     REQUIRE(info->property_name(1) == "intensity");
@@ -528,7 +531,7 @@ TEST_CASE("DIRECTIONAL_LIGHT_COMPONENT_PROPERTIES", "[component-registry]") {
     REQUIRE(info != nullptr);
     REQUIRE(info->property_count() == 2);
 
-    REQUIRE(info->property_name(0) == "colour");
+    REQUIRE(info->property_name(0) == "color");
     REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Vec3)));
 
     REQUIRE(info->property_name(1) == "intensity");
@@ -545,7 +548,7 @@ TEST_CASE("SPOT_LIGHT_COMPONENT_PROPERTIES", "[component-registry]") {
     REQUIRE(info != nullptr);
     REQUIRE(info->property_count() == 5);
 
-    REQUIRE(info->property_name(0) == "colour");
+    REQUIRE(info->property_name(0) == "color");
     REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Vec3)));
 
     REQUIRE(info->property_name(1) == "intensity");
@@ -576,6 +579,38 @@ TEST_CASE("MESH_RENDERER_COMPONENT_PROPERTIES", "[component-registry]") {
 
     REQUIRE(info->property_name(0) == "model");
     REQUIRE(info->property_type_index(0) == std::type_index(typeid(std::shared_ptr<Model>)));
+}
+
+TEST_CASE("FREE_CAMERA_MOVEMENT_PROPERTIES", "[component-registry]") {
+    register_builtin_types();
+    ComponentRegistry registry;
+    register_all_components(registry);
+
+    auto* info = registry.describe("free_camera_movement");
+    REQUIRE(info != nullptr);
+    REQUIRE(info->property_count() == 5);
+
+    // move_speed (float, min 0)
+    REQUIRE(info->property_name(0) == "move_speed");
+    REQUIRE(info->property_type_index(0) == std::type_index(typeid(float)));
+    REQUIRE(info->property_flags(0).min_value == Approx(0.0f).margin(1e-5f));
+
+    // mouse_sensitivity (float, min 0)
+    REQUIRE(info->property_name(1) == "mouse_sensitivity");
+    REQUIRE(info->property_type_index(1) == std::type_index(typeid(float)));
+    REQUIRE(info->property_flags(1).min_value == Approx(0.0f).margin(1e-5f));
+
+    // pitch_clamp_degrees (float)
+    REQUIRE(info->property_name(2) == "pitch_clamp_degrees");
+    REQUIRE(info->property_type_index(2) == std::type_index(typeid(float)));
+
+    // invert_yaw (bool)
+    REQUIRE(info->property_name(3) == "invert_yaw");
+    REQUIRE(info->property_type_index(3) == std::type_index(typeid(bool)));
+
+    // invert_pitch (bool)
+    REQUIRE(info->property_name(4) == "invert_pitch");
+    REQUIRE(info->property_type_index(4) == std::type_index(typeid(bool)));
 }
 
 // ===========================================================================
@@ -681,7 +716,7 @@ TEST_CASE("ROUND_TRIP_POINT_LIGHT", "[component-registry]") {
     auto comp1 = registry.create("point_light");
     REQUIRE(comp1.has_value());
     auto& pl1 = static_cast<PointLightComponent&>(*comp1.value());
-    pl1.colour() = math::Vec3{0.5f, 0.6f, 0.7f};
+    pl1.color() = math::Vec3{0.5f, 0.6f, 0.7f};
     pl1.intensity() = 2.5f;
     pl1.range() = 20.0f;
 
@@ -696,9 +731,9 @@ TEST_CASE("ROUND_TRIP_POINT_LIGHT", "[component-registry]") {
     REQUIRE(result.has_value());
 
     auto& pl2 = static_cast<PointLightComponent&>(*comp2.value());
-    REQUIRE(pl2.colour().x == Approx(pl1.colour().x).margin(1e-5f));
-    REQUIRE(pl2.colour().y == Approx(pl1.colour().y).margin(1e-5f));
-    REQUIRE(pl2.colour().z == Approx(pl1.colour().z).margin(1e-5f));
+    REQUIRE(pl2.color().x == Approx(pl1.color().x).margin(1e-5f));
+    REQUIRE(pl2.color().y == Approx(pl1.color().y).margin(1e-5f));
+    REQUIRE(pl2.color().z == Approx(pl1.color().z).margin(1e-5f));
     REQUIRE(pl2.intensity() == Approx(pl1.intensity()).margin(1e-5f));
     REQUIRE(pl2.range() == Approx(pl1.range()).margin(1e-5f));
 }
@@ -714,7 +749,7 @@ TEST_CASE("ROUND_TRIP_DIRECTIONAL_LIGHT", "[component-registry]") {
     auto comp1 = registry.create("directional_light");
     REQUIRE(comp1.has_value());
     auto& dl1 = static_cast<DirectionalLightComponent&>(*comp1.value());
-    dl1.colour() = math::Vec3{0.2f, 0.3f, 0.4f};
+    dl1.color() = math::Vec3{0.2f, 0.3f, 0.4f};
     dl1.intensity() = 3.0f;
 
     TestEngine test_engine;
@@ -728,9 +763,9 @@ TEST_CASE("ROUND_TRIP_DIRECTIONAL_LIGHT", "[component-registry]") {
     REQUIRE(result.has_value());
 
     auto& dl2 = static_cast<DirectionalLightComponent&>(*comp2.value());
-    REQUIRE(dl2.colour().x == Approx(dl1.colour().x).margin(1e-5f));
-    REQUIRE(dl2.colour().y == Approx(dl1.colour().y).margin(1e-5f));
-    REQUIRE(dl2.colour().z == Approx(dl1.colour().z).margin(1e-5f));
+    REQUIRE(dl2.color().x == Approx(dl1.color().x).margin(1e-5f));
+    REQUIRE(dl2.color().y == Approx(dl1.color().y).margin(1e-5f));
+    REQUIRE(dl2.color().z == Approx(dl1.color().z).margin(1e-5f));
     REQUIRE(dl2.intensity() == Approx(dl1.intensity()).margin(1e-5f));
 }
 
@@ -745,7 +780,7 @@ TEST_CASE("ROUND_TRIP_SPOT_LIGHT", "[component-registry]") {
     auto comp1 = registry.create("spot_light");
     REQUIRE(comp1.has_value());
     auto& sl1 = static_cast<SpotLightComponent&>(*comp1.value());
-    sl1.colour() = math::Vec3{0.1f, 0.2f, 0.3f};
+    sl1.color() = math::Vec3{0.1f, 0.2f, 0.3f};
     sl1.intensity() = 4.0f;
     sl1.range() = 30.0f;
     sl1.inner_angle() = 0.3f;
@@ -762,9 +797,9 @@ TEST_CASE("ROUND_TRIP_SPOT_LIGHT", "[component-registry]") {
     REQUIRE(result.has_value());
 
     auto& sl2 = static_cast<SpotLightComponent&>(*comp2.value());
-    REQUIRE(sl2.colour().x == Approx(sl1.colour().x).margin(1e-5f));
-    REQUIRE(sl2.colour().y == Approx(sl1.colour().y).margin(1e-5f));
-    REQUIRE(sl2.colour().z == Approx(sl1.colour().z).margin(1e-5f));
+    REQUIRE(sl2.color().x == Approx(sl1.color().x).margin(1e-5f));
+    REQUIRE(sl2.color().y == Approx(sl1.color().y).margin(1e-5f));
+    REQUIRE(sl2.color().z == Approx(sl1.color().z).margin(1e-5f));
     REQUIRE(sl2.intensity() == Approx(sl1.intensity()).margin(1e-5f));
     REQUIRE(sl2.range() == Approx(sl1.range()).margin(1e-5f));
     REQUIRE(sl2.inner_angle() == Approx(sl1.inner_angle()).margin(1e-5f));
@@ -839,13 +874,24 @@ TEST_CASE("YAML_CONVERT_VEC3", "[component-registry]") {
 
     math::Vec3 original{1.0f, 2.0f, 3.0f};
     Node node = convert<math::Vec3>::encode(original);
-    REQUIRE(node.IsMap());
-    REQUIRE(node["x"].as<float>() == Approx(1.0f).margin(1e-5f));
-    REQUIRE(node["y"].as<float>() == Approx(2.0f).margin(1e-5f));
-    REQUIRE(node["z"].as<float>() == Approx(3.0f).margin(1e-5f));
+    REQUIRE(node.IsSequence());
+    REQUIRE(node.size() == 3);
+    REQUIRE(node[0].as<float>() == Approx(1.0f).margin(1e-5f));  // x
+    REQUIRE(node[1].as<float>() == Approx(2.0f).margin(1e-5f));  // y
+    REQUIRE(node[2].as<float>() == Approx(3.0f).margin(1e-5f));  // z
 
-    // Round-trip
+    // Also accept legacy mapping format
     math::Vec3 decoded;
+    YAML::Node legacy_map;
+    legacy_map["x"] = 1.0f;
+    legacy_map["y"] = 2.0f;
+    legacy_map["z"] = 3.0f;
+    REQUIRE(convert<math::Vec3>::decode(legacy_map, decoded));
+    REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
+    REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
+    REQUIRE(decoded.z == Approx(original.z).margin(1e-5f));
+
+    // Also decode sequence format
     REQUIRE(convert<math::Vec3>::decode(node, decoded));
     REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
     REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
@@ -857,13 +903,27 @@ TEST_CASE("YAML_CONVERT_VEC4", "[component-registry]") {
 
     math::Vec4 original{1.0f, 2.0f, 3.0f, 4.0f};
     Node node = convert<math::Vec4>::encode(original);
-    REQUIRE(node.IsMap());
-    REQUIRE(node["x"].as<float>() == Approx(1.0f).margin(1e-5f));
-    REQUIRE(node["y"].as<float>() == Approx(2.0f).margin(1e-5f));
-    REQUIRE(node["z"].as<float>() == Approx(3.0f).margin(1e-5f));
-    REQUIRE(node["w"].as<float>() == Approx(4.0f).margin(1e-5f));
+    REQUIRE(node.IsSequence());
+    REQUIRE(node.size() == 4);
+    REQUIRE(node[0].as<float>() == Approx(1.0f).margin(1e-5f));  // x
+    REQUIRE(node[1].as<float>() == Approx(2.0f).margin(1e-5f));  // y
+    REQUIRE(node[2].as<float>() == Approx(3.0f).margin(1e-5f));  // z
+    REQUIRE(node[3].as<float>() == Approx(4.0f).margin(1e-5f));  // w
 
+    // Also accept legacy mapping format
     math::Vec4 decoded;
+    YAML::Node legacy_map;
+    legacy_map["x"] = 1.0f;
+    legacy_map["y"] = 2.0f;
+    legacy_map["z"] = 3.0f;
+    legacy_map["w"] = 4.0f;
+    REQUIRE(convert<math::Vec4>::decode(legacy_map, decoded));
+    REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
+    REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
+    REQUIRE(decoded.z == Approx(original.z).margin(1e-5f));
+    REQUIRE(decoded.w == Approx(original.w).margin(1e-5f));
+
+    // Also decode sequence format
     REQUIRE(convert<math::Vec4>::decode(node, decoded));
     REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
     REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
@@ -876,13 +936,27 @@ TEST_CASE("YAML_CONVERT_QUAT", "[component-registry]") {
 
     math::Quat original{1.0f, 0.0f, 0.0f, 0.0f};  // w=1, x=0, y=0, z=0
     Node node = convert<math::Quat>::encode(original);
-    REQUIRE(node.IsMap());
-    REQUIRE(node["x"].as<float>() == Approx(0.0f).margin(1e-5f));
-    REQUIRE(node["y"].as<float>() == Approx(0.0f).margin(1e-5f));
-    REQUIRE(node["z"].as<float>() == Approx(0.0f).margin(1e-5f));
-    REQUIRE(node["w"].as<float>() == Approx(1.0f).margin(1e-5f));
+    REQUIRE(node.IsSequence());
+    REQUIRE(node.size() == 4);
+    REQUIRE(node[0].as<float>() == Approx(1.0f).margin(1e-5f));  // w
+    REQUIRE(node[1].as<float>() == Approx(0.0f).margin(1e-5f));  // x
+    REQUIRE(node[2].as<float>() == Approx(0.0f).margin(1e-5f));  // y
+    REQUIRE(node[3].as<float>() == Approx(0.0f).margin(1e-5f));  // z
 
+    // Also accept legacy mapping format
     math::Quat decoded;
+    YAML::Node legacy_map;
+    legacy_map["x"] = 0.0f;
+    legacy_map["y"] = 0.0f;
+    legacy_map["z"] = 0.0f;
+    legacy_map["w"] = 1.0f;
+    REQUIRE(convert<math::Quat>::decode(legacy_map, decoded));
+    REQUIRE(decoded.w == Approx(original.w).margin(1e-5f));
+    REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
+    REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
+    REQUIRE(decoded.z == Approx(original.z).margin(1e-5f));
+
+    // Also decode sequence format
     REQUIRE(convert<math::Quat>::decode(node, decoded));
     REQUIRE(decoded.w == Approx(original.w).margin(1e-5f));
     REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
@@ -971,8 +1045,9 @@ TEST_CASE("FACTORY_CREATES_CORRECT_TYPE", "[component-registry]") {
     ComponentRegistry registry;
     register_all_components(registry);
 
-    // Verify all 5 types are registered
-    REQUIRE(registry.all_types().size() == 5);
+    // Verify all 6 types are registered (camera, point_light, directional_light,
+    // spot_light, mesh_renderer, free_camera_movement)
+    REQUIRE(registry.all_types().size() == 6);
 
     // Each type creates correctly
     auto camera = registry.create("camera");
@@ -994,4 +1069,8 @@ TEST_CASE("FACTORY_CREATES_CORRECT_TYPE", "[component-registry]") {
     auto mr = registry.create("mesh_renderer");
     REQUIRE(mr.has_value());
     REQUIRE(dynamic_cast<MeshRenderer*>(mr->get()) != nullptr);
+
+    auto fcm = registry.create("free_camera_movement");
+    REQUIRE(fcm.has_value());
+    REQUIRE(dynamic_cast<FreeCameraMovement*>(fcm->get()) != nullptr);
 }

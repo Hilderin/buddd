@@ -2,15 +2,15 @@
 
 namespace buddd::engine {
 
-DirectionalLightComponent::DirectionalLightComponent(math::Vec3 colour, float intensity)
-    : colour_(colour), intensity_(intensity) {}
+DirectionalLightComponent::DirectionalLightComponent(math::Vec3 color, float intensity)
+    : color_(color), intensity_(intensity) {}
 
-auto DirectionalLightComponent::colour() noexcept -> math::Vec3& {
-    return colour_;
+auto DirectionalLightComponent::color() noexcept -> math::Vec3& {
+    return color_;
 }
 
-auto DirectionalLightComponent::colour() const noexcept -> const math::Vec3& {
-    return colour_;
+auto DirectionalLightComponent::color() const noexcept -> const math::Vec3& {
+    return color_;
 }
 
 auto DirectionalLightComponent::intensity() noexcept -> float& {

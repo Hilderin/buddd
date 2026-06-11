@@ -64,7 +64,7 @@ uniform float u_has_emissive_texture;
 uniform vec3 u_camera_pos;
 uniform int  u_light_count;
 uniform vec4 u_light_positions_or_dir[MAX_LIGHTS];
-uniform vec4 u_light_colours[MAX_LIGHTS];
+uniform vec4 u_light_colors[MAX_LIGHTS];
 uniform float u_light_ranges[MAX_LIGHTS];
 uniform vec4 u_light_spot_directions[MAX_LIGHTS];
 uniform float u_light_inner_cones[MAX_LIGHTS];
@@ -141,7 +141,7 @@ void main() {
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < u_light_count; ++i) {
         vec4 pos_or_dir = u_light_positions_or_dir[i];
-        vec3 light_col  = u_light_colours[i].rgb;
+        vec3 light_col  = u_light_colors[i].rgb;
         float range     = u_light_ranges[i];
         vec3 L;
         float attenuation = 1.0;
@@ -188,7 +188,7 @@ void main() {
         vec3 specular = D * G * F / (4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001);
         vec3 diffuse = kD * base_color.rgb / PI;
 
-        Lo += (diffuse + specular) * u_light_colours[i].rgb * NdotL * attenuation;
+        Lo += (diffuse + specular) * u_light_colors[i].rgb * NdotL * attenuation;
     }
 
     // Ambient lighting

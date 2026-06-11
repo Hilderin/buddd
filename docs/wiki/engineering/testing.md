@@ -189,7 +189,7 @@ Tags used: `[lighting]`, `[lighting][vertex]`, `[lighting][component]`, `[lighti
 | AC-014 | `"RenderSystem collects point lights"` | Point at (5,3,1) → w=1.0, position matches |
 | AC-015 | `"RenderSystem collects spot lights"` | Position, direction, cone cosines, type=2.0 |
 | AC-016 | `"RenderSystem caps at 8 lights"` | 10 lights → u_light_count == 8 |
-| AC-017 | `"Light colour * intensity premultiplied"` | (0.5, 0.5, 0.5) × 2.0 → (1.0, 1.0, 1.0) |
+| AC-017 | `"Light color * intensity premultiplied"` | (0.5, 0.5, 0.5) × 2.0 → (1.0, 1.0, 1.0) |
 | AC-018 | `"Normal matrix computation"` | `u_normal_mat` ≈ `world_mat.inverse().transpose()` |
 | AC-019 | `"Backward compat: unlit material"` | `has_uniform("u_model")` false, only u_mvp set |
 | AC-020 | `"RenderSystem sets u_camera_pos"` | Matches camera position |

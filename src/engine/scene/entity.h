@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -29,6 +30,10 @@ public:
     // -- Lifecycle --
     void destroy();
     auto is_pending_destroy() const noexcept -> bool;
+
+    // -- Name --
+    auto name() const noexcept -> const std::string&;
+    auto set_name(const std::string& name) -> void;
 
     // -- Transform --
     auto transform() noexcept -> Transform&;

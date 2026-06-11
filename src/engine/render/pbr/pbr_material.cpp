@@ -28,7 +28,7 @@ static auto build_known_uniform_names() -> std::vector<std::string> {
     names.emplace_back("u_camera_pos");
     names.emplace_back("u_light_count");
     names.emplace_back("u_light_positions_or_dir");
-    names.emplace_back("u_light_colours");
+    names.emplace_back("u_light_colors");
     names.emplace_back("u_light_ranges");
     names.emplace_back("u_light_spot_directions");
     names.emplace_back("u_light_inner_cones");

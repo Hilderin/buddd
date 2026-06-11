@@ -4,6 +4,7 @@
 #include "math/vec3.h"
 #include "math/quat.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -15,7 +16,7 @@ struct ModelNode {
     math::Vec3 translation{0.0f, 0.0f, 0.0f};
     math::Quat rotation{1.0f, 0.0f, 0.0f, 0.0f};  // w, x, y, z
     math::Vec3 scale{1.0f, 1.0f, 1.0f};
-    std::optional<Model> model;
+    std::shared_ptr<Model> model;
     std::vector<ModelNode> children;
 
     ModelNode() = default;

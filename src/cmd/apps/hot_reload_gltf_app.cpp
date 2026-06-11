@@ -104,13 +104,12 @@ auto buddd::cmd::app::HotReloadGltfApp::reload_model(be::World& world) -> void {
 
 auto buddd::cmd::app::HotReloadGltfApp::create_entities(be::ModelNode& node, be::World& world) -> void {
     for (auto& child : node.children) {
-        if (child.model.has_value()) {
+        if (child.model) {
             auto e = world.add_entity();
             e.transform().position = child.translation;
             e.transform().rotation = child.rotation;
             e.transform().scale = child.scale;
-            auto model_ptr = std::make_shared<be::Model>(std::move(*child.model));
-            e.add_component<be::MeshRenderer>(std::move(model_ptr));
+            e.add_component<be::MeshRenderer>(child.model);
             model_entities_.push_back(e);
         }
         create_entities(child, world);

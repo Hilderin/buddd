@@ -379,11 +379,11 @@ RenderSystem::render()
     │       │
     │       ├── DirectionalLightComponent.each(...)
     │       │   └── LightData: position_or_dir.w = 0, direction from entity rotation (-Z forward)
-    │       │       colour = colour * intensity (pre-multiplied)
+    │       │       color = color * intensity (pre-multiplied)
     │       │
     │       ├── PointLightComponent.each(...)
     │       │   └── LightData: position_or_dir.w = 1, position from entity translation
-    │       │       range from component, colour pre-multiplied
+    │       │       range from component, color pre-multiplied
     │       │
     │       └── SpotLightComponent.each(...)
     │           └── LightData: position_or_dir.w = 2, position from translation,
@@ -405,7 +405,7 @@ RenderSystem::render()
     │       │   ├── set_uniform("u_light_count", light_count)
     │       │   ├── For each light i ∈ [0, light_count):
     │       │   │   ├── set_uniform("u_light_positions_or_dir[i]", ld.position_or_dir)
-    │       │   │   ├── set_uniform("u_light_colours[i]", ld.colour)
+    │       │   │   ├── set_uniform("u_light_colors[i]", ld.color)
     │       │   │   ├── set_uniform("u_light_ranges[i]", ld.range)
     │       │   │   ├── set_uniform("u_light_spot_directions[i]", ld.spot_direction)
     │       │   │   ├── set_uniform("u_light_inner_cones[i]", ld.inner_cone_cos)
@@ -453,8 +453,8 @@ Light type is encoded in `position_or_dir.w`:
 Fragment shader (per-pixel):
     N = normalize(v_normal)
     V = normalize(u_camera_pos - v_world_pos)
-    diffuse_colour = texture(u_diffuse_texture, v_texcoord).rgb * u_material_diffuse_tint.rgb
-    final_colour = u_material_ambient * diffuse_colour    ← ambient term (outside light loop)
+    diffuse_color = texture(u_diffuse_texture, v_texcoord).rgb * u_material_diffuse_tint.rgb
+    final_color = u_material_ambient * diffuse_color    ← ambient term (outside light loop)
 
     for each light i:
         L, attenuation = computed from light type:
@@ -462,19 +462,19 @@ Fragment shader (per-pixel):
             - point: L = light_to_frag / dist, attenuation = 1 - (clamp(dist/range,0,1))²
             - spot: same as point + cone falloff via spot_cone_attenuation(cos_angle, cos_inner, cos_outer)
 
-        diffuse = diffuse_colour * light_col * max(dot(N, L), 0.0)        ← Lambert
+        diffuse = diffuse_color * light_col * max(dot(N, L), 0.0)        ← Lambert
         specular = u_material_specular * light_col * pow(max(dot(N, H), 0.0), u_material_shininess)  ← Blinn-Phong
-        final_colour += (diffuse + specular) * attenuation
+        final_color += (diffuse + specular) * attenuation
 
-    frag_color = vec4(final_colour, 1.0)
+    frag_color = vec4(final_color, 1.0)
 ```
 
 ### LightData array uniform naming
 
 Light uniforms use bracket-syntax array naming convention:
 ```cpp
-material.set_uniform("u_light_colours[0]", ld.colour);
-material.set_uniform("u_light_colours[1]", ld2.colour);
+material.set_uniform("u_light_colors[0]", ld.color);
+material.set_uniform("u_light_colors[1]", ld2.color);
 ```
 
 `MaterialHeadless` uses `normalize_uniform_name()` to strip the `[N]` suffix before checking against declared base names in `known_uniforms`. The OpenGL backend resolves locations via `glGetUniformLocation` at call time.

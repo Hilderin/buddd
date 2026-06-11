@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -77,6 +78,10 @@ public:
     requires std::is_base_of_v<Component, T>
     auto each(Func&& func) -> size_t;
 
+    // -- Entity introspection --
+    /// Returns the number of currently alive (not pending destroy) entities.
+    auto entity_count() const noexcept -> size_t;
+
     // -- Camera registration --
     /// Registers a CameraComponent as the active camera.
     /// Last-registered camera wins (single active camera for v1).
@@ -94,6 +99,10 @@ public:
     /// was unregistered).
     [[nodiscard]] auto active_camera() const noexcept -> std::optional<CameraComponent&>;
 
+    /// Attach a runtime-typed component to an entity (for SceneLoader / deserialization).
+    /// The component is moved into the World's storage.
+    auto add_component_raw(EntityId id, std::unique_ptr<Component> component) -> Component&;
+
 private:
     friend class Entity;
 
@@ -103,6 +112,7 @@ private:
     struct EntityNode {
         EntityId id_;
         Transform transform_;
+        std::string name_;
         EntityNode* parent_ = nullptr;
         std::vector<std::unique_ptr<EntityNode>> children_;
         std::vector<std::unique_ptr<Component>> components_;
@@ -121,6 +131,10 @@ private:
 
     void reparent(EntityId id, EntityId new_parent_id);
     void mark_for_destroy(EntityNode* node);
+
+    // -- Entity name --
+    auto get_name(EntityId id) const noexcept -> const std::string&;
+    auto set_name(EntityId id, const std::string& name) -> void;
 
     // -- Storage --
     // Slots track entity identity (generation counter + alive flag) plus

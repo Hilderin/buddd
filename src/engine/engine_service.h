@@ -6,6 +6,7 @@
 
 namespace buddd::engine {
 
+class ComponentRegistry;
 class Platform;
 class Window;
 class RenderDevice;
@@ -25,6 +26,7 @@ public:
     auto window() noexcept -> Window&;
     auto device() noexcept -> RenderDevice&;
     auto assets() noexcept -> AssetManager&;
+    auto registry() noexcept -> ComponentRegistry&;
 
     EngineService(const EngineService&) = delete;
     auto operator=(const EngineService&) -> EngineService& = delete;
@@ -43,6 +45,7 @@ private:
     std::unique_ptr<Window> window_;
     std::unique_ptr<RenderDevice> device_;
     std::unique_ptr<AssetManager> asset_manager_;
+    std::unique_ptr<ComponentRegistry> registry_;
 };
 
 } // namespace buddd::engine
