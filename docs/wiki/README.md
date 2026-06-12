@@ -11,6 +11,7 @@ The wiki describes the current operational understanding of the system.
 | [Business Rules](domain/business-rules.md) | Business logic rules |
 | [Editor Panels](editor/editor-panels.md) | Editor panel layout, tab types, panel reference, play mode behavior, camera controls, edge/error cases |
 | [Scene Management](editor/scene-management.md) | Scene file management workflow (New, Open, Save, Save As) |
+| [Entity Selection](editor/entity-selection.md) | Entity selection system: Selection value class, EditorSelection manager, multi-select interactions, undo/redo snapshot pattern |
 | [Cross-Panel Communication](editor/cross-panel-communication.md) | Cross-panel communication and play mode state transitions |
 | [Module Map](architecture/module-map.md) | Module structure and relationships |
 | [Dependency Map](architecture/dependency-map.md) | Module dependency relationships |
