@@ -71,6 +71,60 @@ auto PlatformSDL3::poll_events() -> bool {
     return true;
 }
 
+auto PlatformSDL3::get_sdl_window() -> SDL_Window* {
+    for (auto& [id, win] : window_map_) {
+        return static_cast<SDL_Window*>(win->native_handle());
+    }
+    return nullptr;
+}
+
+auto PlatformSDL3::show_open_file_dialog(FileDialogCallback cb,
+                                          const char* filter_name,
+                                          const char* filter_pattern) -> void {
+    SDL_DialogFileFilter filter{filter_name, filter_pattern};
+    // Heap-allocate the callback; the SDL C-lambda deletes it after invocation.
+    auto* cb_ptr = new FileDialogCallback(std::move(cb));
+    SDL_ShowOpenFileDialog(
+        [](void* userdata, const char* const* filelist, int /*filter_index*/) {
+            auto* cb = static_cast<FileDialogCallback*>(userdata);
+            if (filelist && filelist[0]) {
+                (*cb)(std::string(filelist[0]));
+            } else {
+                (*cb)(std::nullopt);
+            }
+            delete cb;
+        },
+        cb_ptr,
+        get_sdl_window(),
+        &filter, 1,
+        nullptr,   // default_location
+        false      // allow_many
+    );
+}
+
+auto PlatformSDL3::show_save_file_dialog(FileDialogCallback cb,
+                                          const char* filter_name,
+                                          const char* filter_pattern,
+                                          const char* default_name) -> void {
+    SDL_DialogFileFilter filter{filter_name, filter_pattern};
+    auto* cb_ptr = new FileDialogCallback(std::move(cb));
+    SDL_ShowSaveFileDialog(
+        [](void* userdata, const char* const* filelist, int /*filter_index*/) {
+            auto* cb = static_cast<FileDialogCallback*>(userdata);
+            if (filelist && filelist[0]) {
+                (*cb)(std::string(filelist[0]));
+            } else {
+                (*cb)(std::nullopt);
+            }
+            delete cb;
+        },
+        cb_ptr,
+        get_sdl_window(),
+        &filter, 1,
+        default_name
+    );
+}
+
 auto PlatformSDL3::input_system() -> InputSystem& {
     return input_system_;
 }

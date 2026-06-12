@@ -263,6 +263,27 @@ TEST_CASE("Save Prefab source entity as reference", "[scene_saver]") {
     CHECK_FALSE(ent["children"].IsDefined());
 }
 
+// Test 7b: Prefab source with resolved path is sanitized (assets/ prefix + .yaml ext stripped)
+TEST_CASE("Save prefab source with resolved path sanitizes correctly", "[scene_saver]") {
+    TestEnv env;
+    auto entity = env.world.add_entity();
+    entity.set_name("camera_from_resolved");
+    // Simulate what SceneLoader stores: resolved path with base_path + "/" + ext
+    entity.set_source(EntitySource{EntitySourceType::Prefab,
+        std::string(env.engine->assets().base_path()) + "/prefabs/free_camera.yaml"});
+
+    SceneSaver saver(env.world, env.engine->registry(), env.engine->assets());
+    YAML::Node saved = saver.save_to_yaml();
+
+    REQUIRE(saved["entities"].IsSequence());
+    REQUIRE(saved["entities"].size() == 1);
+
+    auto ent = saved["entities"][0];
+    // Must be saved as relative path without .yaml extension
+    CHECK(ent["prefab"].as<std::string>() == "prefabs/free_camera");
+    CHECK(ent["name"].as<std::string>() == "camera_from_resolved");
+}
+
 // ===========================================================================
 // Test 8: Save Model source entity as reference (AC-013)
 // ===========================================================================

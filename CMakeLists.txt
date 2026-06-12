@@ -10,22 +10,6 @@ add_subdirectory(src/cmd)
 
 include(FetchContent)
 
-# ImGuiFileDialog — needs to be populated before src/editor CMakeLists.txt
-FetchContent_Declare(
-    ImGuiFileDialog
-    GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
-    GIT_TAG v0.6.7
-)
-FetchContent_GetProperties(ImGuiFileDialog)
-if(NOT ImGuiFileDialog_POPULATED)
-    FetchContent_Populate(ImGuiFileDialog)
-endif()
-# Manually set the source directory variable (FetchContent_Populate may not always set it)
-if(NOT ImGuiFileDialog_SOURCE_DIR)
-    set(ImGuiFileDialog_SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/imguifiledialog-src")
-endif()
-message(STATUS "ImGuiFileDialog source dir: ${ImGuiFileDialog_SOURCE_DIR}")
-
 add_subdirectory(src/editor)
 
 FetchContent_Declare(

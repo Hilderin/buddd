@@ -18,7 +18,7 @@ This feature wires the existing engine APIs into the Editor's File menu, establi
 | G-06 | **Dirty state tracking**: Simple boolean `dirty_` on the `Editor` class. Set on any entity/component mutation. Cleared on Save. `*` shown in window title bar when dirty. |
 | G-07 | **Save-prompt modal**: Modal dialog with Save / Don't Save / Cancel buttons when attempting to close, open, or create a new scene with unsaved changes. Cancel aborts the operation. |
 | G-08 | **Error handling**: SceneLoader/SceneSaver failures (corrupt YAML, file not found, permissions) shown in an ImGui modal error dialog. Current scene preserved on load failure. |
-| G-09 | **OS file dialogs**: ImGuiFileDialog library integrated via FetchContent, with `.yaml` file filter. |
+| G-09 | **OS file dialogs**: SDL3 native file dialogs via `Platform::show_open_file_dialog()` and `Platform::show_save_file_dialog()`, with `.yaml` file filter. |
 | G-10 | **Menu integration**: Extended File menu with New Scene (`Ctrl+N`), Open Scene (`Ctrl+O`), Save Scene (`Ctrl+S`), Save Scene As (`Ctrl+Shift+S`), separator, Quit (`Ctrl+Q`). |
 
 ## Non-goals
@@ -46,7 +46,7 @@ This feature wires the existing engine APIs into the Editor's File menu, establi
 | **MenuBar** | Renders the File menu with New/Open/Save/Save As/Quit items. Dispatches to Editor via callbacks. |
 | **SceneLoader** | Engine API (`SceneLoader::load_from_file`) that parses a YAML scene file and populates a World. |
 | **SceneSaver** | Engine API (`SceneSaver::save_to_file`) that serializes a World to a YAML file. |
-| **ImGuiFileDialog** | Third-party library providing OS-native file dialogs with `.yaml` filter. |
+| **Platform** | Engine abstraction layer providing native OS file dialogs via `show_open_file_dialog()` and `show_save_file_dialog()`, wrapping SDL3 native dialog APIs and respecting the ADR-019 architecture boundary. |
 | **EngineContext** | Provides access to `EngineService` (for `registry()` and `assets()`), `Window` (for title), and `request_exit()`. |
 
 ## User-visible behavior
@@ -120,14 +120,35 @@ When a SceneLoader or SceneSaver operation fails, an error modal is shown:
 
 Error modals follow the same `ImGui::OpenPopup` + `BeginPopupModal` pattern as the About popup.
 
-### OS File Dialog (ImGuiFileDialog)
+### OS File Dialog (SDL3 native)
 
 - Triggered by Open Scene and Save Scene As.
-- Opens an OS-native file dialog.
-- Filter: `\.yaml` files (`.yaml`, `.yml`).
-- On Open: the selected path is passed to `SceneLoader::load_from_file()`.
-- On Save As: the selected path is passed to `SceneSaver::save_to_file()` and stored as the current file path.
-- If the dialog is cancelled, no action is taken.
+- Opens an OS-native file dialog via SDL3 (abstracted through `Platform`).
+- **Open dialog**: `Platform::show_open_file_dialog(callback, filter_name, filter_pattern)`.
+- **Save dialog**: `Platform::show_save_file_dialog(callback, filter_name, filter_pattern, default_name)`.
+- **Callback type**: `std::function<void(std::optional<std::string>)>` — invoked with a valid path string on selection, or `std::nullopt` on cancel.
+- **Filters**: `filter_name = "YAML Scene"`, `filter_pattern = "yaml"` — only `.yaml` files are selectable.
+- **Default name (Save As)**: `default_name` parameter (e.g., `"Untitled.yaml"`).
+- **Window parent**: PlatformSDL3 passes the internal `SDL_Window*` to `SDL_ShowOpenFileDialog`/`SDL_ShowSaveFileDialog` for modal parent behavior. Editor code does not pass a window handle.
+- **On Open**: the selected path is passed to `SceneLoader::load_from_file()`.
+- **On Save As**: the selected path is passed to `SceneSaver::save_to_file()` and stored as the current file path.
+- **If the dialog is cancelled** (callback invoked with `std::nullopt`), no action is taken.
+
+**Callback lifecycle**: PlatformSDL3 heap-allocates the `std::function` before calling the SDL3 API. The SDL3 callback (C function pointer) receives the heap pointer as `userdata`, invokes the function with the selected path or `std::nullopt`, then `delete`s the heap-allocated callback. The SDL3 dialog callback fires on the main thread (during `SDL_PumpEvents`), so Editor lambdas captured in the `std::function` can safely access Editor state without additional synchronization.
+
+**Editor usage**:
+
+```cpp
+// Open scene:
+ctx.services.platform().show_open_file_dialog(
+    [this](auto path) { if (path) open_scene(*path); },
+    "YAML Scene", "yaml");
+
+// Save As:
+ctx.services.platform().show_save_file_dialog(
+    [this](auto path) { if (path) save_scene_as(*path); },
+    "YAML Scene", "yaml", "Untitled.yaml");
+```
 
 ## User stories
 
@@ -258,9 +279,9 @@ As a developer, I want to verify that a scene saved and then reloaded produces t
 | **OS window close button (X button / Alt+F4) with dirty scene** | Same save-prompt modal as File > Quit. Save/Don't Save/Cancel dialog. Cancel aborts close (window stays open). |
 | **Cancel file dialog (Open)** | No action. Current scene unchanged. No error. |
 | **Cancel file dialog (Save As)** | No action. Current file path unchanged. Dirty state unchanged. |
-| **File dialog selects non-`.yaml` file** | ImGuiFileDialog filter prevents this; only `.yaml` files are selectable. |
+| **File dialog selects non-`.yaml` file** | SDL3 dialog filter prevents this; only `.yaml` files are selectable. |
 | **Open a `.yaml` that is not a valid scene** | Error modal. Previous scene preserved. |
-| **Save to a path where file already exists** | Silent overwrite (no additional editor confirmation — ImGuiFileDialog may show platform-dependent warning independently). |
+| **Save to a path where file already exists** | Silent overwrite (no additional editor confirmation — the SDL3 native dialog does not add an overwrite warning, and the editor does not add one either). |
 | **Multiple rapid File menu actions** | Each action completes before next is processed (single-threaded ImGui frame). No race conditions. |
 | **Editor launches with no saved layout** | Works normally. Scene is "Untitled", clean, empty. |
 | **Scene file path contains spaces or special characters** | Stored as-is. Passed to SceneLoader/SceneSaver as-is. |
@@ -274,16 +295,16 @@ As a developer, I want to verify that a scene saved and then reloaded produces t
 |---|---|
 | **SceneLoader::load_from_file returns error (corrupt YAML, missing file, etc.)** | `Editor::open_scene()` returns error. Error modal displayed via `ImGui::OpenPopup` + `BeginPopupModal`. Previous scene preserved unchanged. |
 | **SceneSaver::save_to_file returns error (permissions, disk full, etc.)** | `Editor::save_scene()` returns error. Error modal displayed. Scene remains dirty. File path unchanged. |
-| **File dialog fails to initialize** | Operation silently aborts. No error modal (ImGuiFileDialog init failure is outside this feature's scope — logged at debug level). |
+| **File dialog fails to initialize** | Operation silently aborts. No error modal (SDL3 native dialog init failure is outside this feature's scope — logged at debug level). |
 | **Engine service (ComponentRegistry, AssetManager) not available during setup** | `Editor::setup()` already stores `engine_` pointer. If null when scene ops are called, the operation returns an error. This should not happen in normal execution (guarded by `initialized_` flag). |
 | **World is empty during Save** | SceneSaver saves an empty scene (`type: Scene, version: 1, entities: []`). This is valid — saves successfully. |
 | **World is empty during Open** | SceneLoader populates the empty World with loaded entities. |
-| **ImGuiFileDialog file selection returns empty path** | No action taken. Treat as cancellation. |
+| **SDL3 dialog callback invoked with `std::nullopt`** | No action taken. Treat as cancellation. |
 
 ## Permissions and security
 
 - File operations use OS-level file access via SceneLoader/SceneSaver (no elevated privileges).
-- ImGuiFileDialog uses the OS-native file dialog, which inherits the process's file permissions.
+- The SDL3 native file dialog (via Platform abstraction) inherits the process's file permissions.
 - No network access required.
 - No credentials, secrets, or sensitive data are handled.
 - File operations are triggered by explicit user action through the File menu — no automated file I/O.
@@ -329,7 +350,7 @@ The following documents must be updated to reflect this feature:
 | File | Changes needed |
 |---|---|
 | `docs/wiki/editor/scene-management.md` | Update from "future vision" to "current implementation" for F-01 operations (New/Open/Save/Save As/Quit with dirty state). Document Editor's `dirty_` flag, `file_path_`, and scene management methods. **North-star section**: correct from dirty-by-default to clean-by-default. |
-| `docs/wiki/architecture/module-map.md` | Add `ImGuiFileDialog` dependency to `buddd_editor` module. Add Editor scene management methods (`new_scene`, `open_scene`, `save_scene`, `save_scene_as`). |
+| `docs/wiki/architecture/module-map.md` | Add `Platform::show_open_file_dialog()` and `Platform::show_save_file_dialog()` methods to the Platform submodule. Add Editor scene management methods (`new_scene`, `open_scene`, `save_scene`, `save_scene_as`). |
 | `docs/adr/ADR-029-editor-ux-decisions.md` | Update AC-015 reference to match clean-by-default decision (F-01 starts untitled clean, not dirty). |
 | `.specs/sprint-2026-06/editor-ux-design/spec.md` | Add note that F-01 implements AC-015 through AC-018 and AC-025. **Note**: AC-015 and Story 1 need correction to match clean-by-default (F-01 starts untitled clean, not dirty). |
 
@@ -340,15 +361,15 @@ The following documents must be updated to reflect this feature:
 | A-01 | `SceneLoader` and `SceneSaver` exist and work as specified in their respective specs. They are instantiated per-call (not stored as Editor members). |
 | A-02 | `SceneLoader` constructor takes `(World&, ComponentRegistry&, AssetManager&)` — the Editor has access to all three via `EngineContext::services.registry()` and `EngineContext::services.assets()`. |
 | A-03 | `SceneSaver` constructor takes `(World&, ComponentRegistry&, AssetManager&)` — same dependencies as SceneLoader. |
-| A-04 | `ImGuiFileDialog` is added via FetchContent in the root `CMakeLists.txt` and linked to `buddd_editor`. The library exposes a C++ API compatible with the existing ImGui integration. |
-| A-05 | ImGuiFileDialog provides `ImGuiFileDialog::Instance()->OpenDialog()`, `ImGuiFileDialog::Instance()->Display()`, and file selection query methods (`isOk()`, `GetFilePathName()`, `GetCurrentFilter()`). |
+| A-04 | SDL3 native dialog APIs (`SDL_ShowOpenFileDialog`, `SDL_ShowSaveFileDialog`) are available on all target platforms (Linux with XDG Portals/DBus, Windows, macOS). These are abstracted through the Platform interface. |
+| A-05 | `Platform::show_open_file_dialog()` and `Platform::show_save_file_dialog()` are async: they take a `std::function<void(std::optional<std::string>)>` callback parameter and return immediately. PlatformSDL3 heap-allocates the callback and passes it as `userdata` to the SDL3 API. The SDL3 dialog callback fires on the main thread (during `SDL_PumpEvents`), so no cross-thread synchronization is needed. |
 | A-06 | The `Editor` class stores `engine_` (an `EngineService*`) after `setup()` — this provides access to `registry()` and `assets()` needed by SceneLoader/SceneSaver. |
 | A-07 | The `Editor::world()` accessor returns a valid `World&` at any point during the Editor's lifetime (guaranteed by SPEC-029). |
 | A-08 | `Window::set_title(std::string title)` exists on `buddd::engine::Window` base class. Implemented in WindowSDL3 via SDL_SetWindowTitle, and as a no-op in WindowHeadless. This method will be added as part of this feature. |
 | A-09 | `SceneSaver::save_to_file()` creates the target file if it does not exist, and overwrites it if it does. |
 | A-10 | `SceneLoader::load_from_file()` clears the World before populating it (or the Editor clears the World before calling load). The Editor clears the World explicitly before each load operation. |
 | A-11 | A new, untitled scene has `dirty_ = false`, `file_path_ = ""`, and title "Untitled — Buddd Editor". |
-| A-12 | ImGuiFileDialog's `Display()` is called within the Editor's `draw_ui()` frame, after the dockspace and panel rendering. |
+| A-12 | The SDL3 dialog callback is invoked from the main thread (during `SDL_PumpEvents`). The Editor lambda captured in the `std::function` callback (e.g., calling `open_scene` or `save_scene_as`) executes synchronously on the main thread and can safely access Editor state. No thread synchronization or result queueing is needed. |
 | A-13 | The existing headless test infrastructure (`tests/editor_tests.cpp`) can be extended with new test cases that exercise Editor scene management methods directly without a display. |
 | A-14 | `BUDDD_HAS_DISPLAY` CMake option controls whether display-dependent tests (`[.display]` tag) are compiled/run. |
 

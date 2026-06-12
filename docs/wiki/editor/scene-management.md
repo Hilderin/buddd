@@ -1,6 +1,6 @@
 # Scene Management
 
-> **Current status (F-01 — editor-scene-load-save, June 2026):** File > New Scene, Open Scene, Save Scene, Save Scene As, and Quit are fully implemented with dirty state tracking (`*` in window title), OS-native file dialogs (ImGuiFileDialog), save-prompt modals, error modals for load/save failures, and OS close-button interception. All scene operations use the engine's `SceneLoader` and `SceneSaver` APIs for YAML serialization. Implementation and tests completed — see [SPEC-F-01](/.specs/sprint-2026-06/editor-scene-load-save/spec.md).
+> **Current status (F-01 — editor-scene-load-save, June 2026):** File > New Scene, Open Scene, Save Scene, Save Scene As, and Quit are fully implemented with dirty state tracking (`*` in window title), OS-native file dialogs (SDL3 native dialogs via Platform abstraction), save-prompt modals, error modals for load/save failures, and OS close-button interception. All scene operations use the engine's `SceneLoader` and `SceneSaver` APIs for YAML serialization. Implementation and tests completed — see [SPEC-F-01](/.specs/sprint-2026-06/editor-scene-load-save/spec.md).
 
 The Buddd Editor follows an **Unreal Engine-like** model: one scene open at a time in the dedicated Scene tab. All scene file operations (New, Open, Save, Save As, Quit) go through the **File** menu. The engine's `SceneLoader` and `SceneSaver` APIs handle YAML serialization/deserialization of entity hierarchies.
 
@@ -80,16 +80,24 @@ When a `SceneLoader` or `SceneSaver` operation fails, an error modal is shown:
 
 Error modals follow the same `ImGui::OpenPopup` + `BeginPopupModal` pattern as the About popup.
 
-### OS File Dialogs (ImGuiFileDialog)
+### OS File Dialogs (SDL3 Native via Platform Abstraction)
 
-- **Library**: [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) v0.6.7, fetched via `FetchContent` in the root `CMakeLists.txt`.
+- **Mechanism**: SDL3 native file dialogs, abstracted through the `Platform` interface in `src/engine/platform/platform.h`.
 - Triggered by **Open Scene** and **Save Scene As** operations.
-- Opens an OS-native file dialog.
-- Filter: `\.yaml` files (`.yaml`, `.yml`).
-- On OK: the selected path is passed to `open_scene(selected_path)` or `save_scene_as(selected_path)`.
-- On Cancel: no action taken.
+- Opens an OS-native file dialog via SDL3 (`SDL_ShowOpenFileDialog` / `SDL_ShowSaveFileDialog`).
+- Filter: `"YAML Scene"` / `"yaml"` — only `.yaml` files are selectable.
+- On selection: the Platform dialog callback invokes `open_scene(path)` or `save_scene_as(path)` directly.
+- On Cancel or error: callback invoked with `std::nullopt`, no action taken.
 
-ImGuiFileDialog is compiled as part of `buddd_editor` (`ImGuiFileDialog.cpp` added to the static library sources, `${ImGuiFileDialog_SOURCE_DIR}` added as a system include path). `ImGuiFileDialog::Instance()` singleton pattern is used: `OpenDialog()` to open, `Display()` each frame, `IsOk()` to check result, `GetFilePathName()` to retrieve the selected path.
+The Platform defines a `FileDialogCallback` type alias (`std::function<void(std::optional<std::string>)>`) — editor code never includes SDL3 headers (per ADR-019). PlatformSDL3 heap-allocates the callback, passes it as `userdata` to the SDL3 C API; the C-lambda deletes the callback after invocation. The SDL3 dialog callback fires on the main thread during `SDL_PumpEvents` (inside `poll_events()`), so no mutex or intermediate queue is needed — Editor lambdas can safely access Editor state directly.
+
+**API signatures** (on `Platform`):
+- `show_open_file_dialog(FileDialogCallback, filter_name, filter_pattern)` — used by Open Scene.
+- `show_save_file_dialog(FileDialogCallback, filter_name, filter_pattern, default_name)` — used by Save Scene As and for the untitled Save redirect.
+
+**Headless backend**: `PlatformHeadless` immediately invokes the callback with `std::nullopt` (no-op — no file dialog in headless mode).
+
+**Callback lifecycle**: The heap-allocated `std::function` is created before the SDL3 API call and destroyed by the SDL3 C-lambda after invocation. The `SDL_DialogFileFilter` struct is stack-allocated (SDL3 copies the data internally). No mutex, no synchronization, no intermediate result queue.
 
 ### OS Close Button (X / Alt+F4)
 
@@ -120,7 +128,7 @@ Scenes are serialized as `.yaml` files via `SceneSaver` and loaded via `SceneLoa
 - Dirty state tracking with `dirty_` boolean + `*` window title suffix via `Editor::mark_dirty()` / `Editor::clear_dirty()` / `Editor::is_dirty()`.
 - Save-prompt modal state machine using `PendingOp` enum and multi-frame `ImGui` popup pattern.
 - Error modals for SceneLoader/SceneSaver failures, rendered in `draw_ui()` Phase 7.
-- OS file dialogs via ImGuiFileDialog (FetchContent), integrated in `draw_ui()` Phase 6.
+- OS file dialogs via Platform abstraction (SDL3 native dialogs), with direct callback invocation (no `draw_file_dialog()` or Phase 6 ImGuiFileDialog step — the Phase 6 slot was repurposed for `request_exit_next_frame_` check).
 - OS close button interception via `Platform::set_on_close_request()` concrete method.
 - `Window::set_title(std::string)` API on `Window` (pure virtual), `WindowSDL3` (SDL3 impl), `WindowHeadless` (no-op).
 - Logging: all scene operations logged via `BUDDD_LOG_TAG("Editor")` with `INFO`, `WARN`, `DEBUG` levels.
@@ -167,8 +175,8 @@ Scenes are serialized as `.yaml` files via `SceneSaver` and loaded via `SceneLoa
 - [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System (editor uses `run_app()`)
 - [ADR-001](/docs/adr/ADR-001-error-result-pattern.md) — Result Error Pattern (used by scene management methods)
 - [ADR-019](/docs/adr/ADR-019-architecture-boundaries.md) — Architecture boundaries (applies to `src/editor/`)
-- [ADR-026](/docs/adr/ADR-026-imgui-integration.md) — Dear ImGui Integration (ImGuiFileDialog uses same context)
+- [ADR-026](/docs/adr/ADR-026-imgui-integration.md) — Dear ImGui Integration (ImGui remains the UI library; ImGuiFileDialog was replaced by SDL3 native dialogs)
 
 ## Last reviewed
 
-2026-06-12 — Updated for F-01 (SPEC-F-01): current implementation replaces north-star vision for scene management. Clean-by-default. ImGuiFileDialog, save-prompt, error modals, close-event hook documented.
+2026-06-12 — Updated for F-01 SDL3 native dialog switch: ImGuiFileDialog replaced with SDL3 native dialogs via Platform abstraction. Platform interface now provides `show_open_file_dialog()` / `show_save_file_dialog()` with `FileDialogCallback`. Direct callback design (no mutex/queue). `draw_file_dialog()` and ImGuiFileDialog integration removed from Editor.

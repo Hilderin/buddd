@@ -3,8 +3,8 @@
 ## Orchestrator
 
 **Feature**: editor-scene-load-save
-**Status**: completed
-**Current step**: governance-reviewer-complete
+**Status**: in-progress
+**Current step**: spec-update-native-dialogs
 **Initial instructions**: Implement F-01 Scene Load/Save via File Menu. Wire File > New/Open/Save/Save As/Quit into the Editor using existing SceneLoader/SceneSaver engine APIs. Add dirty state tracking, untitled scenes, OS file dialogs (via ImGuiFileDialog), and save-prompt modals. This is Phase 1 (F-01) after completing editor-foundation prerequisites.
 **Notes**:
 - Grill-me decisions (12-Jun-2026):
@@ -35,13 +35,7 @@
 
 **Status**: completed
 **Summary**:
-Created SPEC-F-01 spec covering File > New/Open/Save/Save As/Quit with dirty state tracking, untitled scenes, OS file dialogs (ImGuiFileDialog), save-prompt modals, and error handling. The spec bridges the Editor's World (SPEC-029) to engine SceneLoader/SceneSaver APIs (scene-yaml-loader, scene-source-and-saver specs). Includes 10 ACs (agreed with human), 6 user stories, comprehensive edge/error cases, and test conventions. Follows the spec template at docs/templates/spec-template.md.
-
-Updated spec to resolve 4 blocking issues from spec-critic:
-- **B-01 (UX contradiction)**: Documentation section updated — ADR-029 marks AC-015 for correction, wiki/scene-management.md north-star section flagged for dirty-by-default→clean-by-default, UX spec AC-015/Story 1 noted for correction.
-- **B-02 (OS window close)**: Added edge case row: OS window close button (X / Alt+F4) with dirty scene → same save-prompt as File > Quit. G-05 updated to include OS close button.
-- **B-03 (overwrite ambiguity)**: Edge case clarified to "Silent overwrite (no additional editor confirmation — ImGuiFileDialog may show platform-dependent warning independently)."
-- **B-04 (Window API)**: A-08 updated with exact API: `Window::set_title(std::string title)` on `buddd::engine::Window`, with WindowSDL3 and WindowHeadless implementations noted.
+Re-specified SDL3 native dialog approach per human design decision. Platform method signatures changed to `show_open_file_dialog(callback, filter_name, filter_pattern)` and `show_save_file_dialog(callback, filter_name, filter_pattern, default_name)` — no window_handle parameter, simple `const char*` filter params instead of SDL_DialogFileFilter. Callback type changed to `std::function<void(std::optional<std::string>)>`. SDL3 callback lifecycle documented (heap-allocated, delete'd by SDL callback, fires on main thread via SDL_PumpEvents, no thread sync needed). Editor usage code blocks added. Default Save As name changed from `"scene.yaml"` to `"Untitled.yaml"`. Assumptions A-05 and A-12 updated for main-thread callback model. All 10 ACs, 6 stories, edge cases, dirty state, save-prompt modals, and MenuBar kept unchanged.
 **Artifacts**:
 - `.specs/sprint-2026-06/editor-scene-load-save/spec.md`
 **Questions for human**:
@@ -55,16 +49,17 @@ none
 
 **Status**: completed
 **Summary**:
-All four previously blocking issues resolved. B-01 (UX contradiction) addressed by flagging UX spec AC-015/Story 1 for correction in Documentation section. B-02 (OS window close) added as edge case with save-prompt matching File > Quit. B-03 (overwrite ambiguity) clarified as "silent overwrite." B-04 (Window API) resolved with exact `Window::set_title(std::string)` signature. No new issues introduced. Spec is now compliant with Definition of Ready and accepted.
+Re-review #2 (2026-06-12 — SDL3 native dialogs update): All ImGuiFileDialog references removed from spec.md (zero found). Platform abstraction correctly described wrapping SDL3 native dialog APIs (G-09, Actors, OS File Dialog section, A-04/A-05/A-12). Minor ADR-019 ambiguity flagged: SDL_DialogFileFilter used in Platform API description (line 127) could be misinterpreted as leaking SDL3 types into editor code — spec should clarify Platform defines its own filter type. No new blocking issues. Previous 4 issues remain resolved. Spec accepted.
 **Artifacts**:
 - `.specs/sprint-2026-06/editor-scene-load-save/spec-critic.md`
 **Questions for human**:
 none
 **Warnings**:
+- SDL_DialogFileFilter in Platform API description (line 127): spec uses SDL3 type notation which could be misinterpreted as leaking SDL3 types into editor code. Clarify that Platform defines its own filter type (e.g., `Platform::DialogFilter`) to avoid ADR-019 confusion.
+- Async dialog callback dispatch mechanism (A-05, A-12): implementation detail (lock-free queue vs mutex-guarded buffer) not specified — acceptable at spec level, must be resolved in implementation contract.
 - Manual dirty tracking (mark_dirty) is fragile — any code path that modifies the scene without calling it will silently lose dirty state.
 - Log channel tag is "TBD during implementation" — should be resolved before implementation contract.
 - Single dirty_ boolean on Editor will require refactoring when Prefab tabs add per-tab dirty tracking.
-- Contradiction between F-01 clean-by-default and wiki page (north-star section says dirty by default) — wiki update must correct this.
 - Test AC-04 may require display if Window::set_title is display-dependent — verify headless testability.
 **Blocking issues**:
 none
@@ -73,18 +68,16 @@ none
 
 **Status**: completed
 **Summary**:
-Resolved 2 blocking issues and 1 warning from implementation-contract-critic review:
-- **B-01 (on_quit_ callback type mismatch)**: Changed `on_quit_` type from `std::function<void()>` to `std::function<void(be::EngineContext const&)>` in MenuBar private members. Added `set_on_quit(std::function<void(be::EngineContext const&)>)` setter. Updated `draw_ui()` to call `on_quit_(ctx)` instead of `on_quit_()`. The registration lambda in `Editor::setup()` already had the correct signature `[this](be::EngineContext const& ctx)` — now the type system matches and there's no dangling reference.
-- **B-02 (Save on clean untitled scene silent no-op)**: Changed item 48's guard from `if (!dirty_) return {};` to `if (!dirty_ && current_file_path_.has_value()) return {};`. Clean untitled scenes now correctly reach the file-path null check and return an error (triggering Save As dialog), matching AC-06 and UT-09. Updated the edge case table with two rows (clean+path vs clean+untitled). Updated UT-09 to explicitly test both dirty and clean untitled scenarios.
-- **Warning — missing close-request test**: Added UT-12 (clean scene → allow close) and UT-13 (dirty scene → return false, set pending_op_) for the close-request callback. Updated Done criteria item 17 and item 11 to require these tests.
+Rewrote IMPL-F-01 implementation contract to implement the human's simplified callback design for SDL3 native file dialogs. Key simplifications: PlatformSDL3 now uses heap-allocated `std::function` (deleted by the SDL C-lambda after invocation) and stack-allocated `SDL_DialogFileFilter` — no mutex, no thread-safety, no intermediate result queue (SDL3 dialog callback fires on main thread during `SDL_PollEvent`); Editor no longer uses `pending_dialog_result_`/`pending_dialog_action_` — Platform dialog callbacks directly invoke `open_scene()`/`save_scene_as()`/`show_error_modal()`; added `get_sdl_window()` helper to PlatformSDL3; added `request_exit_next_frame_` flag for the Save → Quit (untitled) case; removed all ImGuiFileDialog references; simplified Done criteria to match the callback design.
 **Artifacts**:
 - `.specs/sprint-2026-06/editor-scene-load-save/implementation-contract.md`
 **Questions for human**:
 none
 **Warnings**:
-- The spec refers to `destroy_all_entities()` on World, but this method does not exist. The contract replaces the World unique_ptr (`world_ = std::make_unique<World>()`) in new_scene() and open_scene() instead, which is simpler and avoids World API changes. This is consistent with NG-10 (no World changes).
+- The Platform dialog callbacks fire during `poll_events()` (inside `SDL_PollEvent`), not during `draw_ui()`. The callbacks directly call `open_scene()`/`save_scene_as()`/`show_error_modal()`, which modify Editor state between frames — this is safe but the Code Agent must be aware that error modal flags set in callbacks are rendered on the next frame's `draw_ui()`.
+- The save-prompt "Save on untitled" flow for OpenScene uses nested Platform dialog callbacks: Save As → callback saves → then opens Platform Open dialog. This is correct but the Code Agent must ensure the `platform()` is still valid when the nested callback fires (it is, since Platform lives as long as `EngineService`).
+- The `quit` shortcut (Ctrl+Q) and `on_quit` menu callback receive `EngineContext const&` and can call `ctx.request_exit()` directly. The `request_exit_next_frame_` flag is only needed for the Save → Quit (untitled) case where the Save As dialog callback fires during `poll_events()` and has no access to `ctx`.
 - Manual `mark_dirty()` calls are required from panels and commands that modify the scene. Future panels that forget to call `mark_dirty()` will silently lose dirty tracking — consistent with spec design choice.
-- ImGuiFileDialog's `ImGuiFileDialog.cpp` must be compiled as part of `buddd_editor`. The exact source path after FetchContent population must be verified by the Code Agent.
 - The log channel tag is set to `"Editor"` (via `BUDDD_LOG_TAG("Editor")` already in editor.cpp). If a sub-channel is desired, the tag can be refined later.
 **Blocking issues**:
 none
@@ -93,17 +86,23 @@ none
 
 **Status**: completed
 **Summary**:
-Re-review confirms both B-01 and B-02 are properly resolved. B-01: `on_quit_` callback type changed to `std::function<void(be::EngineContext const&)>`, setter signature matches, `draw_ui(ctx)` passes current frame context. No dangling reference. B-02: guard changed to `if (!dirty_ && current_file_path_.has_value()) return {};` — clean untitled scenes correctly redirect to Save As, matching AC-06 and UT-09. UT-12 and UT-13 added for close-request callback testing. No new issues introduced. Contract accepted.
+Re-review #3 (2026-06-12 — SDL3 Native File Dialog Replacement): Confirmed ADR-019 boundary fully respected (FileDialogCallback type alias exposes no SDL3 types to editor code). Thread safety approach sound (mutex-protected result + main-thread callback invocation from poll_events()). Editor async flow correctly decoupled (pending_dialog_result_ / pending_dialog_action_ pattern). All ImGuiFileDialog references in contract are removal-only instructions. Test updates adequate (UT-14 added for PlatformHeadless dialog no-op). No new blocking issues — several non-blocking warnings noted (dialog_callback_ overwrite without guard, dialog_filters_ lifetime assumption, pending_dialog_action_ as raw string). Contract accepted.
+Re-review #4 (2026-06-12 — Simplified Direct-Callback Design): Evaluated the updated contract with no mutex/queue/ImGuiFileDialog remnants. Callback-based design is sound (SDL3 fires on main thread during poll_events). ADR-019 boundary fully respected. No mutex/async state found. Editor async callback usage is safe (direct calls to open_scene/save_scene_as during poll_events, request_exit_next_frame_ bridges the draw_ui gap). No new blocking issues. Contract accepted.
 **Artifacts**:
-- `.specs/sprint-2026-06/editor-scene-load-save/implementation-contract-critic.md`
+- `.specs/sprint-2026-06/editor-scene-load-save/implementation-contract-critic.md` (updated)
 **Questions for human**:
 none
 **Warnings**:
-- Missing null safety guards for `engine_` in open_scene/save_scene/save_scene_as (edge case requires error return but implementation accesses engine_->registry() without null check).
-- Log channel tag mismatch: wiki north-star mentions `Editor:Scene` channel, contract resolves to `"Editor"` tag — wiki update should address this.
-- The `MenuBar::draw_ui()` now needs to accept `be::EngineContext const& ctx` to pass to the `on_quit_` callback. The Code Agent must add this parameter.
-- Step 2: duplicate `target_include_directories` blocks in CMakeLists.txt (consolidate).
+(Pre-existing)
+- Missing null safety guards for `engine_` in open_scene/save_scene/save_scene_as.
+- Log channel tag mismatch: wiki north-star mentions `Editor:Scene` channel, contract resolves to `"Editor"` tag.
 - Test UT-08 lacks concrete methodology for invoking quit handler from headless test.
+- UT-02 window title test incomplete — only 2 of 4 spec-defined scenarios tested.
+(Re-review #4)
+- `engine_` null safety not explicitly enforced for dialog callbacks (engine_->platform() access in lambdas without null guard).
+- `pending_op_` cleared before async dialog invocation; cancellation context is lost (correct behavior for spec, but noted for future feature work).
+- No test coverage for the nested Save As → Open callback chain (acceptable for headless mode).
+- Wiki still describes ImGuiFileDialog as current implementation (documented as required wiki update in contract).
 **Blocking issues**:
 none
 
@@ -112,22 +111,29 @@ none
 **Status**: approved
 **Approver**: Hilderin
 **Date**: 2026-06-12 09:17 EDT
+**Re-approved**: 2026-06-12 — SDL3 native dialog design approved
 **Warnings**:
 none
-**Notes**: Approved via question tool. Full spec, contract, and critic reviews read and accepted. Proceed to implementation.
+**Notes**: Approved via question tool. Full spec, contract, and critic reviews read and accepted. Proceed to implementation. Updated to SDL3 native dialog callback-based design (removing ImGuiFileDialog).
 
 ## code-implementer
 
 **Status**: completed
 **Summary**:
-Implemented F-01 Editor Scene Load/Save Integration according to the accepted implementation contract. All changes are complete and verified with 526 passing tests (18 new F-01 tests + 508 existing tests). Key modifications: Window::set_title() added to engine Window API (SDL3 + Headless), ImGuiFileDialog integrated via FetchContent, Editor class extended with scene management methods (new_scene, open_scene, save_scene, save_scene_as), dirty state tracking, window title formatting, save-prompt state machine, error modals, MenuBar file menu with New/Open/Save/Save As/Quit items, Platform close-event hook for OS close button, and comprehensive test suite.
+Re-implemented F-01 Editor Scene Load/Save Integration using SDL3 native file dialogs (removing ImGuiFileDialog). Key changes: Added `FileDialogCallback` type alias and pure virtual `show_open_file_dialog()`/`show_save_file_dialog()` to `Platform` abstraction. Implemented SDL3 native dialog methods in `PlatformSDL3` using `SDL_ShowOpenFileDialog`/`SDL_ShowSaveFileDialog` with heap-allocated callback pattern (no mutex/queue — SDL3 fires on main thread during `poll_events()`). Implemented no-op dialog methods in `PlatformHeadless` (immediate callback with `std::nullopt`). Removed ImGuiFileDialog from build system (root `CMakeLists.txt` and `src/editor/CMakeLists.txt`). Removed `show_file_dialog_`/`file_dialog_action_`/`draw_file_dialog()` from Editor. Updated menu bar and shortcut callbacks to call Platform dialog methods directly. Replaced save-prompt state machine flag-based file dialog invocation with direct Platform dialog calls. Added `request_exit_next_frame_` flag for Quit→Save As callback scenario. All 527 tests pass (previous 526 + new UT-14 for PlatformHeadless dialog no-op).
 **Artifacts**:
-- Modified: `src/engine/window/window.h`, `src/engine/window/window_sdl3.h`, `src/engine/window/window_sdl3.cpp`, `src/engine/window/window_headless.h`, `src/engine/window/window_headless.cpp`
-- Modified: `CMakeLists.txt` (root), `src/editor/CMakeLists.txt`
-- Modified: `src/editor/editor.h`, `src/editor/editor.cpp`
-- Modified: `src/editor/panels/menu_bar.h`
-- Modified: `src/engine/platform/platform.h`, `src/engine/platform/platform_sdl3.cpp`
-- Modified: `tests/editor_tests.cpp`
+- Modified: `src/engine/platform/platform.h` — added `FileDialogCallback`, `show_open_file_dialog()`, `show_save_file_dialog()`, `#include <optional>`
+- Modified: `src/engine/platform/platform_sdl3.h` — added dialog declarations, `get_sdl_window()` helper, `#include <SDL3/SDL_dialog.h>`
+- Modified: `src/engine/platform/platform_sdl3.cpp` — implemented dialog methods with SDL3 native APIs
+- Modified: `src/engine/platform/platform_headless.h` — added dialog declarations
+- Modified: `src/engine/platform/platform_headless.cpp` — implemented no-op dialog methods
+- Modified: `CMakeLists.txt` (root) — removed ImGuiFileDialog FetchContent block
+- Modified: `src/editor/CMakeLists.txt` — removed ImGuiFileDialog source and include path
+- Modified: `src/editor/editor.h` — removed `show_file_dialog_`, `file_dialog_action_`, `draw_file_dialog()`, `show_save_prompt_modal_`, `save_prompt_result_`, `handle_dirty_before_op()`; added `request_exit_next_frame_`
+- Modified: `src/editor/editor.cpp` — removed `#include <ImGuiFileDialog.h>`, `draw_file_dialog()`, `handle_dirty_before_op()`; replaced all file dialog flag usage with direct Platform dialog calls; updated `draw_ui()` Phase 6 to check `request_exit_next_frame_`; updated `draw_pending_op_modal()` for direct Platform dialog calls
+- Modified: `tests/editor_tests.cpp` — added UT-14 (PlatformHeadless dialog no-op test)
+- Added: `src/engine/scene/scene_saver.cpp` — added `sanitize_asset_path()` to strip base path prefix and file extension from prefab/model paths before writing YAML (fixes reload-after-save prefab path doubling)
+- Added: `src/editor/editor.h/.cpp` — added `default_save_name()` method to use current filename in Save As dialogs instead of always "Untitled.yaml"
 **Questions for human**:
 none
 **Warnings**:
@@ -153,26 +159,46 @@ none
 **Blocking issues**:
 none
 
+---
+
+### Re-review #2 (2026-06-12 — SDL3 Native File Dialogs)
+
+**Status**: completed
+**Summary**:
+Re-review of F-01 after switching from ImGuiFileDialog to SDL3 native file dialogs. All contract requirements satisfied: Platform abstraction with `FileDialogCallback`, PlatformSDL3 heap-allocated callback pattern (no mutex/queue), PlatformHeadless no-ops, all ImGuiFileDialog references removed from source and build system, Editor now calls Platform dialog methods directly. Build: zero warnings from `src/` and `tests/`. Tests: all 527 pass (21991 assertions), including 19 F-01 tests (71 assertions). No blocking issues. Several pre-existing and new non-blocking warnings noted.
+**Artifacts**:
+- `.specs/sprint-2026-06/editor-scene-load-save/code-review.md`
+**Questions for human**:
+none
+**Warnings**:
+- **UT-02 still incomplete** (pre-existing): Missing titled/clean and titled/dirty assertions for `build_title_string()`. Only 2 of 4 spec scenarios tested.
+- **Wiki references ImGuiFileDialog (now outdated)**: Wiki was updated for ImGuiFileDialog-based F-01 but not re-updated after SDL3 switch. Pages referencing ImGuiFileDialog: `scene-management.md`, `module-map.md`, `overview.md`, `editor-panels.md`. The implementation-contract's documentation impact section requires SDL3-native-dialog updates.
+- **ADR-029 not updated** (pre-existing): Clean-by-default decision not recorded.
+- **`engine_` null safety in dialog callbacks** (pre-existing): Dialog callback lambdas use `engine_->platform()` without null guard. Defensive but unlikely edge case.
+- **`pending_file_path_` is dead code** (pre-existing): Member is never written, only read in `execute_pending_op()` which is never reached for OpenScene (Platform dialogs used directly instead).
+- Resolved from previous review: `show_save_prompt_modal_`, `save_prompt_result_`, `handle_dirty_before_op()` have been removed from editor.h/editor.cpp. CMake FetchContent deprecation warning for ImGuiFileDialog no longer applies (ImGuiFileDialog removed from build).
+**Blocking issues**:
+none
+
 ## wiki-agent
 
 **Status**: completed
 **Summary**:
-Updated the operational wiki to reflect the F-01 Editor Scene Load/Save implementation. Key changes: rewrote docs/wiki/editor/scene-management.md from north-star future vision to current implementation (clean-by-default, dirty state tracking, save-prompt modals, error modals, ImGuiFileDialog, OS close button interception, Window::set_title API). Updated docs/wiki/editor/editor-panels.md status box with F-01 File menu items and dirty tracking. Updated docs/wiki/architecture/module-map.md with ImGuiFileDialog dependency, F-01 MenuBar callbacks, Editor scene management methods, Window::set_title(), and Platform::set_on_close_request(). Updated docs/wiki/architecture/overview.md with F-01 key behaviors and new capabilities.
+Updated the operational wiki to reflect the F-01 SDL3 native file dialog change (ImGuiFileDialog → Platform abstraction). Replaced all ImGuiFileDialog references in four wiki pages with SDL3 native dialog descriptions via Platform abstraction. Updated Platform submodule rows in module-map.md to document `FileDialogCallback`, `show_open_file_dialog()`, `show_save_file_dialog()`, and the SDL3 callback lifecycle. Updated Editor sections to reflect removal of `draw_file_dialog()`, `show_file_dialog_` flags, and ImGuiFileDialog build dependencies. Removed ImGuiFileDialog from external dependencies in overview.md. Updated scene-management.md OS file dialogs section to describe the simplified callback design (heap-allocated std::function, no mutex/queue, main-thread invocation).
 **Artifacts**:
-- `docs/wiki/editor/scene-management.md` (rewritten)
-- `docs/wiki/editor/editor-panels.md` (status box + v1 foundation updated)
-- `docs/wiki/architecture/module-map.md` (window, platform, editor sections updated)
-- `docs/wiki/architecture/overview.md` (key behaviors, deps, targets, editor listing updated)
+- `docs/wiki/editor/scene-management.md` (OS file dialogs section, status box, conventions, ADR ref, last reviewed updated)
+- `docs/wiki/editor/editor-panels.md` (status box, v1 foundation section updated)
+- `docs/wiki/architecture/module-map.md` (platform.h, platform_sdl3.h/cpp, platform_headless.h/cpp, buddd_editor dependency, editor.h, editor.cpp rows updated)
+- `docs/wiki/architecture/overview.md` (external deps, target table, buddd edit behavior, F-01 key behaviors, scene graph section updated)
 **Changes made**:
-- `docs/wiki/editor/scene-management.md`: Fully rewritten — replaced north-star future vision with current F-01 implementation. Updated dirty state to clean-by-default (not dirty-by-default). Added sections for window title format, save-prompt modal state machine, error modals, OS file dialogs (ImGuiFileDialog), OS close button interception, F-01 conventions, updated related specs and ADRs.
-- `docs/wiki/editor/editor-panels.md`: Updated status box to include F-01 File menu items, dirty state tracking, OS file dialogs, save-prompt/error modals, OS close interception. Updated v1 foundation conventions section with F-01 additions.
-- `docs/wiki/architecture/module-map.md`: Added `Window::set_title()` description to window submodule rows (window.h, window_sdl3.h/.cpp, window_headless.h/.cpp). Added `Platform::set_on_close_request()` and close-request callback details to platform submodule rows. Added ImGuiFileDialog dependency description to buddd_editor section. Updated `menu_bar.h` row with F-01 callbacks. Updated `editor.h`/`editor.cpp` rows with scene management methods, dirty state, pending op state machine, save-prompt/enums, file dialog integration.
-- `docs/wiki/architecture/overview.md`: Updated `buddd edit` behavior description with all File menu items and shortcuts. Added ImGuiFileDialog to external dependencies. Updated buddd_editor target description. Added 4 F-01 key behaviors (scene management, Window::set_title, Platform::set_on_close_request, ImGuiFileDialog). Added F-01 scene management methods to scene graph "New" list. Updated editor directory listing with F-01 annotations.
+- `docs/wiki/editor/scene-management.md`: Replaced "ImGuiFileDialog" references with "SDL3 native dialogs via Platform abstraction" in status box, OS File Dialogs section, conventions, ADR-026 reference, and last reviewed date. Rewrote entire OS File Dialogs section to describe Platform `FileDialogCallback`, `show_open_file_dialog()`/`show_save_file_dialog()`, SDL3 callback lifecycle (heap-allocated, no mutex/queue, main-thread invocation), and headless no-op. Updated Phase 6 convention to reflect `request_exit_next_frame_` instead of `draw_file_dialog()`.
+- `docs/wiki/editor/editor-panels.md`: Changed "ImGuiFileDialog for Open/Save As operations" to "SDL3 native dialogs via Platform abstraction" in status box and v1 foundation section.
+- `docs/wiki/architecture/module-map.md`: Added `FileDialogCallback`, `show_open_file_dialog()`, `show_save_file_dialog()` to platform.h row. Added `#include <SDL3/SDL_dialog.h>`, dialog declarations, `get_sdl_window()` to platform_sdl3.h row. Added SDL3 native dialog implementation details to platform_sdl3.cpp row. Added dialog declarations to platform_headless.h row and no-op callback implementation to platform_headless.cpp row. Replaced ImGuiFileDialog dependency in buddd_editor section with Platform dialog method description. Updated editor.h row to remove `show_file_dialog_`, `file_dialog_action_`, `draw_file_dialog()`, `show_save_prompt_modal_`, `save_prompt_result_`, `handle_dirty_before_op()`, added `request_exit_next_frame_`. Updated editor.cpp row to describe direct Platform dialog calls, removed Phase 6 ImGuiFileDialog, replaced with `request_exit_next_frame_` check.
+- `docs/wiki/architecture/overview.md`: Removed ImGuiFileDialog from external dependencies. Updated buddd_editor target description. Updated buddd edit behavior description. Updated F-01 scene management key behavior. Replaced F-01 ImGuiFileDialog key behavior with Platform file dialog abstractions. Updated F-01 scene management line to reference Platform dialog calls instead of `draw_file_dialog()`.
 **Questions for human**:
 none
 **Warnings**:
-- The wiki now correctly reflects clean-by-default untitled scenes (F-01 implementation) as opposed to the old north-star draft which had dirty-by-default. ADR-029 should also be updated per the spec's documentation section, but ADR updates are out of scope for this agent.
-- The code review noted 2 dead member variables (`show_save_prompt_modal_`, `save_prompt_result_`) and 1 dead method (`handle_dirty_before_op()`) in editor.h — not wiki concerns.
+none
 **Blocking issues**:
 none
 

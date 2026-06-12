@@ -630,6 +630,102 @@ TEST_CASE("F-01: Error handling on corrupt YAML", "[editor][f01][integration]") 
     std::remove(corrupt_path.c_str());
 }
 
+// ── UT-14: PlatformHeadless dialog no-op ──
+TEST_CASE("F-01: PlatformHeadless dialog methods are no-ops", "[editor][f01][headless]") {
+    HeadlessTestContext htc;
+
+    // Register test callbacks that track invocation
+    bool open_called = false;
+    bool save_called = false;
+    std::optional<std::string> open_result = std::string("unset");
+    std::optional<std::string> save_result = std::string("unset");
+
+    htc.engine->platform().show_open_file_dialog(
+        [&](std::optional<std::string> path) {
+            open_called = true;
+            open_result = path;
+        },
+        "YAML Scene", "yaml");
+
+    REQUIRE(open_called);
+    REQUIRE_FALSE(open_result.has_value());
+
+    htc.engine->platform().show_save_file_dialog(
+        [&](std::optional<std::string> path) {
+            save_called = true;
+            save_result = path;
+        },
+        "YAML Scene", "yaml", "Untitled.yaml");
+
+    REQUIRE(save_called);
+    REQUIRE_FALSE(save_result.has_value());
+}
+
+// ── UT-15: Editor::default_save_name ──
+TEST_CASE("F-01: default_save_name returns 'Untitled.yaml' when no file is loaded",
+          "[editor][f01]")
+{
+    buddd::editor::Editor editor;
+    // Fresh editor, no file loaded
+    REQUIRE(editor.default_save_name() == "Untitled.yaml");
+}
+
+TEST_CASE("F-01: default_save_name returns filename after setting file path",
+          "[editor][f01]")
+{
+    // We can't easily call open_scene() in headless (needs display),
+    // so test through save_scene_as which sets the file path
+    HeadlessTestContext htc;
+    buddd::editor::Editor editor;
+    [[maybe_unused]] auto _setup_tmp = editor.setup(*htc.ctx);
+
+    char temp_template[] = "/tmp/buddd_f01_defsave_XXXXXX";
+    int fd = mkstemp(temp_template);
+    REQUIRE(fd != -1);
+    close(fd);
+    std::string temp_path = std::string(temp_template) + ".yaml";
+
+    auto result = editor.save_scene_as(temp_path);
+    REQUIRE(result.has_value());
+
+    // After save_scene_as, default_save_name should return the filename
+    auto expected = std::filesystem::path(temp_path).filename().string();
+    REQUIRE(editor.default_save_name() == expected);
+
+    std::remove(temp_path.c_str());
+}
+
+// ── UT-17: Editor::dialog_default_path ──
+TEST_CASE("F-01: dialog_default_path returns '.' when no file is loaded",
+          "[editor][f01]")
+{
+    buddd::editor::Editor editor;
+    REQUIRE(editor.dialog_default_path() == ".");
+}
+
+TEST_CASE("F-01: dialog_default_path returns parent directory after save_scene_as",
+          "[editor][f01]")
+{
+    HeadlessTestContext htc;
+    buddd::editor::Editor editor;
+    [[maybe_unused]] auto _setup_tmp = editor.setup(*htc.ctx);
+
+    char temp_template[] = "/tmp/buddd_f01_dlgpath_XXXXXX";
+    int fd = mkstemp(temp_template);
+    REQUIRE(fd != -1);
+    close(fd);
+    std::string temp_path = std::string(temp_template) + ".yaml";
+
+    auto result = editor.save_scene_as(temp_path);
+    REQUIRE(result.has_value());
+
+    // After save_scene_as, dialog_default_path should return the parent directory
+    auto expected = std::filesystem::path(temp_path).parent_path().string();
+    REQUIRE(editor.dialog_default_path() == expected);
+
+    std::remove(temp_path.c_str());
+}
+
 // ═════════════════════════════════════════════════════════════════════
 // F-01 — Headless window test
 // ═════════════════════════════════════════════════════════════════════

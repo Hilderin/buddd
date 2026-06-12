@@ -1,5 +1,6 @@
 #include "scene/scene_saver.h"
 
+#include "asset/asset_manager.h"
 #include "debug/assert.h"
 #include "log/log.h"
 #include "error.h"
@@ -21,6 +22,39 @@
 BUDDD_LOG_TAG("SceneSaver");
 
 namespace buddd::engine {
+
+namespace {
+
+/// Strip base path prefix and file extension from a resolved prefab/model path.
+/// This ensures saved YAML files contain relative paths without extensions,
+/// matching the format that SceneLoader::resolve_prefab_path() expects.
+/// Example: "assets/prefabs/free_camera.yaml" → "prefabs/free_camera"
+auto sanitize_asset_path(const std::string& path, std::string_view base_path) -> std::string {
+    std::string result = path;
+
+    // Strip base path prefix if present (e.g., "assets/prefabs/..." → "prefabs/...")
+    if (result.size() > base_path.size() + 1 &&
+        result.compare(0, base_path.size(), base_path.data()) == 0 &&
+        result[base_path.size()] == '/')
+    {
+        result = result.substr(base_path.size() + 1);
+    }
+
+    // Strip .yaml/.yml extension if present
+    for (auto ext : {".yaml", ".yml"}) {
+        auto ext_len = std::char_traits<char>::length(ext);
+        if (result.size() > ext_len &&
+            result.compare(result.size() - ext_len, ext_len, ext) == 0)
+        {
+            result = result.substr(0, result.size() - ext_len);
+            break;
+        }
+    }
+
+    return result;
+}
+
+} // anonymous namespace
 
 // ---------------------------------------------------------------------------
 // Constructor
@@ -130,7 +164,7 @@ auto SceneSaver::save_entity(Entity entity) -> YAML::Node {
 
     // ── Prefab source: emit only prefab ref + name + transform ──
     if (src.type == EntitySourceType::Prefab) {
-        node["prefab"] = src.path;
+        node["prefab"] = sanitize_asset_path(src.path, assets_.base_path());
         node["name"] = entity.name();
         if (auto t = maybe_transform(); !t.IsNull()) node["transform"] = t;
         return node;
@@ -139,7 +173,7 @@ auto SceneSaver::save_entity(Entity entity) -> YAML::Node {
     // ── Model source: emit only name + model ref + transform ──
     if (src.type == EntitySourceType::Model) {
         node["name"] = entity.name();
-        node["model"] = src.path;
+        node["model"] = sanitize_asset_path(src.path, assets_.base_path());
         if (auto t = maybe_transform(); !t.IsNull()) node["transform"] = t;
         return node;
     }

@@ -8,7 +8,7 @@
 > - **Command system**: `Command` base class + `CommandStack` with bounded 128-entry undo/redo.
 > - **Two-phase lifecycle**: `Editor::update()` (shortcuts, state) + `Editor::draw_ui()` (menus, dockspace, panels, popups).
 > - **Dirty state tracking**: `*` suffix in window title when scene has unsaved changes (via `Editor::mark_dirty()` / `Editor::is_dirty()`).
-> - **OS file dialogs**: ImGuiFileDialog for Open/Save As operations (`.yaml` filter).
+> - **OS file dialogs**: SDL3 native dialogs via Platform abstraction (`.yaml` filter).
 > - **Save-prompt modals**: Multi-frame modal with Save/Don't Save/Cancel for dirty-scene operations.
 > - **Error modals**: Displayed on SceneLoader/SceneSaver failures.
 > - **OS close interception**: Close button (X/Alt+F4) triggers same save-prompt as File > Quit.
@@ -451,7 +451,7 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 - The `App` base class has a `virtual update(EngineContext const&)` method (default no-op), called once per frame after `World::update_updatables()`. All existing demo apps are unaffected.
 - The editor also owns a `World` via `std::unique_ptr<World>` — created in the **Editor constructor**, available via `editor.world()`, and destroyed in the destructor. The World is always valid (no null checks needed) and is separate from `ctx.world` (the engine's demo-scene world). See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
 - No SDL3, OpenGL, or GLM headers are included in `src/editor/` (per ADR-019).
-- **F-01 additions**: File menu now includes New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S). Dirty state tracking (`dirty_` boolean + `*` in window title via `Window::set_title()`). OS file dialogs via ImGuiFileDialog (FetchContent). Save-prompt modal state machine (`PendingOp` enum). Error modals for SceneLoader/SceneSaver failures. OS close button interception via `Platform::set_on_close_request()`. Scene management methods: `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`.
+- **F-01 additions**: File menu now includes New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S). Dirty state tracking (`dirty_` boolean + `*` in window title via `Window::set_title()`). OS file dialogs via Platform abstraction (SDL3 native dialogs — ImGuiFileDialog removed from build). Save-prompt modal state machine (`PendingOp` enum). Error modals for SceneLoader/SceneSaver failures. OS close button interception via `Platform::set_on_close_request()`. Scene management methods: `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`.
 
 ### North-star (future — not yet implemented)
 

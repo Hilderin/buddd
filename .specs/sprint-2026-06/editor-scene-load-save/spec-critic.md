@@ -19,9 +19,23 @@ All four previously blocking issues have been resolved in the latest spec revisi
 | B-01 UX contradiction | Documentation section now flags UX spec AC-015 and Story 1 for correction; ADR-029 and wiki noted for update | ✅ Resolved |
 | B-02 OS window close | Edge case added (line 258); G-05 includes X / Alt+F4; behavior matches File > Quit save-prompt | ✅ Resolved |
 | B-03 Overwrite ambiguity | Edge case states "Silent overwrite" explicitly — editor does not add extra confirmation | ✅ Resolved |
-| B-04 Window API | A-08 specifies `Window::set_title(std::string title)` on `buddd::engine::Window` with SDL3 and Headless impls | ✅ Resolved |
+| B-04 Window API | A-08 specifies `Window::set_title(std::string)` on `buddd::engine::Window` with SDL3 and Headless impls | ✅ Resolved |
 
-No new blocking issues introduced. All Definition of Ready criteria remain satisfied.
+### Re-review #2 (2026-06-12) — ImGuiFileDialog → SDL3 native file dialogs
+
+**Scope**: Re-review focused on the file dialog mechanism change only. All 10 ACs, 6 user stories, edge cases, and error cases remain unchanged.
+
+**Findings**:
+- ✅ **No ImGuiFileDialog references remain** in spec.md (zero matches from grep).
+- ✅ **Platform abstraction correctly replaces ImGuiFileDialog** in G-09, Actors, OS File Dialog section, and all affected assumptions (A-04, A-05, A-12).
+- ✅ **Async SDL3 dialog flow** properly described with callback model, thread safety via Platform, and frame-bound result processing.
+- ✅ **Edge/error cases updated** to reflect SDL3 dialog behavior (cancellation, empty path, init failure).
+- ✅ **Documentation to update** correctly lists Platform dialog methods for module-map.md.
+- ⚠️ **Minor ADR-019 ambiguity**: The spec describes the Platform API using `SDL_DialogFileFilter` (line 127), which could be misinterpreted as leaking SDL3 types into the editor. The stated intent (Platform "respects the ADR-019 architecture boundary") is clear, but the spec should clarify that Platform defines its own filter type to avoid confusion.
+
+No new blocking issues introduced. All Definition of Ready criteria remain satisfied for the changed areas.
+
+**Verdict: ACCEPTED** — no new blocking issues, one minor ambiguity flagged as a warning.
 
 ## Blocking issues
 
@@ -56,7 +70,13 @@ Non-blocking concerns for awareness:
 
 - **Test AC-04 (`[.display]` tag?)**: AC-04 verification says "Unit test: construct Editor, mark dirty, verify title contains `*`, save, verify `*` removed." If `set_title()` interacts with a display-backed `Window`, this test may need a display. The E2E section says AC-04 is a unit test, but its dependency on `Window::set_title` (which may require display) needs clarification.
 
-## Required changes (all resolved)
+- **SDL_DialogFileFilter in Platform API description (ADR-019 concern)**: The spec at line 127 describes the Platform API using `SDL_DialogFileFilter{.name = "YAML Scene", .pattern = "yaml"}` notation. If this is the public Platform API signature, editor code would need to construct SDL3 types, violating ADR-019 (no SDL3 headers in `src/editor/`). While the spec's stated intent (Platform "respects the ADR-019 architecture boundary") and assumptions (A-04: SDL3 APIs "abstracted through the Platform interface") are clear, the spec should explicitly state that Platform defines its own filter type (e.g., `Platform::DialogFilter` or similar) so editor code never touches SDL3 types. This is a minor documentation clarity issue — the intent is correct but the wording is ambiguous.
+
+- **Async dialog callback dispatch mechanism**: The spec (A-05, A-12) states the Platform abstraction queues the dialog result for the Editor to read on the next frame. The exact mechanism (lock-free queue, mutex-guarded vector, atomic flag + stored path) is not specified. This is acceptable at this level but should be resolved in the implementation contract to avoid data races.
+
+## Required changes (resolved from previous reviews)
+
+### All four from original review (resolved 2026-06-12)
 
 All four required changes from the previous review have been implemented in the spec:
 
@@ -64,6 +84,18 @@ All four required changes from the previous review have been implemented in the 
 - [x] **UX contradiction on initial dirty state** — Documentation to update section now flags UX spec AC-015 and Story 1 for correction (lines 327-334), ADR-029 noted for update, wiki north-star section marked for correction.
 - [x] **Overwrite behavior clarified** — Edge case now reads: "Silent overwrite (no additional editor confirmation — ImGuiFileDialog may show platform-dependent warning independently)."
 - [x] **Window::set_title exact API** — A-08 now specifies `Window::set_title(std::string title)` on `buddd::engine::Window` with concrete implementations for WindowSDL3 (SDL_SetWindowTitle) and WindowHeadless (no-op).
+
+### Spec update — ImGuiFileDialog → SDL3 native dialogs (applied in this cycle)
+
+The spec-author replaced all ImGuiFileDialog references with SDL3 native file dialogs via the Platform abstraction. Verified changes:
+
+- [x] **G-09** — Updated to reference `Platform::show_open_file_dialog()` and `Platform::show_save_file_dialog()`
+- [x] **Actors > Platform** — Updated to describe Platform abstraction wrapping SDL3, respecting ADR-019
+- [x] **OS File Dialog section** — Rewritten for SDL3 async dialog flow with callbacks and window parent association
+- [x] **Assumptions A-04, A-05, A-12** — Replaced ImGuiFileDialog-specific assumptions with SDL3 availability, async callback model, and thread safety
+- [x] **Edge cases** — Updated for SDL3 dialog behavior (non-yaml filter, silent overwrite, cancel, init failure)
+- [x] **Permissions** — Updated to reference SDL3 native dialog (via Platform)
+- [x] **Documentation to update** — Updated to reference Platform dialog methods in module-map.md
 
 ## Suggested improvements
 

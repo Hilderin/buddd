@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace buddd::engine {
 
@@ -15,6 +16,11 @@ enum class Backend {
 class Window;
 struct WindowConfig;
 class InputSystem;
+
+/// Callback invoked when a native file dialog completes.
+/// filepath is the selected path, or std::nullopt if cancelled/error.
+/// The callback is invoked on the main thread during poll_events().
+using FileDialogCallback = std::function<void(std::optional<std::string> filepath)>;
 
 class Platform {
 public:
@@ -43,6 +49,22 @@ public:
     /// Returns the time elapsed since the last poll_events() call, in seconds.
     /// Under normal operation, always > 0. Useful for framerate-independent movement.
     [[nodiscard]] virtual auto delta_time() const noexcept -> float = 0;
+
+    /// Show a native "Open File" dialog (non-blocking).
+    /// callback is invoked on the main thread (during poll_events()) when
+    /// the user selects a file or cancels.
+    virtual auto show_open_file_dialog(FileDialogCallback callback,
+                                        const char* filter_name,
+                                        const char* filter_pattern) -> void = 0;
+
+    /// Show a native "Save File" dialog (non-blocking).
+    /// callback is invoked on the main thread (during poll_events()) when
+    /// the user selects a file or cancels.
+    /// default_name is the suggested file name (may be nullptr).
+    virtual auto show_save_file_dialog(FileDialogCallback callback,
+                                        const char* filter_name,
+                                        const char* filter_pattern,
+                                        const char* default_name) -> void = 0;
 
     Platform(const Platform&) = delete;
     auto operator=(const Platform&) -> Platform& = delete;

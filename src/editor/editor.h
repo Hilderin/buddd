@@ -88,6 +88,16 @@ public:
     /// Public for testing.
     [[nodiscard]] auto build_title_string() const -> std::string;
 
+    /// Returns the default filename for Save As dialogs.
+    /// Uses the current file's basename if available, otherwise "Untitled.yaml".
+    [[nodiscard]] auto default_save_name() const -> std::string;
+
+    /// Returns the default path for Save As file dialogs.
+    /// When a scene is loaded, returns the current file's full path
+    /// (SDL3 extracts directory + filename from it).
+    /// When untitled, returns "./Untitled.yaml" (current directory, default name).
+    [[nodiscard]] auto dialog_default_path() const -> std::string;
+
 private:
 
     // ── About popup ──
@@ -99,9 +109,7 @@ private:
     auto show_error_modal(const std::string& title, const std::string& message) -> void;
     auto draw_error_modals() -> void;
     auto draw_pending_op_modal(buddd::engine::EngineContext const& ctx) -> void;
-    auto draw_file_dialog() -> void;
     auto execute_pending_op(buddd::engine::EngineContext const& ctx) -> void;
-    [[nodiscard]] auto handle_dirty_before_op(buddd::engine::EngineContext const& ctx, PendingOp op) -> bool;
 
     // ── State ──
     bool initialized_ = false;
@@ -131,18 +139,13 @@ private:
     PendingOp pending_op_ = PendingOp::None;
     std::optional<std::string> pending_file_path_;
 
-    // ── File dialog state ──
-    bool show_file_dialog_ = false;
-    std::string file_dialog_action_;
+    // ── Exit-after-save flag (set by Platform dialog callbacks, checked in draw_ui) ──
+    bool request_exit_next_frame_ = false;
 
     // ── Error modal state ──
     std::string error_modal_title_;
     std::string error_modal_message_;
     bool show_error_modal_ = false;
-
-    // ── Save-prompt modal state ──
-    bool show_save_prompt_modal_ = false;
-    SavePromptResult save_prompt_result_ = SavePromptResult::Cancel;
 
     // Editor's own World (separate from ctx.world)
     std::unique_ptr<buddd::engine::World> world_;

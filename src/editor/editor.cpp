@@ -22,8 +22,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <ImGuiFileDialog.h>
-
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
@@ -103,20 +101,38 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
         if (dirty_) {
             pending_op_ = PendingOp::OpenScene;
         } else {
-            show_file_dialog_ = true;
-            file_dialog_action_ = "Open";
+            engine_->platform().show_open_file_dialog(
+                [this](std::optional<std::string> path) {
+                    if (!path) return;
+                    if (auto result = open_scene(*path); !result) {
+                        show_error_modal("Load Error", result.error().message);
+                    }
+                },
+                "YAML Scene", "yaml");
         }
     });
     menu_bar->set_on_save_scene([this]() {
         auto result = save_scene();
         if (!result) {
-            show_file_dialog_ = true;
-            file_dialog_action_ = "SaveAs";
+            engine_->platform().show_save_file_dialog(
+                [this](std::optional<std::string> path) {
+                    if (!path) return;
+                    if (auto r = save_scene_as(*path); !r) {
+                        show_error_modal("Save Error", r.error().message);
+                    }
+                },
+                "YAML Scene", "yaml", dialog_default_path().c_str());
         }
     });
     menu_bar->set_on_save_scene_as([this]() {
-        show_file_dialog_ = true;
-        file_dialog_action_ = "SaveAs";
+        engine_->platform().show_save_file_dialog(
+            [this](std::optional<std::string> path) {
+                if (!path) return;
+                if (auto r = save_scene_as(*path); !r) {
+                    show_error_modal("Save Error", r.error().message);
+                }
+            },
+            "YAML Scene", "yaml", dialog_default_path().c_str());
     });
     menu_bar->set_on_quit([this](be::EngineContext const& ctx) {
         if (dirty_) {
@@ -153,20 +169,38 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
         if (dirty_) {
             pending_op_ = PendingOp::OpenScene;
         } else {
-            show_file_dialog_ = true;
-            file_dialog_action_ = "Open";
+            engine_->platform().show_open_file_dialog(
+                [this](std::optional<std::string> path) {
+                    if (!path) return;
+                    if (auto result = open_scene(*path); !result) {
+                        show_error_modal("Load Error", result.error().message);
+                    }
+                },
+                "YAML Scene", "yaml");
         }
     });
     shortcuts_.bind(be::KeyCode::S, {.ctrl = true}, [this](be::EngineContext const&) {
         auto result = save_scene();
         if (!result) {
-            show_file_dialog_ = true;
-            file_dialog_action_ = "SaveAs";
+            engine_->platform().show_save_file_dialog(
+                [this](std::optional<std::string> path) {
+                    if (!path) return;
+                    if (auto r = save_scene_as(*path); !r) {
+                        show_error_modal("Save Error", r.error().message);
+                    }
+                },
+                "YAML Scene", "yaml", dialog_default_path().c_str());
         }
     });
     shortcuts_.bind(be::KeyCode::S, {.ctrl = true, .shift = true}, [this](be::EngineContext const&) {
-        show_file_dialog_ = true;
-        file_dialog_action_ = "SaveAs";
+        engine_->platform().show_save_file_dialog(
+            [this](std::optional<std::string> path) {
+                if (!path) return;
+                if (auto r = save_scene_as(*path); !r) {
+                    show_error_modal("Save Error", r.error().message);
+                }
+            },
+            "YAML Scene", "yaml", dialog_default_path().c_str());
     });
     shortcuts_.bind(be::KeyCode::Z, {.ctrl = true}, [this](be::EngineContext const&) {
         [[maybe_unused]] auto _ = command_stack_.undo();
@@ -297,9 +331,12 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     draw_pending_op_modal(ctx);
 
     // ═══════════════════════════════════════════════
-    // Phase 6: File dialog (ImGuiFileDialog)
+    // Phase 6: Exit-on-next-frame flag (set by async dialog callbacks)
     // ═══════════════════════════════════════════════
-    draw_file_dialog();
+    if (request_exit_next_frame_) {
+        request_exit_next_frame_ = false;
+        ctx.request_exit();
+    }
 
     // ═══════════════════════════════════════════════
     // Phase 7: Error modals
@@ -373,6 +410,23 @@ auto Editor::build_title_string() const -> std::string {
         filename += '*';
     }
     return filename + " \u2014 Buddd Editor";
+}
+
+auto Editor::default_save_name() const -> std::string {
+    if (current_file_path_.has_value()) {
+        return std::filesystem::path(*current_file_path_).filename().string();
+    }
+    return "Untitled.yaml";
+}
+
+auto Editor::dialog_default_path() const -> std::string {
+    if (current_file_path_.has_value()) {
+        // Return only the parent directory: the XDG Portal backend on Linux
+        // uses default_location ONLY as current_folder, ignoring any filename.
+        return std::filesystem::path(*current_file_path_).parent_path().string();
+    }
+    // Untitled: current directory
+    return ".";
 }
 
 auto Editor::update_window_title() -> void {
@@ -539,38 +593,62 @@ auto Editor::draw_save_prompt_modal() -> SavePromptResult {
 // ── Pending op state machine ──
 
 auto Editor::draw_pending_op_modal(be::EngineContext const& ctx) -> void {
-    if (pending_op_ == PendingOp::None) {
-        return;
-    }
+    if (pending_op_ == PendingOp::None) return;
 
     if (!dirty_) {
-        // Clean scene — execute pending op immediately
         execute_pending_op(ctx);
         pending_op_ = PendingOp::None;
         return;
     }
 
-    // Dirty scene — show save-prompt modal
     auto result = draw_save_prompt_modal();
     switch (result) {
         case SavePromptResult::Save: {
             auto save_result = save_scene();
             if (save_result.has_value()) {
-                // Save succeeded — proceed
+                // Save succeeded — proceed with pending operation
                 if (pending_op_ == PendingOp::OpenScene) {
-                    show_file_dialog_ = true;
-                    file_dialog_action_ = "Open";
+                    engine_->platform().show_open_file_dialog(
+                        [this](std::optional<std::string> path) {
+                            if (!path) return;
+                            if (auto r = open_scene(*path); !r) {
+                                show_error_modal("Load Error", r.error().message);
+                            }
+                        },
+                        "YAML Scene", "yaml");
                 } else {
                     execute_pending_op(ctx);
                 }
                 pending_op_ = PendingOp::None;
             } else if (!current_file_path_.has_value()) {
-                // Untitled: redirect to Save As dialog
-                show_file_dialog_ = true;
-                file_dialog_action_ = "SaveAs";
+                // Untitled: redirect to Save As dialog, then complete pending op
+                auto original_op = pending_op_;
                 pending_op_ = PendingOp::None;
+                engine_->platform().show_save_file_dialog(
+                    [this, original_op](std::optional<std::string> save_path) {
+                        if (!save_path) return; // cancelled — stay on current scene
+                        auto r = save_scene_as(*save_path);
+                        if (!r) {
+                            show_error_modal("Save Error", r.error().message);
+                            return;
+                        }
+                        // Save succeeded — complete the original operation
+                        if (original_op == PendingOp::OpenScene) {
+                            engine_->platform().show_open_file_dialog(
+                                [this](std::optional<std::string> path) {
+                                    if (!path) return;
+                                    if (auto r = open_scene(*path); !r)
+                                        show_error_modal("Load Error", r.error().message);
+                                },
+                                "YAML Scene", "yaml");
+                        } else if (original_op == PendingOp::NewScene) {
+                            new_scene();
+                        } else if (original_op == PendingOp::Quit) {
+                            request_exit_next_frame_ = true;
+                        }
+                    },
+                    "YAML Scene", "yaml", dialog_default_path().c_str());
             } else {
-                // Save failed (disk full, permissions, etc.)
                 show_error_modal("Save Error", save_result.error().message);
                 pending_op_ = PendingOp::None;
             }
@@ -578,8 +656,14 @@ auto Editor::draw_pending_op_modal(be::EngineContext const& ctx) -> void {
         }
         case SavePromptResult::Discard: {
             if (pending_op_ == PendingOp::OpenScene) {
-                show_file_dialog_ = true;
-                file_dialog_action_ = "Open";
+                engine_->platform().show_open_file_dialog(
+                    [this](std::optional<std::string> path) {
+                        if (!path) return;
+                        if (auto r = open_scene(*path); !r) {
+                            show_error_modal("Load Error", r.error().message);
+                        }
+                    },
+                    "YAML Scene", "yaml");
             } else {
                 execute_pending_op(ctx);
             }
@@ -615,49 +699,7 @@ auto Editor::execute_pending_op(be::EngineContext const& ctx) -> void {
     }
 }
 
-auto Editor::handle_dirty_before_op(be::EngineContext const& ctx, PendingOp op) -> bool {
-    if (!dirty_) {
-        return true;
-    }
-    pending_op_ = op;
-    return false;
-}
-
-// ── File dialog ──
-
-auto Editor::draw_file_dialog() -> void {
-    // Open the dialog on the frame where show_file_dialog_ is first set
-    if (show_file_dialog_) {
-        IGFD::FileDialogConfig config;
-        config.path = ".";
-        config.filePathName = "";
-        config.countSelectionMax = 1;
-        config.flags = ImGuiFileDialogFlags_None;
-        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey",
-            "Choose File", "\\.yaml", config);
-        show_file_dialog_ = false;  // Reset — dialog is now managed by ImGuiFileDialog
-    }
-
-    // Display the dialog every frame while it is open
-    if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            std::string file_path = ImGuiFileDialog::Instance()->GetFilePathName();
-            if (!file_path.empty()) {
-                if (file_dialog_action_ == "Open") {
-                    auto result = open_scene(file_path);
-                    if (!result) {
-                        show_error_modal("Load Error", result.error().message);
-                    }
-                } else if (file_dialog_action_ == "SaveAs") {
-                    auto result = save_scene_as(file_path);
-                    if (!result) {
-                        show_error_modal("Save Error", result.error().message);
-                    }
-                }
-            }
-        }
-        ImGuiFileDialog::Instance()->Close();
-    }
-}
+// (handle_dirty_before_op removed — dead code)
+// (draw_file_dialog removed — replaced by Platform dialog calls)
 
 } // namespace buddd::editor

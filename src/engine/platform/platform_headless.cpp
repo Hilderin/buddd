@@ -20,6 +20,19 @@ auto PlatformHeadless::delta_time() const noexcept -> float {
     return 1.0f / 60.0f;
 }
 
+auto PlatformHeadless::show_open_file_dialog(FileDialogCallback callback,
+                                              const char* /*filter_name*/,
+                                              const char* /*filter_pattern*/) -> void {
+    callback(std::nullopt);
+}
+
+auto PlatformHeadless::show_save_file_dialog(FileDialogCallback callback,
+                                              const char* /*filter_name*/,
+                                              const char* /*filter_pattern*/,
+                                              const char* /*default_name*/) -> void {
+    callback(std::nullopt);
+}
+
 auto PlatformHeadless::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {
     if (config.width <= 0 || config.height <= 0) {
         return make_error(Error::Category::WindowCreationFailed, "Invalid window dimensions");
