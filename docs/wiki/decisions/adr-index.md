@@ -25,6 +25,11 @@
 | ADR-021 | `docs/adr/ADR-021-developer-assertions.md` — Developer assertions (Fatal level, five macros, debug break, NDEBUG-only detection) | Accepted |
 | ADR-023 | `docs/adr/ADR-023-updatable-components.md` — Updatable Components & EngineContext (Updatable interface, EngineContext, World auto-registration, App::setup(EngineService&), run_app auto-dispatch) | Accepted |
 | ADR-024 | `docs/adr/ADR-024-camera-transform-integration.md` — Camera → Transform integration (remove `math::Camera`, CameraComponent projection-only, camera position/orientation via entity Transform) | Accepted |
+| ADR-025 | *No ADR file found* — gap in ADR sequence | Gap |
+| ADR-026 | `docs/adr/ADR-026-imgui-integration.md` — Dear ImGui Integration as an Engine-Internal Module | Accepted |
+| ADR-027 | `docs/adr/ADR-027-editor-architecture.md` — Editor Architecture: separate static library, EditorApp adapter, namespace, architecture boundary | Accepted |
+| ADR-028 | `docs/adr/ADR-028-component-type-registry.md` — Component Type Registry with TypeRegistry and SerializationContext | Accepted |
+| ADR-029 | `docs/adr/ADR-029-editor-ux-decisions.md` — Editor UX Decisions: Tab System, Layouts, Play Mode | Accepted |
 
 The current project state was established via:
 
