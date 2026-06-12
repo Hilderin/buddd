@@ -509,17 +509,18 @@ TEST_CASE("RenderSystem MVP computation", "[scene_rendering]") {
 }
 
 // ===========================================================================
-// RenderSystem no camera warning (AC-023)
-// ===========================================================================
-TEST_CASE("RenderSystem no camera warning", "[scene_rendering]") {
+// RenderSystem: no active camera logged at Trace level
+
+TEST_CASE("RenderSystem no camera trace", "[scene_rendering]") {
     auto engine = make_headless_engine();
     auto& device = engine->device();
     World world;
     RenderSystem render_system(device, world);
 
-    // Set up MemorySink to capture log output
+    // Set up MemorySink to capture log output (need Trace level for our message)
     auto mem_sink = std::make_shared<buddd::log::MemorySink>();
     buddd::log::LogConfig config;
+    config.global_min_level = buddd::log::LogLevel::Trace;
     config.sinks.push_back(mem_sink);
     buddd::log::Logger::init(std::move(config));
 

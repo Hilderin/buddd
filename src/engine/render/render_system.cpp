@@ -31,6 +31,7 @@ auto RenderSystem::render() -> void {
 auto RenderSystem::render_scene() -> void {
     auto cam_opt = world_->active_camera();
     if (!cam_opt.has_value()) {
+        BUDDD_LOG_TRACE("RenderSystem: no active camera — rendering skipped");
         return;
     }
     auto& cam_comp = *cam_opt;
