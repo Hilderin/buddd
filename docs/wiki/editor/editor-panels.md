@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -13,6 +13,7 @@
 > - **Error modals**: Displayed on SceneLoader/SceneSaver failures.
 > - **OS close interception**: Close button (X/Alt+F4) triggers same save-prompt as File > Quit.
 > - **F-02 additions**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) provides panels with access to both `Editor&` and `EngineContext const&`; `EditorPanel`/`EditorMenu` signatures changed from `EngineContext const&` to `EditorContext const&`; `ScenePanel` renders the entity hierarchy tree via ImGui `TreeNodeEx` (empty state, expandable/collapsible, leaf/non-leaf, `PushID`/`PopID` per-entity).
+> - **F-03 additions**: `Selection` value class and `EditorSelection` manager in `src/editor/editor_selection.h` (see [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md)). `Editor` owns an `EditorSelection`, accessible via `editor.selection()`. Scene Panel: click to select, Ctrl+click to toggle, Shift+click for range select, Ctrl+A for select all. Selection highlighting with `ImGuiTreeNodeFlags_Selected`. Snapshot/restore for future Command undo/redo integration. `Editor::new_scene()` and `Editor::open_scene()` clear selection.
 >
 > The north-star design below (tabs, viewport, inspector, toolbar, Play mode, prefabs) is **planned for future sprints** and is not yet implemented.
 
@@ -197,7 +198,8 @@ Present in Scene, Prefab, and Game tabs.
 
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and manage the entity hierarchy as a tree
-- **Content (F-02 implemented):** Tree view of all entities with parent/child indentation. Root entities rendered as top-level `TreeNodeEx` nodes, children indented under parents. Empty state shows "No entities". Leaf/non-leaf distinction via `ImGuiTreeNodeFlags_Leaf`. Per-entity `PushID`/`PopID` prevents ImGui ID collisions. Entities with empty names display as "(unnamed)". Selection highlighting and entity CRUD operations deferred to future sprints (F-03, F-06+).
+- **Content (F-02 + F-03 implemented):** Tree view of all entities with parent/child indentation. Root entities rendered as top-level `TreeNodeEx` nodes, children indented under parents. Empty state shows "No entities". Leaf/non-leaf distinction via `ImGuiTreeNodeFlags_Leaf`. Per-entity `PushID`/`PopID` prevents ImGui ID collisions. Entities with empty names display as "(unnamed)". Entity CRUD operations deferred to future sprints (F-06+).
+  - **Selection (F-03):** Left-click selects an entity (Replace modifier — clears previous, selects clicked). Ctrl+click toggles entity in/out of selection (add/remove). Shift+click selects a range in depth-first tree order (anchor to clicked entity, inclusive). Ctrl+A selects all entities in the World. Clicking empty space clears the selection and anchor. Selected entities display with `ImGuiTreeNodeFlags_Selected` highlighting. The `EditorSelection` manager is owned by `Editor` and accessible via `ctx.editor.selection()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
 - **Default position/size:** Left dock, ~250px width
 
 #### Inspector Panel
@@ -332,7 +334,7 @@ When ▶ Play is pressed:
 | **Focus camera** | F key (entity selected) | Editor camera snaps to frame selected entity's bounding box. |
 | **Translate** | Drag gizmo arrow in viewport | Moves entity along the dragged axis. Inspector Transform fields update in real-time. |
 
-**Deferred for post-MVP1:** Multi-select, drag-reparent, duplicate entity (Ctrl+D), copy/paste, viewport click-to-select, rotate/scale gizmos.
+**Deferred for post-MVP1:** Drag-reparent, duplicate entity (Ctrl+D), copy/paste, viewport click-to-select, rotate/scale gizmos.
 
 ---
 
@@ -472,6 +474,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 - No SDL3, OpenGL, or GLM headers are included in `src/editor/` (per ADR-019).
 - **F-01 additions**: File menu now includes New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S). Dirty state tracking (`dirty_` boolean + `*` in window title via `Window::set_title()`). OS file dialogs via Platform abstraction (SDL3 native dialogs — ImGuiFileDialog removed from build). Save-prompt modal state machine (`PendingOp` enum). Error modals for SceneLoader/SceneSaver failures. OS close button interception via `Platform::set_on_close_request()`. Scene management methods: `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`.
 - **F-02 additions**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) holds `Editor&` and `EngineContext const&` — provides panels with access to both editor state and engine services. `EditorPanel::update()`/`draw_ui()` and `EditorMenu::update()`/`draw_ui()` signatures changed from `EngineContext const&` to `EditorContext const&`. Panels access the editor's World via `ctx.editor.world()`. `ScenePanel` now renders the entity hierarchy tree via `ImGui::TreeNodeEx` (recursive traversal, empty state, expandable/collapsible, leaf/non-leaf distinction, `PushID`/`PopID` per-entity, `"(unnamed)"` fallback). See [F-02 spec](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md).
+- **F-03 additions**: `Selection` value class (`src/editor/editor_selection.h`) stores a set of `EntityId`s — cloneable, comparable, independently testable, and savable in Commands. Provides `contains(id)`, `size()`, `empty()`, `first()`, iteration, `add()`, `remove()`, `clear()`, `operator==`. `EditorSelection` manager owns the active selection state with `select(id, modifier)`, `clear()`, `set_selection(ids)`, `snapshot()`/`restore()`, anchor management, and callback infrastructure (`on_change()`/`remove_on_change()`). `SelectionModifier` enum: `Replace` (plain click — clear + select) and `Toggle` (Ctrl+click — add/remove). Multi-select: Ctrl+click toggle, Shift+click range (depth-first tree order), Ctrl+A select all. Selection highlighting via `ImGuiTreeNodeFlags_Selected`. Panels access selection via `ctx.editor.selection()`. Snapshot/restore for Command undo/redo future-proofing. Selection cleared on `Editor::new_scene()` and `Editor::open_scene()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
 
 ### North-star (future — not yet implemented)
 

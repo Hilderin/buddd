@@ -5,6 +5,7 @@
 #include "command_stack.h"
 #include "editor_menu.h"
 #include "editor_panel.h"
+#include "editor_selection.h"
 #include "scene/world.h"
 #include "shortcut_registry.h"
 
@@ -56,6 +57,9 @@ public:
     /// Always valid — created in the constructor, destroyed in the destructor.
     /// Safe to call at any point during the Editor's lifetime.
     [[nodiscard]] auto world() -> buddd::engine::World&;
+
+    /// Returns the active selection manager.
+    [[nodiscard]] auto selection() -> EditorSelection&;
 
     // ── Scene management operations ──
 
@@ -149,6 +153,9 @@ private:
 
     // Editor's own World (separate from ctx.world)
     std::unique_ptr<buddd::engine::World> world_;
+
+    // ── Selection state (F-03) ──
+    EditorSelection selection_;
 };
 
 } // namespace buddd::editor

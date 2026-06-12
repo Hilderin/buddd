@@ -1,6 +1,6 @@
 # Cross-Panel Communication
 
-> **Current status (v1 foundation — editor-foundation, June 2026):** This document describes the **north-star vision** for cross-panel communication (entity selection flow, play mode state transitions, visual mode indicators). Currently, panels are **independent placeholders** with no cross-panel communication. The command system (`CommandStack`) provides the infrastructure for future undoable panel interactions. Keyboard shortcuts are dispatched via `ShortcutRegistry` and gated by `WantCaptureKeyboard`, but no panel-to-panel data flow exists yet.
+> **Current status (v1 foundation — editor-foundation + F-03 — entity-selection-multi-select, June 2026):** This document describes the **north-star vision** for cross-panel communication (entity selection flow, play mode state transitions, visual mode indicators). F-03 partially implements **entity selection flow**: clicking an entity in the Scene Panel (Hierarchy) now updates the `EditorSelection` state, and selected entities are highlighted in the tree via `ImGuiTreeNodeFlags_Selected`. No downstream consumers exist yet (Inspector, Viewport updates deferred to F-05/F-07). The command system (`CommandStack`) provides the infrastructure for future undoable panel interactions. Keyboard shortcuts are dispatched via `ShortcutRegistry` and gated by `WantCaptureKeyboard`.
 
 ## Future vision (north-star)
 
@@ -32,7 +32,8 @@ User manipulates gizmo in Viewport (future: viewport picking)
 
 | Path | Status | Description |
 |---|---|---|
-| Hierarchy click → Inspector + Viewport | ✅ Fully implemented | Selecting an entity in the hierarchy updates the Inspector and Viewport simultaneously. |
+| Hierarchy click → EditorSelection | ✅ Implemented (F-03) | Clicking an entity in the hierarchy sets the selection state. Selection highlighting via `ImGuiTreeNodeFlags_Selected`. Multi-select with Ctrl+click toggle, Shift+click range, Ctrl+A select all, empty-area click clears. Accessible via `ctx.editor.selection()`. |
+| Hierarchy click → Inspector + Viewport | ⏳ Deferred (F-05/F-07) | Selecting an entity in the hierarchy does NOT yet update the Inspector or Viewport — those are future features. |
 | Gizmo interaction → Inspector Transform fields | ✅ Fully implemented | Dragging a translate gizmo arrow updates Position fields in the Inspector in real-time. |
 | Viewport click-to-select (mouse picking) | ❌ Deferred to post-MVP1 | Clicking an entity in the 3D viewport to select it is not available in MVP1. |
 
@@ -103,6 +104,7 @@ On Stop, all indicators are removed and panels return to Edit mode state.
 - Keyboard shortcuts are processed via `ShortcutRegistry::process()` in `Editor::update()`, gated by `ImGui::GetIO().WantCaptureKeyboard`.
 - The About popup is rendered via `ImGui::BeginPopupModal()` — a modal popup that blocks interaction with other windows until dismissed.
 - The editor has a two-phase lifecycle: `update()` for logic, `draw_ui()` for rendering.
+- **F-03 (Entity Selection):** `Editor` owns an `EditorSelection` manager, accessible via `editor.selection()`. Scene Panel handles entity clicks with modifier-key awareness (plain → Replace, Ctrl → Toggle, Shift → range). Selected entities highlighted via `ImGuiTreeNodeFlags_Selected`. `EditorSelection` provides `snapshot()`/`restore()` for Command undo/redo integration. Selection cleared on `new_scene()`/`open_scene()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
 
 ### North-star (future — not yet implemented)
 - Read-only enforcement during Play mode is at the **editor UI level** (fields disabled, buttons hidden), not at the engine API level.

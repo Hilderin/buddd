@@ -50,6 +50,10 @@ auto Editor::world() -> be::World& {
     return *world_;
 }
 
+auto Editor::selection() -> EditorSelection& {
+    return selection_;
+}
+
 auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     engine_ = &ctx.services;
     window_ = &ctx.window;
@@ -211,6 +215,32 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     });
     shortcuts_.bind(be::KeyCode::Y, {.ctrl = true}, [this](be::EngineContext const&) {
         [[maybe_unused]] auto _ = command_stack_.redo();
+    });
+    shortcuts_.bind(be::KeyCode::A, {.ctrl = true}, [this](be::EngineContext const&) {
+        // Gate: do nothing if ImGui captures keyboard (e.g., text input focused)
+        if (ImGui::GetIO().WantCaptureKeyboard) return;
+
+        // Collect all entity IDs via tree traversal
+        auto& w = world();
+        std::vector<buddd::engine::EntityId> all_ids;
+        all_ids.reserve(w.entity_count());
+
+        // Recursive traversal
+        auto collect = [&](auto& self, buddd::engine::Entity entity) -> void {
+            all_ids.push_back(entity.id());
+            for (size_t i = 0; i < entity.child_count(); ++i) {
+                self(self, entity.get_child(i));
+            }
+        };
+        for (size_t i = 0; i < w.root_entity_count(); ++i) {
+            auto entity = w.get_root_entity(i);
+            if (entity.id() != buddd::engine::EntityId::none()) {
+                collect(collect, entity);
+            }
+        }
+
+        BUDDD_LOG_DEBUG("Ctrl+A: selected {} entities", all_ids.size());
+        selection_.set_selection(all_ids);
     });
 
     // ── Set initial window title ──
@@ -441,6 +471,7 @@ auto Editor::update_window_title() -> void {
 // ── Scene management: operations ──
 
 auto Editor::new_scene() -> void {
+    selection_.clear();
     world_ = std::make_unique<be::World>();
     current_file_path_ = std::nullopt;
     dirty_ = false;
@@ -464,6 +495,7 @@ auto Editor::open_scene(const std::string& path) -> be::Result<void> {
     auto result = loader.load_from_file(path);
 
     if (result.has_value()) {
+        selection_.clear();
         current_file_path_ = path;
         dirty_ = false;
         update_window_title();
