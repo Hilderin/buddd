@@ -169,3 +169,80 @@ TEST_CASE("Editor can be constructed, set up, and shut down headlessly", "[edito
     editor.shutdown();
     editor.shutdown();  // second call must be a no-op
 }
+
+TEST_CASE("Editor: world() returns valid empty World before setup", "[editor][scene_state]") {
+    buddd::editor::Editor editor;
+
+    // world() must return a valid World& before any setup() call
+    auto& w = editor.world();
+    REQUIRE(w.entity_count() == 0);
+    REQUIRE(w.root_entity_count() == 0);
+}
+
+TEST_CASE("Editor: world() valid after setup+shutdown", "[editor][scene_state]") {
+    // Create a headless engine for setup()
+    auto engine = buddd::engine::EngineService::create(
+        buddd::engine::Backend::Headless,
+        buddd::engine::WindowConfig{.title = "Editor Test", .width = 128, .height = 128});
+    REQUIRE(engine.has_value());
+    auto& eng = **engine;
+
+    auto world = std::make_unique<buddd::engine::World>();
+    auto render_system = std::make_unique<buddd::engine::RenderSystem>(eng.device(), *world);
+
+    buddd::engine::EngineContext ctx{
+        eng, eng.window(), eng.device(), *world, *render_system, 0.016f, 0
+    };
+
+    buddd::editor::Editor editor;
+
+    // World is accessible before setup
+    REQUIRE(editor.world().entity_count() == 0);
+
+    // Setup (may fail in headless, that's OK)
+    auto result = editor.setup(ctx);
+    (void)result;
+
+    // World is accessible after setup
+    REQUIRE(editor.world().entity_count() == 0);
+
+    // Shutdown
+    editor.shutdown();
+
+    // World is accessible after shutdown — must still be valid
+    REQUIRE(editor.world().entity_count() == 0);
+}
+
+TEST_CASE("Editor: world() valid after setup failure", "[editor][scene_state]") {
+    // Create a headless engine (same as existing test — setup will fail because ImGui is not initialized)
+    auto engine = buddd::engine::EngineService::create(
+        buddd::engine::Backend::Headless,
+        buddd::engine::WindowConfig{.title = "Editor Test", .width = 128, .height = 128});
+    REQUIRE(engine.has_value());
+    auto& eng = **engine;
+
+    auto world = std::make_unique<buddd::engine::World>();
+    auto render_system = std::make_unique<buddd::engine::RenderSystem>(eng.device(), *world);
+
+    buddd::engine::EngineContext ctx{
+        eng, eng.window(), eng.device(), *world, *render_system, 0.016f, 0
+    };
+
+    buddd::editor::Editor editor;
+
+    // Setup will fail (ImGui not initialized in headless mode)
+    auto result = editor.setup(ctx);
+    REQUIRE_FALSE(result.has_value());  // Verify setup() actually fails
+
+    // World must still be valid even after setup() failure
+    REQUIRE(editor.world().entity_count() == 0);
+
+    // No leak: Editor destructor handles cleanup (verified by ASan/Valgrind at test level)
+}
+
+TEST_CASE("Editor: World is empty on construction", "[editor][scene_state]") {
+    buddd::editor::Editor editor;
+
+    REQUIRE(editor.world().entity_count() == 0);
+    REQUIRE(editor.world().root_entity_count() == 0);
+}

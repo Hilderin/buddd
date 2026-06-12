@@ -29,10 +29,19 @@ namespace be = buddd::engine;
 
 namespace buddd::editor {
 
-Editor::Editor() = default;
+Editor::Editor()
+    : world_(std::make_unique<be::World>())
+{
+    BUDDD_LOG_DEBUG("Editor: created empty World");
+}
 
 Editor::~Editor() {
+    BUDDD_LOG_DEBUG("Editor: destroyed World");
     shutdown();
+}
+
+auto Editor::world() -> be::World& {
+    return *world_;
 }
 
 auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {

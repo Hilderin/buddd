@@ -60,6 +60,9 @@ Scenes are serialized as `.yaml` files via `SceneSaver` and loaded via `SceneLoa
 | **SceneLoader** | Engine API that parses YAML scene/prefab files and populates a `World` with entities and components. |
 | **SceneSaver** | Engine API that serializes a `World` back to YAML, respecting entity source types (scene entities expanded, prefab/model entities referenced). |
 | **World** | Container holding all entities, their hierarchy, and the component registry. |
+| **Editor World** | The `Editor` class owns its own `World` instance via `std::unique_ptr<World>`. It is created in the **Editor constructor** (always empty on creation), exposed via `editor.world()`, and destroyed in the **Editor destructor** via `unique_ptr`. The World is valid for the entire Editor lifetime — it outlives `shutdown()` and is not reset by it. The Editor World is **separate** from `ctx.world` (the engine's demo-scene world). |
+
+> **Lifecycle**: World is created in `Editor()` constructor → accessible via `world()` at any point (before `setup()`, after `setup()`, after `shutdown()`) → automatically destroyed by `~Editor()` destructor. No manual cleanup of the World is required in `shutdown()`. See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
 
 ## Related specs
 

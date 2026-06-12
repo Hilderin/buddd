@@ -372,8 +372,8 @@ The editor library provides the `Editor` class and `EditorApp` for the editor ap
 
 | File | Role |
 |---|---|
-| `editor.h` | Public header: `Editor` class declaration in `buddd::editor` namespace. Lifecycle methods: `setup(EngineContext const&)` (stores `EngineService*` and `Window*` references, marks initialized), `draw_ui(EngineContext const&)` (renders ImGui dockspace), `shutdown()` (nulls pointers). Uses direct member variables (`EngineService* engine_`, `Window* window_`, `bool initialized_`). |
-| `editor.cpp` | Editor implementation. `draw_ui()` creates a full-window ImGui dockspace node: `DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode)`. `setup()` stores references from the context. `shutdown()` nulls stored pointers. |
+| `editor.h` | Public header: `Editor` class declaration in `buddd::editor` namespace. Lifecycle methods: `setup(EngineContext const&)` (stores `EngineService*` and `Window*` references, marks initialized), `draw_ui(EngineContext const&)` (renders ImGui dockspace), `shutdown()` (nulls pointers), `[[nodiscard]] world()` (returns `World&`, always valid). Uses direct member variables: `EngineService* engine_`, `Window* window_`, `bool initialized_`, plus `std::unique_ptr<World> world_` (created in constructor, destroyed in destructor). |
+| `editor.cpp` | Editor implementation. Constructor creates World via `std::make_unique<World>()` and logs creation. `draw_ui()` creates a full-window ImGui dockspace node: `DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode)`. `setup()` stores references from the context. `shutdown()` nulls stored pointers (does not reset the World). Destructor logs World destruction. `world()` returns `*world_`. |
 
 ### EditorApp (`src/cmd/apps/`)
 

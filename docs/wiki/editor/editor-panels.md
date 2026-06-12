@@ -424,6 +424,7 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 
 ## Important conventions
 
+- The Editor now owns a `World` via `std::unique_ptr<World>` — created in the **Editor constructor**, available via `editor.world()`, and destroyed in the destructor. The World is always valid (no null checks needed) and is separate from `ctx.world` (the engine's demo-scene world). See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
 - The editor is a **consumer** of engine APIs — it does not own entities, worlds, or components. The engine's `World` class manages all entity lifecycle.
 - During Play mode, read-only enforcement is at the **editor UI level** (fields disabled, buttons hidden), not at the engine API level.
 - Panel size persistence is **session-only** (lost on restart). Cross-session persistence is deferred to post-MVP1.

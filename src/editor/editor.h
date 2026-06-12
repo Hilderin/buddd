@@ -5,6 +5,7 @@
 #include "command_stack.h"
 #include "editor_menu.h"
 #include "editor_panel.h"
+#include "scene/world.h"
 #include "shortcut_registry.h"
 
 #include <memory>
@@ -44,6 +45,11 @@ public:
     /// Cleanup. Called from EditorApp::shutdown().
     auto shutdown() -> void;
 
+    /// Returns a reference to the editor's World.
+    /// Always valid — created in the constructor, destroyed in the destructor.
+    /// Safe to call at any point during the Editor's lifetime.
+    [[nodiscard]] auto world() -> buddd::engine::World&;
+
 private:
     // ── About popup ──
     auto draw_about_popup(buddd::engine::EngineContext const& ctx) -> void;
@@ -67,6 +73,9 @@ private:
 
     // Panel state flags
     bool show_about_ = false;
+
+    // Editor's own World (separate from ctx.world)
+    std::unique_ptr<buddd::engine::World> world_;
 };
 
 } // namespace buddd::editor
