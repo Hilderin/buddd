@@ -5,6 +5,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <typeindex>
@@ -35,6 +36,10 @@ struct PropertyFlags {
     auto choices(std::vector<std::string> c) noexcept -> PropertyFlags& { enum_choices = std::move(c); return *this; }
 };
 
+/// Functor that checks whether a property's current value equals its registered default.
+/// Returns true if the property is at its default value (should be omitted during save).
+using DefaultChecker = std::function<bool(const Component&, const SerializationContext&)>;
+
 /// Internal type-erased property descriptor.
 /// Stores getter/setter lambdas and TypeRegistry-backed YAML/string/validate callbacks.
 /// NOT user-facing — users interact via ComponentInfo<T>::add_property<PropType>().
@@ -47,7 +52,8 @@ public:
              std::type_index type_index,
              GetterFn getter,
              SetterFn setter,
-             PropertyFlags flags = {});
+             PropertyFlags flags = {},
+             DefaultChecker default_checker = nullptr);
 
     [[nodiscard]] auto name() const noexcept -> std::string_view;
     [[nodiscard]] auto type_index() const noexcept -> const std::type_index&;
@@ -58,6 +64,9 @@ public:
 
     /// Deserialize this property's value from a YAML node into the component.
     [[nodiscard]] auto deserialize(Component& comp, const YAML::Node& node, const SerializationContext& ctx) const -> Result<void>;
+
+    /// Returns true if this property has a default checker registered.
+    [[nodiscard]] auto has_default() const noexcept -> bool;
 
     /// Convert this property's value to a string.
     [[nodiscard]] auto to_string(const Component& comp) const -> std::string;
@@ -74,6 +83,7 @@ private:
     PropertyFlags flags_;
     GetterFn getter_;
     SetterFn setter_;
+    DefaultChecker default_checker_;
 };
 
 } // namespace buddd::engine

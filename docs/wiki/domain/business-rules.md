@@ -112,6 +112,54 @@ Prefabs are reusable entity templates referenced via `prefab:` in scene files:
       position: [0, 0, 0]
 ```
 
+### Entity source types
+
+Every entity in the `World` carries an `EntitySource` struct accessible via `Entity::source()` and `Entity::set_source()`:
+
+| Source type | Enum value | Meaning |
+|---|---|---|
+| `None` | `EntitySourceType::None` | Created directly (default) — entity is fully editable and will be fully serialized |
+| `Prefab` | `EntitySourceType::Prefab` | Created from a prefab file via `prefab:` directive — only prefab ref + name + transform are serialized; components and children belong to the prefab definition |
+| `Model` | `EntitySourceType::Model` | Created from a model directive via `model:` — only name + model ref + transform are serialized; mesh children come from the model file |
+
+**Source assignment rules:**
+- Entities created via `World::add_entity()` get `EntitySourceType::None` and an empty path.
+- `SceneLoader::load_entity()` sets `EntitySourceType::Prefab` with the resolved prefab path when processing a `prefab:` directive.
+- `SceneLoader::load_entity()` sets `EntitySourceType::Model` with the model asset ID string when processing a `model:` directive.
+- Child entities created by `add_model_to_world()` (model mesh expansion) have `EntitySourceType::None` — they are not saved separately because their parent's `Model` source causes the saver to emit only a `model:` reference.
+
+### SceneSaver YAML output format
+
+The `SceneSaver` class (`src/engine/scene/scene_saver.h/.cpp`) serialises a `World` back to YAML with the following structure:
+
+**Top level:**
+```yaml
+type: Scene
+version: 1
+entities:
+  - ...
+```
+
+**Entity serialisation by source type:**
+
+| Source type | Output structure | Example |
+|---|---|---|
+| `None` | Full entity: `name:`, `transform:`, `components:`, `children:` recursively | `name: my_entity\n    transform:\n      position: [1, 0, 0]\n    components:\n      - type: camera\n        properties:\n          fov_y: 1.047` |
+| `Prefab` | Compact reference: `prefab:` + `name:` + optional `transform:` | `prefab: prefabs/free_camera\n    name: main_camera\n    transform:\n      position: [3, 2, 3]` |
+| `Model` | Compact reference: `name:` + `model:` + optional `transform:` | `name: my_box\n    model: models/box/Box` |
+
+**Default-value omission rules:**
+
+- Transform fields at default values are omitted from saved YAML:
+  - `position: [0, 0, 0]` → omitted
+  - `rotation: [1, 0, 0, 0]` (identity quaternion) → omitted
+  - `scale: [1, 1, 1]` → omitted
+- If all three transform fields are at defaults, the entire `transform:` block is omitted.
+- Component properties at their registered default values are omitted from the `properties:` map.
+- If all properties of a component are at defaults, the `properties:` key is omitted entirely (e.g., `{type: camera}` with no `properties:`).
+- If an entity has no components, the `components:` key is omitted entirely.
+- Entities marked for destruction (`pending_destroy_`) are skipped during save.
+
 ### Transform composition (prefab + instance)
 
 When `prefab:` and `transform:` are both present on an entity, the prefab root entity's transform is composed with the instance transform:

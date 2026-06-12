@@ -13,12 +13,14 @@
 #include "scene/entity.h"
 #include "scene/transform.h"
 #include "scene/component.h"
+#include "scene/entity_source.h"
 #include "scene/updatable.h"
 #include "engine_context.h"
 
 namespace buddd::engine {
 
 class CameraComponent;  // forward declaration
+class SceneSaver;       // forward declaration (for friend access)
 
 class World {
 public:
@@ -82,6 +84,11 @@ public:
     /// Returns the number of currently alive (not pending destroy) entities.
     auto entity_count() const noexcept -> size_t;
 
+    /// Returns the number of root entities (including pending_destroy — caller should filter).
+    auto root_entity_count() const noexcept -> size_t;
+    /// Returns the root entity at the given index. Returns Entity{} if index out of bounds.
+    auto get_root_entity(size_t index) const noexcept -> Entity;
+
     // -- Camera registration --
     /// Registers a CameraComponent as the active camera.
     /// Last-registered camera wins (single active camera for v1).
@@ -105,6 +112,7 @@ public:
 
 private:
     friend class Entity;
+    friend class SceneSaver;
 
     // -- Internal EntityNode —
     // Defined here (not in world.cpp) so that template methods in this
@@ -113,6 +121,7 @@ private:
         EntityId id_;
         Transform transform_;
         std::string name_;
+        EntitySource source_;
         EntityNode* parent_ = nullptr;
         std::vector<std::unique_ptr<EntityNode>> children_;
         std::vector<std::unique_ptr<Component>> components_;
@@ -135,6 +144,15 @@ private:
     // -- Entity name --
     auto get_name(EntityId id) const noexcept -> const std::string&;
     auto set_name(EntityId id, const std::string& name) -> void;
+
+    // -- Entity source --
+    auto get_source(EntityId id) const noexcept -> const EntitySource&;
+    auto set_source(EntityId id, const EntitySource& source) -> void;
+
+    // -- Component raw iteration (for SceneSaver) --
+    auto component_count(EntityId id) const noexcept -> size_t;
+    auto get_component_at(EntityId id, size_t index) noexcept -> Component&;
+    auto get_component_at(EntityId id, size_t index) const noexcept -> const Component&;
 
     // -- Storage --
     // Slots track entity identity (generation counter + alive flag) plus

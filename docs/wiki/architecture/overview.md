@@ -69,8 +69,9 @@ src/engine/
 │   ├── vec4.h               # Vec4 — 4D vector wrapper around glm::vec4
 │   ├── mat4.h               # Mat4 — 4×4 column-major matrix wrapper around glm::mat4
 │   └── quat.h               # Quat — quaternion wrapper around glm::quat
-├── scene/                    # Scene graph (World, Entity, Transform, Component, CameraComponent, SceneLoader)
+├── scene/                    # Scene graph (World, Entity, Transform, Component, CameraComponent, SceneLoader, SceneSaver)
 │   ├── entity_id.h           # EntityId — 8-byte handle (index + generation)
+│   ├── entity_source.h       # EntitySourceType enum and EntitySource struct — tracks entity origin (None/Prefab/Model)
 │   ├── transform.h           # Transform — position/rotation/scale with matrix computation
 │   ├── component.h           # Component — polymorphic base class with entity awareness (world_, entity_id_, entity(), on_attach())
 │   ├── camera_component.h    # CameraComponent — projection-only ECS component, position/orientation from entity Transform, auto-registers with World
@@ -85,6 +86,7 @@ src/engine/
 │   ├── updatable.h                         # Updatable — pure abstract interface orthogonal to Component, `update(const EngineContext&) -> void`. See ADR-023.
 │   ├── free_camera_movement.h/.cpp         # FreeCameraMovement — component inheriting Component + Updatable, free-camera controls (WASD, mouse, ESC exit)
 │   ├── scene_loader.h/.cpp                 # SceneLoader — parses YAML scene/prefab files and populates a World with entities, transforms, and deserialized components
+│   ├── scene_saver.h/.cpp                  # SceneSaver — serializes a World back to YAML, preserving prefab/model references
 │   └── component_registry/                 # Component registration and property system (TypeRegistry, ComponentInfo, ComponentRegistry, serialization)
 ├── platform/
 │   ├── platform.h           # Abstract Platform class, Backend enum
@@ -231,6 +233,8 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - **New**: `World::add_component_raw(EntityId, unique_ptr<Component>)` provides runtime-type component injection for deserialization (used by `SceneLoader`). Sets `world_`/`entity_id_`, stores in node, calls `on_attach()`, and auto-registers `Updatable` subclasses — same lifecycle as the template-based `add_component<T>()`.
 - **New**: `World::entity_count() -> size_t` returns the number of currently alive (not pending destroy) entities.
 - **New**: `Entity::name()` / `Entity::set_name()` allow reading and writing a per-entity `std::string` name. Default is empty string. Names are set from YAML scene files via the `name:` property.
+- **New**: Entity source tracking: `Entity::source()` / `Entity::set_source()` return/set an `EntitySource` struct (`EntitySourceType type` + `std::string path`) that records whether the entity was created directly (`None`), from a prefab (`Prefab`), or from a model (`Model`). `SceneLoader::load_entity()` sets source type to `Prefab` or `Model` when processing `prefab:` or `model:` directives. Model child entities expanded by `add_model_to_world()` keep source `None`.
+- **New**: `SceneSaver` class (symmetric to `SceneLoader`) serialises the `World` back to YAML. Prefab entities emit `prefab:` references (no components/children), model entities emit `model:` references, direct entities emit full expansion with components and children. Transform fields and component properties at default values are omitted from output.
 
 ## Reference
 

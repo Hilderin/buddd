@@ -17,6 +17,23 @@ auto Entity::set_name(const std::string& name) -> void {
     world_->set_name(id_, name);
 }
 
+auto Entity::source() const noexcept -> const EntitySource& {
+    return world_->get_source(id_);
+}
+
+void Entity::set_source(const EntitySource& source) {
+    world_->set_source(id_, source);
+}
+
+auto Entity::component_count() const noexcept -> size_t {
+    if (!world_) return 0;
+    return world_->component_count(id_);
+}
+
+auto Entity::component_at(size_t index) noexcept -> Component& {
+    return world_->get_component_at(id_, index);
+}
+
 void Entity::destroy() {
     world_->destroy_entity(*this);
 }

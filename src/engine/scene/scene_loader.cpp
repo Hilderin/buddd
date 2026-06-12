@@ -4,6 +4,7 @@
 #include "log/log.h"
 #include "error.h"
 #include "scene/component_registry/component_registry.h"
+#include "scene/entity_source.h"
 
 #include <yaml-cpp/yaml.h>
 #include "asset/model_asset.h"
@@ -157,6 +158,9 @@ auto SceneLoader::load_entity(const YAML::Node& node, Entity parent) -> Result<E
 
         entity = *prefab_result;
 
+        // Set source: Prefab type with resolved path
+        entity.set_source(EntitySource{EntitySourceType::Prefab, *resolved});
+
         // Reparent if needed
         if (parent.id() != EntityId::none()) {
             entity.reparent(parent);
@@ -204,6 +208,9 @@ auto SceneLoader::load_entity(const YAML::Node& node, Entity parent) -> Result<E
         }
         auto& root = (*model_asset)->root_node();
         add_model_to_world(world_, root, entity);
+
+        // Set source: Model type with the model path from the YAML
+        entity.set_source(EntitySource{EntitySourceType::Model, model_path});
     }
 
     // ── Component processing (shared) ──

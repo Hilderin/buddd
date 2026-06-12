@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "scene/entity_id.h"
+#include "scene/entity_source.h"
 #include "scene/transform.h"
 #include "scene/component.h"
 
@@ -35,6 +36,10 @@ public:
     auto name() const noexcept -> const std::string&;
     auto set_name(const std::string& name) -> void;
 
+    // -- Source --
+    auto source() const noexcept -> const EntitySource&;
+    void set_source(const EntitySource& source);
+
     // -- Transform --
     auto transform() noexcept -> Transform&;
     auto transform() const noexcept -> const Transform&;
@@ -51,6 +56,11 @@ public:
 
     template<typename T>
     auto remove_component() -> bool;
+
+    /// Number of components on this entity (for SceneSaver iteration).
+    auto component_count() const noexcept -> size_t;
+    /// Access component by index (for SceneSaver iteration).
+    auto component_at(size_t index) noexcept -> Component&;
 
     // -- Hierarchy --
     auto parent() const noexcept -> Entity;

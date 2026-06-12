@@ -10,6 +10,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <typeindex>
@@ -55,7 +56,9 @@ public:
         YAML::Node node;
 
         for (const auto& prop : properties_) {
-            node[std::string(prop.name())] = prop.serialize(comp, ctx);
+            auto value = prop.serialize(comp, ctx);
+            if (value.IsNull()) continue;  // Default-valued property — skip
+            node[std::string(prop.name())] = value;
         }
 
         return node;
@@ -121,7 +124,12 @@ public:
         std::function<Result<void>(T&, PropType)> setter,
         PropertyFlags flags = {}
     ) -> void {
-        // Delegate to overload (C)
+        // Compute default value for this property BEFORE moving getter
+        T default_instance{};
+        PropType default_raw = getter(default_instance);
+        // Copy getter for the default checker before it's moved into the lambda below
+        std::function<PropType(const T&)> getter_for_checker = getter;
+
         add_property<PropType>(name,
             [g = std::move(getter)](const T& obj, const SerializationContext&) -> PropType {
                 return g(obj);
@@ -129,7 +137,11 @@ public:
             [s = std::move(setter)](T& obj, PropType value, const SerializationContext&) -> Result<void> {
                 return s(obj, std::move(value));
             },
-            flags
+            flags,
+            /* default_checker: */ [getter_for_checker, default_raw](const Component& comp, const SerializationContext&) -> bool {
+                const T& typed = static_cast<const T&>(comp);
+                return getter_for_checker(typed) == default_raw;
+            }
         );
     }
 
@@ -139,7 +151,8 @@ public:
         std::string_view name,
         std::function<PropType(const T&, const SerializationContext&)> getter,
         std::function<Result<void>(T&, PropType, const SerializationContext&)> setter,
-        PropertyFlags flags = {}
+        PropertyFlags flags = {},
+        DefaultChecker default_checker = nullptr
     ) -> void {
         // Runtime check: PropType must be registered in TypeRegistry.
         const auto* type_info = TypeRegistry::get<PropType>();
@@ -150,6 +163,9 @@ public:
                 typeid(PropType).name(), typeid(PropType).name());
             std::abort();
         }
+
+        // Copy getter for the default checker before it's moved into yaml_getter
+        auto getter_for_checker = getter;
 
         // Create type-erased getter
         Property::GetterFn yaml_getter = [=, g = std::move(getter)](const Component& comp, const SerializationContext& ctx) -> YAML::Node {
@@ -201,12 +217,27 @@ public:
             return s(typed_comp, value, ctx);
         };
 
+        // If no explicit default checker was provided, create a lazy one
+        if (!default_checker) {
+            default_checker = [getter_for_checker](const Component& comp, const SerializationContext& ctx) -> bool {
+                // Compute default lazily on first comparison
+                static thread_local std::optional<PropType> cached_default;
+                if (!cached_default.has_value()) {
+                    T default_instance{};
+                    cached_default = getter_for_checker(default_instance, ctx);
+                }
+                const T& typed = static_cast<const T&>(comp);
+                return getter_for_checker(typed, ctx) == *cached_default;
+            };
+        }
+
         properties_.push_back(Property{
             std::string(name),
             std::type_index(typeid(PropType)),
             std::move(yaml_getter),
             std::move(yaml_setter),
-            flags
+            flags,
+            std::move(default_checker)
         });
     }
 

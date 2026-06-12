@@ -822,11 +822,12 @@ TEST_CASE("ROUND_TRIP_MESH_RENDERER", "[component-registry]") {
     TestEngine test_engine;
     SerializationContext ctx{test_engine.mock_assets};
 
-    // Null model should serialize as empty string
+    // Null model is a default-valued property, so it should be omitted from serialized output
     YAML::Node node = serialize_component(*info, *comp1.value(), ctx);
-    REQUIRE(node["model"].as<std::string>() == "");
+    // Model key should be absent (default-valued property is skipped)
+    REQUIRE_FALSE(node["model"].IsDefined());
 
-    // Deserialize empty string back — model stays null
+    // Deserialize the node (without model key) — model stays null (default)
     auto comp2 = registry.create("mesh_renderer");
     REQUIRE(comp2.has_value());
     auto result = deserialize_component(*info, node, *comp2.value(), ctx);

@@ -174,6 +174,54 @@ auto World::set_name(EntityId id, const std::string& name) -> void {
 }
 
 // ---------------------------------------------------------------------------
+// Entity source
+// ---------------------------------------------------------------------------
+auto World::get_source(EntityId id) const noexcept -> const EntitySource& {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr);
+    return node->source_;
+}
+
+auto World::set_source(EntityId id, const EntitySource& source) -> void {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr);
+    node->source_ = source;
+}
+
+// ---------------------------------------------------------------------------
+// Root entity iteration
+// ---------------------------------------------------------------------------
+auto World::root_entity_count() const noexcept -> size_t {
+    return roots_.size();
+}
+
+auto World::get_root_entity(size_t index) const noexcept -> Entity {
+    if (index >= roots_.size()) return Entity{};
+    return Entity(*const_cast<World*>(this), roots_[index]->id_);
+}
+
+// ---------------------------------------------------------------------------
+// Component raw iteration
+// ---------------------------------------------------------------------------
+auto World::component_count(EntityId id) const noexcept -> size_t {
+    auto* node = lookup_node(id);
+    if (!node) return 0;
+    return node->components_.size();
+}
+
+auto World::get_component_at(EntityId id, size_t index) noexcept -> Component& {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr && index < node->components_.size());
+    return *node->components_[index];
+}
+
+auto World::get_component_at(EntityId id, size_t index) const noexcept -> const Component& {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr && index < node->components_.size());
+    return *node->components_[index];
+}
+
+// ---------------------------------------------------------------------------
 // Raw component injection
 // ---------------------------------------------------------------------------
 auto World::add_component_raw(EntityId id, std::unique_ptr<Component> component) -> Component& {
