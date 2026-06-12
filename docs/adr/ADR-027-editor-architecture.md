@@ -179,3 +179,23 @@ The editor does **not** respond to Escape — only window close (title-bar X, `A
 - ADR-014 (`docs/adr/ADR-014-cli-app-system.md`): Centralised App lifecycle reused by EditorApp.
 - ADR-012 (`docs/adr/ADR-012-navigable-object-graph-engine-service.md`): EngineContext access pattern used by Editor.
 - ADR-001 (`docs/adr/ADR-001-result-error-pattern.md`): `Result<T>` error pattern used by Editor and EditorApp.
+
+## Amendment (12-Jun-2026): SPEC-028 backward-compatible extension to Decision 2
+
+**Decision 2** ("Editor reuses the existing `App` lifecycle") stated:
+
+> No changes to `run_app()` or the `App` base class are needed.
+
+SPEC-028 (editor-foundation, implemented 08–12 Jun 2026) extended the `App` lifecycle in a backward-compatible way:
+
+1. `src/cmd/app.h` — The `App` base class gained a new virtual method:
+   ```cpp
+   virtual auto update(EngineContext const& /*ctx*/) -> void {}
+   ```
+2. `src/cmd/app.cpp` — `run_app()` calls `app.update(ctx)` after event dispatch and before rendering, in the frame loop between `on_frame_begin()` and `on_render()`.
+
+**Backward-compatibility**: The `update()` method has a default empty implementation. All 14 existing `App` subclasses (`TriangleApp`, `PhongApp`, `FreeCameraApp`, `GltfHelmetApp`, `EditorApp`, etc.) compile without changes. Existing apps that do not override `update()` continue to behave identically.
+
+**Effect on Decision 2**: The core architectural decision stands — the editor reuses the existing `App` lifecycle via `EditorApp`, a subclass of `App`. The statement that *no changes* to the base class or `run_app()` were needed proved correct for the scaffolding phase (SPEC-NNNN) but required this backward-compatible extension for the editor-foundation phase (SPEC-028). Decision 2 is **partially superseded** by this amendment.
+
+**Rationale for the extension**: The editor needs a dedicated update phase (shortcut processing, command execution, panel logic) that is logically separate from rendering (`draw_ui()`). Adding `update()` to the `App` lifecycle provides an explicit hook for this, keeping `on_render()` focused on draw calls. ImGui requires `update()` logic (keyboard shortcuts, command execution) to happen *before* `NewFrame()`/`EndFrame()` in the same frame, which was previously not possible with the `on_frame_begin()` → `on_render()` two-phase loop.

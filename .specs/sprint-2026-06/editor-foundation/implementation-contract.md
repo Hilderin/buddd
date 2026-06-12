@@ -398,7 +398,7 @@ private:
 namespace buddd::editor {
 
 /// Binds keyboard shortcuts to callback actions.
-/// Processed via process() each frame using the engine InputSystem.
+/// Processed via process() each frame using the engine EngineContext.
 class ShortcutRegistry {
 public:
     struct Modifiers {
@@ -410,9 +410,9 @@ public:
     /// Register a shortcut. `action` is called when the key+modifiers combo is pressed.
     auto bind(buddd::engine::KeyCode key, Modifiers mods, std::function<void()> action) -> void;
 
-    /// Process all bindings using the engine InputSystem.
-    /// `want_capture` gates processing — no action fires when true.
-    auto process(buddd::engine::InputSystem const& input, bool want_capture) -> void;
+    /// Process all bindings using the engine EngineContext.
+    /// Extracts InputSystem from ctx internally. `want_capture` gates processing — no action fires when true.
+    auto process(buddd::engine::EngineContext const& ctx, bool want_capture) -> void;
 
 private:
     struct Binding {
@@ -440,7 +440,8 @@ inline auto ShortcutRegistry::bind(buddd::engine::KeyCode key, Modifiers mods, s
     bindings_.push_back({key, mods, std::move(action)});
 }
 
-inline auto ShortcutRegistry::process(buddd::engine::InputSystem const& input, bool want_capture) -> void {
+inline auto ShortcutRegistry::process(buddd::engine::EngineContext const& ctx, bool want_capture) -> void {
+    auto const& input = ctx.services.platform().input_system();
     if (want_capture) {
         return;
     }
@@ -876,9 +877,6 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     add_panel(std::make_unique<AssetsPanel>());
 
     // ── Register shortcuts ──
-    auto& input = ctx.services.platform().input_system();
-    (void)input; // input used by bind callbacks at runtime via shortcuts_.process()
-
     shortcuts_.bind(be::KeyCode::Q, {.ctrl = true}, [this, &ctx]() {
         command_stack_.execute(std::make_unique<QuitCommand>(ctx));
     });
@@ -913,8 +911,7 @@ auto Editor::update(be::EngineContext const& ctx) -> void {
     // ═══════════════════════════════════════════════
     // Keyboard shortcuts (gated by WantCaptureKeyboard)
     // ═══════════════════════════════════════════════
-    auto& input = ctx.services.platform().input_system();
-    shortcuts_.process(input, ImGui::GetIO().WantCaptureKeyboard);
+    shortcuts_.process(ctx, ImGui::GetIO().WantCaptureKeyboard);
 
     // ═══════════════════════════════════════════════
     // Delegate to registered menus and panels

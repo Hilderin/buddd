@@ -2,6 +2,7 @@
 
 #include "error.h"
 
+#include <functional>
 #include <memory>
 
 namespace buddd::engine {
@@ -28,6 +29,13 @@ public:
     /// true otherwise. In headless mode, always returns true.
     virtual auto poll_events() -> bool = 0;
 
+    /// Register a callback invoked when the platform receives a quit/close request.
+    /// The callback returns true to allow the close, false to cancel it.
+    /// If no callback is registered, the close proceeds normally.
+    auto set_on_close_request(std::function<bool()> callback) -> void {
+        close_request_callback_ = std::move(callback);
+    }
+
     /// Returns a reference to the input system owned by this platform.
     /// The reference remains valid for the lifetime of the Platform.
     virtual auto input_system() -> InputSystem& = 0;
@@ -43,6 +51,9 @@ public:
 
 protected:
     Platform() = default;
+
+    /// Close-request callback, invoked by subclasses in poll_events() on quit events.
+    std::function<bool()> close_request_callback_;
 };
 
 } // namespace buddd::engine

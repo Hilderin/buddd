@@ -32,6 +32,10 @@ auto WindowSDL3::native_handle() const noexcept -> void* {
     return static_cast<void*>(window_);
 }
 
+auto WindowSDL3::set_title(std::string title) -> void {
+    SDL_SetWindowTitle(window_, title.c_str());
+}
+
 auto WindowSDL3::set_mouse_capture(bool captured) -> void {
     SDL_SetWindowRelativeMouseMode(window_, captured);
     captured_ = captured;

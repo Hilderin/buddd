@@ -1,6 +1,8 @@
 # Cross-Panel Communication
 
-## Current state
+> **Current status (v1 foundation — editor-foundation, June 2026):** This document describes the **north-star vision** for cross-panel communication (entity selection flow, play mode state transitions, visual mode indicators). Currently, panels are **independent placeholders** with no cross-panel communication. The command system (`CommandStack`) provides the infrastructure for future undoable panel interactions. Keyboard shortcuts are dispatched via `ShortcutRegistry` and gated by `WantCaptureKeyboard`, but no panel-to-panel data flow exists yet.
+
+## Future vision (north-star)
 
 Editor panels communicate through entity selection events and editor mode state transitions. The primary interaction paths are entity selection (propagating from Hierarchy to Inspector and Viewport) and play mode state transitions (Edit → Play → Pause → Stop), which toggle panel interactivity modes.
 
@@ -96,6 +98,13 @@ On Stop, all indicators are removed and panels return to Edit mode state.
 
 ## Important conventions
 
+### v1 foundation (currently implemented)
+- All editor actions go through the `Command`/`CommandStack` system — `execute()` pushes to undo stack, `undo()`/`redo()` navigate history. Undo/Redo are direct `CommandStack` calls (not undoable commands).
+- Keyboard shortcuts are processed via `ShortcutRegistry::process()` in `Editor::update()`, gated by `ImGui::GetIO().WantCaptureKeyboard`.
+- The About popup is rendered via `ImGui::BeginPopupModal()` — a modal popup that blocks interaction with other windows until dismissed.
+- The editor has a two-phase lifecycle: `update()` for logic, `draw_ui()` for rendering.
+
+### North-star (future — not yet implemented)
 - Read-only enforcement during Play mode is at the **editor UI level** (fields disabled, buttons hidden), not at the engine API level.
 - The editor World is never modified during Play mode — a **clone** is used for the runtime World.
 - Console messages persist across all mode transitions (Edit → Play → Pause → Stop → Edit). Never auto-cleared.
@@ -104,7 +113,8 @@ On Stop, all indicators are removed and panels return to Edit mode state.
 
 ## Related specs
 
-- [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (Cross-Panel Communication, Play mode sections)
+- [SPEC-028 — Editor Foundation](/.specs/sprint-2026-06/editor-foundation/spec.md) — Command system, menus, shortcuts, panels, docking persistence (v1 foundation, current)
+- [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (Cross-Panel Communication, Play mode sections — future vision)
 
 ## Related ADRs
 
@@ -114,4 +124,4 @@ On Stop, all indicators are removed and panels return to Edit mode state.
 
 ## Last reviewed
 
-2026-06-11 — Created from SPEC-2026-06 (Editor UX Design)
+2026-06-12 — Updated for editor-foundation v1 (SPEC-028): marked as north-star future vision

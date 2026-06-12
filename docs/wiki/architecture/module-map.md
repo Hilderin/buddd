@@ -83,12 +83,12 @@ The Platform abstraction now integrates the InputSystem: each concrete Platform 
 
 | File | Role |
 |---|---|
-| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory, `virtual auto input_system() -> InputSystem& = 0`, and `virtual auto delta_time() const noexcept -> float = 0` |
+| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory, `virtual auto input_system() -> InputSystem& = 0`, and `virtual auto delta_time() const noexcept -> float = 0`. **F-01**: Added `auto set_on_close_request(std::function<bool()>) -> void` concrete method and `std::function<bool()> close_request_callback_` protected member. Allows Editor to intercept OS close requests (X button / Alt+F4) and show save-prompt before exiting. |
 | `platform.cpp` | Factory implementation: dispatches to SDL3 or Headless backend based on `Backend` enum |
 | `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member, `delta_time_` member, `last_frame_ticks_` for frame timing, `register_window()`/`unregister_window()` public methods, and `std::unordered_map<SDL_WindowID, Window*> window_map_` private member for routing SDL events to the correct `Window` instance |
-| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation with `SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE` flag, `SDL_SetWindowMinimumSize(320, 240)` for minimum size enforcement, window registration via `SDL_GetWindowID()` + `register_window()` in `create_window()`, `poll_events()` computes delta from `SDL_GetTicks`, calls `begin_frame()`, handles `SDL_EVENT_WINDOW_RESIZED`/`MAXIMIZED`/`RESTORED` events via windowID map lookup before routing to `InputSystemSDL3::on_sdl_event()` then `engine_imgui::on_sdl_event()` for ImGui |
+| `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation with `SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE` flag, `SDL_SetWindowMinimumSize(320, 240)` for minimum size enforcement, window registration via `SDL_GetWindowID()` + `register_window()` in `create_window()`, `poll_events()` computes delta from `SDL_GetTicks`, calls `begin_frame()`, handles `SDL_EVENT_WINDOW_RESIZED`/`MAXIMIZED`/`RESTORED` events via windowID map lookup before routing to `InputSystemSDL3::on_sdl_event()` then `engine_imgui::on_sdl_event()` for ImGui. **F-01**: `SDL_EVENT_QUIT` handler now checks `close_request_callback_` before returning `false`. If a callback is registered and returns `false`, the quit event is swallowed (`continue` — editor stays open). If no callback or returns `true`, `poll_events()` returns `false` (normal exit). |
 | `platform_headless.h` | Private header: `PlatformHeadless` concrete class (final) with embedded `InputSystemHeadless` member and `delta_time()` override |
-| `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions; `poll_events()` calls `begin_frame()`; `delta_time()` returns fixed 1/60f |
+| `platform_headless.cpp` | Headless implementation: no SDL3/OpenGL dependency, validates dimensions; `poll_events()` calls `begin_frame()`; `delta_time()` returns fixed 1/60f. No `SDL_EVENT_QUIT` handling needed — no window to close. |
 
 ### Window submodule (`window/`)
 
@@ -96,11 +96,11 @@ The `Window` class now stores a non-owning `Platform&` reference, creating a nav
 
 | File | Role |
 |---|---|
-| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via new `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, pure virtual `on_resize(int w, int h)` (for updating cached dimensions on window resize), and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. |
-| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Declares `on_resize()` override to update cached `width_`/`height_`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. |
-| `window_sdl3.cpp` | SDL3 implementation: `on_resize()` updates `width_` and `height_`. Destructor un-registers from `PlatformSDL3`'s windowID map via `unregister_window()` before `SDL_DestroyWindow`. `native_handle()` casts to `void*`. |
-| `window_headless.h` | Private header: `WindowHeadless` concrete class. Declares `on_resize()` override to update cached `width_`/`height_`. Mouse capture is no-op; `is_mouse_captured()` returns `false`. |
-| `window_headless.cpp` | Headless implementation: stores width/height, `on_resize()` updates cached dimensions (no clamping by design — accepts any values for test flexibility), `native_handle()` returns `nullptr`. |
+| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via new `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, pure virtual `on_resize(int w, int h)` (for updating cached dimensions on window resize), and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. **F-01**: Added `virtual auto set_title(std::string title) -> void = 0;` — pure virtual method for setting the OS window title. Used by Editor for dirty-state window title updates. |
+| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Declares `on_resize()` override to update cached `width_`/`height_`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. **F-01**: Added `auto set_title(std::string title) -> void override;`. |
+| `window_sdl3.cpp` | SDL3 implementation: `on_resize()` updates `width_` and `height_`. Destructor un-registers from `PlatformSDL3`'s windowID map via `unregister_window()` before `SDL_DestroyWindow`. `native_handle()` casts to `void*`. **F-01**: `set_title()` implemented via `SDL_SetWindowTitle(window_, title.c_str())`. |
+| `window_headless.h` | Private header: `WindowHeadless` concrete class. Declares `on_resize()` override to update cached `width_`/`height_`. Mouse capture is no-op; `is_mouse_captured()` returns `false`. **F-01**: Added `auto set_title(std::string title) -> void override;`. |
+| `window_headless.cpp` | Headless implementation: stores width/height, `on_resize()` updates cached dimensions (no clamping by design — accepts any values for test flexibility), `native_handle()` returns `nullptr`. **F-01**: `set_title()` is a no-op. |
 
 ### Scene submodule (`scene/`)
 
@@ -366,27 +366,83 @@ The `demo_helpers.*` files are now **empty placeholders**. All helper functions 
 
 ## `buddd_editor` — Static library (`src/editor/`)
 
-The editor library provides the `Editor` class and `EditorApp` for the editor application. It links `buddd_engine` (PRIVATE) and uses namespace `buddd::editor`. See [ADR-027](/docs/adr/ADR-027-editor-architecture.md) for the architectural rationale.
+The editor library provides the interactive editor for `buddd edit`. It links `buddd_engine` (PUBLIC) and uses namespace `buddd::editor`. See [ADR-027](/docs/adr/ADR-027-editor-architecture.md) for the architectural rationale. No SDL3, OpenGL, or GLM headers are included from editor code (per ADR-019).
 
-### Editor class
+**F-01 dependency**: [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) v0.6.7 is fetched via `FetchContent` in the root `CMakeLists.txt` and compiled as part of `buddd_editor` (`ImGuiFileDialog.cpp` added to the static library sources, `${ImGuiFileDialog_SOURCE_DIR}` added as a SYSTEM PRIVATE include directory). Provides OS-native file dialogs with `.yaml` filter for Open/Save As operations.
+
+### Command system (`src/editor/`)
 
 | File | Role |
 |---|---|
-| `editor.h` | Public header: `Editor` class declaration in `buddd::editor` namespace. Lifecycle methods: `setup(EngineContext const&)` (stores `EngineService*` and `Window*` references, marks initialized), `draw_ui(EngineContext const&)` (renders ImGui dockspace), `shutdown()` (nulls pointers), `[[nodiscard]] world()` (returns `World&`, always valid). Uses direct member variables: `EngineService* engine_`, `Window* window_`, `bool initialized_`, plus `std::unique_ptr<World> world_` (created in constructor, destroyed in destructor). |
-| `editor.cpp` | Editor implementation. Constructor creates World via `std::make_unique<World>()` and logs creation. `draw_ui()` creates a full-window ImGui dockspace node: `DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode)`. `setup()` stores references from the context. `shutdown()` nulls stored pointers (does not reset the World). Destructor logs World destruction. `world()` returns `*world_`. |
+| `command.h` | `Command` abstract base class — pure virtual `execute()`, `undo()`, `name()` methods. All editor actions are modelled as Command subclasses. |
+| `command.cpp` | Empty file for build consistency (all methods are pure virtual or defaulted). |
+| `command_stack.h` | `CommandStack` class — bounded undo/redo stack (default 128, min 1). Methods: `execute(unique_ptr<Command>)`, `undo() -> bool`, `redo() -> bool`, `can_undo()`, `can_redo()`, `undo_name()`, `redo_name()`, `clear()`. |
+| `command_stack.cpp` | Implementation: `execute()` calls `command->execute()`, pushes to undo stack, clears redo stack, enforces max_history bound. `undo()` pops from undo, calls `command->undo()`, pushes to redo. `redo()` pops from redo, calls `command->execute()`, pushes to undo. |
+
+### Concrete commands (`src/editor/commands/`)
+
+| File | Class | Role |
+|---|---|---|
+| `quit_command.h` | `QuitCommand` | Header-only. `execute()` calls `ctx.request_exit()`. `undo()` is a no-op (cannot un-request exit). `name()` returns `"Quit"`. |
+
+### Shortcut registry (`src/editor/`)
+
+| File | Role |
+|---|---|
+| `shortcut_registry.h` | `ShortcutRegistry` — header-only. Maps keyboard shortcuts (`KeyCode` + `Modifiers` struct) to `std::function<void()>` callbacks. `bind()` registers a binding. `process(InputSystem const&, bool want_capture)` iterates all bindings each frame. Action key checked via `is_pressed()` (edge-triggered, fires once per press). Modifiers checked via `is_down()` (both left/right variants). Gated by `WantCaptureKeyboard`. |
+
+### Editor UI abstractions (`src/editor/`)
+
+| File | Class | Role |
+|---|---|---|
+| `editor_menu.h` | `EditorMenu` | Abstract base class for overlay elements drawn before the ImGui dockspace. Pure virtual `id()`, optional `update(ctx)` and `draw_ui(ctx)` with default no-op. |
+| `editor_panel.h` | `EditorPanel` | Abstract base class for dockable editor panels. Pure virtual `id()` and `title()`, optional `update(ctx)` and `draw_ui(ctx)` with default no-op. |
+
+### Menu bar (`src/editor/panels/`)
+
+| File | Class | Role |
+|---|---|---|
+| `menu_bar.h` | `MenuBar` | Header-only concrete `EditorMenu`. `id()` returns `"menu_bar"`. `draw_ui()` renders main menu bar via `ImGui::BeginMainMenuBar()`: **File** > New Scene (Ctrl+N), Open Scene (Ctrl+O), separator, Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S), separator, Quit (Ctrl+Q), **Edit** > Undo (Ctrl+Z, disabled when undo stack empty) / Redo (Ctrl+Shift+Z/Ctrl+Y, disabled when redo stack empty), **Help** > About (opens modal popup via `set_on_about()` callback). **F-01**: Added callbacks `set_on_new_scene()`, `set_on_open_scene()`, `set_on_save_scene()`, `set_on_save_scene_as()`, `set_on_quit()`. The old direct `ctx.request_exit()` call for Quit is replaced by the `on_quit_` callback which checks dirty state first. Takes `CommandStack&`. |
+
+### Concrete dockable panels (`src/editor/panels/`)
+
+Five header-only `EditorPanel` subclasses, each with 100×100 minimum size constraint via `ImGui::SetNextWindowSizeConstraints()`. No functional content — placeholders for future features.
+
+| File | Class | Id | Title |
+|---|---|---|---|
+| `scene_panel.h` | `ScenePanel` | `"scene"` | `"Scene"` |
+| `properties_panel.h` | `PropertiesPanel` | `"properties"` | `"Properties"` |
+| `console_panel.h` | `ConsolePanel` | `"console"` | `"Console"` |
+| `project_panel.h` | `ProjectPanel` | `"project"` | `"Project"` |
+| `assets_panel.h` | `AssetsPanel` | `"assets"` | `"Assets"` |
+
+### Editor class (`src/editor/`)
+
+| File | Role |
+|---|---|
+| `editor.h` | `Editor` class — central orchestrator. Lifecycle: `Editor()` → `setup(ctx)` → `update(ctx) x N` → `draw_ui(ctx) x N` → `shutdown()`. Public methods: `setup()` (registers menus/panels/shortcuts, sets `IniFilename`), `update()` (processes shortcuts via `ShortcutRegistry`, delegates to `menu->update()`/`panel->update()`), `add_menu()`/`add_panel()` (registration), `draw_ui()` (now 7-phase rendering), `shutdown()`, `world()` (returns `World&`). **F-01 additions**: Public scene management methods: `mark_dirty()`, `clear_dirty()`, `is_dirty()`, `current_file_path()`, `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`. Private state: `bool dirty_`, `std::optional<std::string> current_file_path_`, `PendingOp pending_op_`, `std::optional<std::string> pending_file_path_`, `bool show_file_dialog_`, `std::string file_dialog_action_`, `std::string error_modal_title_`, `std::string error_modal_message_`, `bool show_error_modal_`. Private methods: `update_window_title()`, `build_title_string()`, `draw_save_prompt_modal()`, `show_error_modal()`, `draw_error_modals()`, `draw_pending_op_modal()`, `execute_pending_op()`, `draw_file_dialog()`. Enums: `SavePromptResult` (`Save`, `Discard`, `Cancel`), `PendingOp` (`None`, `NewScene`, `OpenScene`, `Quit`). |
+| `editor.cpp` | Implementation. `setup()`: creates `MenuBar` with all 6 callbacks (`set_on_about`, `set_on_new_scene`, `set_on_open_scene`, `set_on_save_scene`, `set_on_save_scene_as`, `set_on_quit`), registers 5 panels, binds shortcuts (Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Ctrl+Q, Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y), sets `ImGui::GetIO().IniFilename = "buddd_editor.ini"`, calls `update_window_title()` for initial title "Untitled — Buddd Editor". Registers OS close-request handler via `ctx.services.platform().set_on_close_request(...)`. `update()`: processes shortcuts, delegates to menus/panels. `draw_ui()`: 7-phase rendering — Phase 1 (overlays: `menu->draw_ui()`), Phase 2 (dockspace + DockBuilder default layout), Phase 3 (panels), Phase 4 (About popup), Phase 5 (`draw_pending_op_modal()` — save-prompt state machine), Phase 6 (`draw_file_dialog()` — ImGuiFileDialog display), Phase 7 (`draw_error_modals()` — error popups). Scene management: `new_scene()` replaces World with fresh empty World, resets file path and dirty flag. `open_scene(path)` saves World aside, creates fresh World, loads via SceneLoader, restores World on failure. `save_scene()` saves via SceneSaver (no-op if clean with path, redirects to Save As if untitled). `save_scene_as(path)` saves to new path, updates `current_file_path_`. `mark_dirty()` sets dirty flag and updates title. `clear_dirty()` clears dirty flag and updates title. ImGuiFileDialog integrated via `ImGuiFileDialog::Instance()` singleton with `OpenDialog()`/`Display()`/`IsOk()`/`GetFilePathName()` pattern. Logging via `BUDDD_LOG_TAG("Editor")`. |
 
 ### EditorApp (`src/cmd/apps/`)
 
 | File | Role |
 |---|---|
-| `editor_app.h` | `EditorApp` — `App` subclass. Declares `EditorApp()` and `~EditorApp() override`. Stores `std::unique_ptr<Editor>`. `setup(EngineContext const&)` creates and calls `editor_->setup(ctx)`. `on_render(EngineContext const&)` calls `editor_->draw_ui(ctx)`. `shutdown()` calls `editor_->shutdown()`. |
-| `editor_app.cpp` | Implementation of EditorApp lifecycle — delegates to `Editor`. |
+| `editor_app.h` | `EditorApp` — `App` subclass. Stores `unique_ptr<Editor>`. Declares `update()` override in addition to existing `setup()`, `on_render()`, `shutdown()`. |
+| `editor_app.cpp` | Implementation: `setup()` calls `editor_->setup(ctx)`. `update()` calls `editor_->update(ctx)` (new — processes shortcuts/state). `on_render()` calls `editor_->draw_ui(ctx)`. `shutdown()` calls `editor_->shutdown()`. |
+
+### App lifecycle extension (`src/cmd/`)
+
+| File | Change |
+|---|---|
+| `app.h` | `App` base class gains `virtual auto update(EngineContext const& ctx) -> void {}` (default no-op). Lifecycle comment updated: `on_frame_begin() x N -> update() x N -> on_render() x N`. |
+| `app.cpp` | `run_app()` render loop: `app.update(ctx)` called after `World::update_updatables(ctx)` and before `render_system->render_scene()`. |
 
 ### CLI integration
 
-- The `buddd edit` command is dispatched in `main.cpp`, which creates an `EditorApp` and calls `run_app()`. Requires display (`BUDDD_HAS_DISPLAY`); exits with error in headless mode.
-- `--frame`/`--capture` work incidentally via `run_app()` but are not editor features.
+- `buddd edit` → creates `EditorApp`, calls `run_app()`. Requires display; errors out in headless mode.
 - The editor does NOT exit on Escape — only window close exits.
+- Editor has a two-phase lifecycle: `update()` (logic: shortcuts, state) runs before `render_scene()`, `draw_ui()` (UI rendering) runs in `on_render()` after `render_scene()`.
+- Docking layout persisted via `buddd_editor.ini` in the current working directory.
 
 ## `buddd_tests` — Test executable (`tests/`)
 

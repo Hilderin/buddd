@@ -33,7 +33,11 @@ auto PlatformSDL3::poll_events() -> bool {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
-            return false;
+            if (close_request_callback_ && !close_request_callback_()) {
+                // Callback returned false: cancel the close, swallow the event
+                continue;   // skip return false, continue polling
+            }
+            return false;   // callback returned true or not set: allow close
         }
         // Handle window resize / maximize / restore events
         if (event.type == SDL_EVENT_WINDOW_RESIZED

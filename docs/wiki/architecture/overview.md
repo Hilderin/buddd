@@ -27,8 +27,26 @@ buddd2/
 │   │   ├── input/           # Input system (KeyCode, MouseButton, InputSystem)
 │   │   ├── asset/           # Asset manager (Asset, TextureAsset, MaterialAsset, FileWatcher, DependencyMap)
 │   │   └── render/          # Render device abstraction (RenderDevice)
-│   ├── cmd/                 # CLI binary (links engine)
-│   └── editor/              # Editor library (STATIC lib)
+    │   ├── cmd/                 # CLI binary (links engine)
+    │   │   ├── app.h             # App base class (virtual lifecycle: setup, on_frame_begin, update, on_render, shutdown)
+    │   │   └── app.cpp           # run_app() — central render loop
+    │   └── editor/              # Editor library (STATIC lib)
+    │       ├── editor.h/.cpp     # Editor class — central orchestrator (F-01: scene management, dirty state, save-prompt, file dialog)
+    │       ├── command.h         # Command abstract base class (execute/undo/name)
+    │       ├── command.cpp       # Command vtable emission
+    │       ├── command_stack.h/.cpp  # CommandStack — bounded undo/redo
+    │       ├── shortcut_registry.h   # ShortcutRegistry — bind/process shortcuts
+    │       ├── editor_menu.h     # EditorMenu abstract base (menus, toolbars)
+    │       ├── editor_panel.h    # EditorPanel abstract base (dockable panels)
+    │       ├── commands/         # Concrete commands
+    │       │   └── quit_command.h    # QuitCommand — requests engine exit
+    │       └── panels/           # Panel/menu implementations
+    │           ├── menu_bar.h        # MenuBar — File/Edit/Help menus (F-01: New/Open/Save/Save As/Quit callbacks)
+    │           ├── scene_panel.h     # ScenePanel (placeholder)
+    │           ├── properties_panel.h# PropertiesPanel (placeholder)
+    │           ├── console_panel.h   # ConsolePanel (placeholder)
+    │           ├── project_panel.h   # ProjectPanel (placeholder)
+    │           └── assets_panel.h    # AssetsPanel (placeholder)
 ├── tests/                   # Unit tests (Catch2 v3)
 └── docs/
     ├── specs/               # Product specs and implementation contracts
@@ -42,7 +60,7 @@ buddd2/
 - **Presets**: `debug` (Debug build) and `release` (Release build)
 - **Standard**: C++26 (`CMAKE_CXX_STANDARD 26`, `REQUIRED ON`, `EXTENSIONS OFF`)
 - **Formatting**: `clang-format` via custom `format` CMake target
-- **External dependencies**: SDL3 (fetched via `FetchContent`), GLM (fetched via `FetchContent`), OpenGL (system `find_package`), stb (fetched via `FetchContent`), Dear ImGui (fetched via `FetchContent`, docking branch)
+- **External dependencies**: SDL3 (fetched via `FetchContent`), GLM (fetched via `FetchContent`), OpenGL (system `find_package`), stb (fetched via `FetchContent`), Dear ImGui (fetched via `FetchContent`, docking branch), ImGuiFileDialog (fetched via `FetchContent`, v0.6.7)
 
 ## CMake targets
 
@@ -50,7 +68,7 @@ buddd2/
 |---|---|---|---|
 | `buddd_engine` | Static library | `src/engine/` | Core engine; exposes version API, platform abstraction layer, math foundations module, scene graph module, render pipeline module, image I/O module, and ImGui integration module. Links SDL3, OpenGL, GLM, stb, and Dear ImGui. |
 | `buddd` | Executable | `src/cmd/` | CLI binary; links `buddd_engine` |
-| `buddd_editor` | Static library | `src/editor/` | Editor library: Editor class, EditorApp, and editor infrastructure. Links buddd_engine. |
+| `buddd_editor` | Static library | `src/editor/` | Editor library: Editor class, EditorApp, editor infrastructure, scene management (New/Open/Save/Save As/Quit), dirty state, OS file dialogs via ImGuiFileDialog. Links buddd_engine. |
 | `buddd_tests` | Executable | `tests/` | Catch2 test binary; links `buddd_engine` |
 
 ## Engine library (`buddd_engine`) internal structure
@@ -179,7 +197,14 @@ src/engine/
 - `./build/debug/src/cmd/buddd run cube --frame 60` — runs exactly 60 frames of the cube, then exits automatically.
 - `./build/debug/src/cmd/buddd version` — prints `buddd 0.1.0`
 - `./build/debug/src/cmd/buddd run imgui-demo` — opens a 1280×720 window (title "Buddd Engine — ImGui Demo"), runs for 300 frames showing `ImGui::ShowDemoWindow()` and a custom "ImGui Demo" panel with FPS counter on a cleared background. Supports `--capture` for CI verification.
+- `./build/debug/src/cmd/buddd edit` — opens the editor (1280×800 window, title "Untitled — Buddd Editor") with a main menu bar (File > New Scene/Ctrl+N, Open Scene/Ctrl+O, Save Scene/Ctrl+S, Save Scene As/Ctrl+Shift+S, Quit/Ctrl+Q; Edit > Undo/Ctrl+Z, Redo/Ctrl+Shift+Z/Ctrl+Y; Help > About), five dockable placeholder panels (Scene, Properties, Console, Project, Assets), dirty state tracking (`*` in window title when modified), OS file dialogs (ImGuiFileDialog) for Open/Save As, save-prompt modals on dirty-scene operations, error modals on load/save failures, OS close-button interception with save-prompt, and docking layout persistence via `buddd_editor.ini`.
+- `App::update(ctx)` — new virtual method (default no-op) in the `App` base class, called once per frame after `World::update_updatables(ctx)` and before `render_scene()`. `EditorApp` overrides `update()` to call `Editor::update()` for shortcut processing and state updates.
+- The editor has a two-phase lifecycle: `Editor::update()` (logic: keyboard shortcuts, command dispatch) runs before `render_scene()`, and `Editor::draw_ui()` (UI rendering: menus, panels, popups) runs inside `EditorApp::on_render()` after `render_scene()`.
 - `./build/debug/src/cmd/buddd run assets/scenes/demo.yaml` — YAML auto-detection branches to `SceneApp`. Loads the scene YAML file, creates entities (free camera prefab, Box model, directional light) in the World, and renders the scene. `--frame N` and `--capture N:path` work via `run_app()` infrastructure.
+- **F-01: Editor scene management**: The Editor now supports File > New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S), and Quit (Ctrl+Q) with dirty state tracking (`*` in window title), OS file dialogs (ImGuiFileDialog), save-prompt modals, and error modals for load/save failures.
+- **F-01: Window::set_title()**: Added `virtual auto set_title(std::string title) -> void = 0` to `Window` base class. `WindowSDL3` implements via `SDL_SetWindowTitle()`. `WindowHeadless` implements as no-op.
+- **F-01: Platform::set_on_close_request()**: Added concrete (non-virtual) method `set_on_close_request(std::function<bool()>)` on `Platform` base class. `PlatformSDL3::poll_events()` checks the callback on `SDL_EVENT_QUIT` — if callback returns `false`, the quit event is swallowed (window stays open). Used by Editor for OS close-button save-prompt.
+- **F-01: ImGuiFileDialog**: Fetched via `FetchContent` (v0.6.7), compiled as part of `buddd_editor`. Provides OS-native file dialogs with `.yaml` filter for Open/Save As operations.
 - `./build/debug/src/cmd/buddd run nonexistent.yaml` — if the argument ends with `.yaml`/`.yml` (case-insensitive) but the file does not exist, prints error and exits with code 1.
 - `./build/debug/src/cmd/buddd help` — prints usage information listing four commands (`run`, `edit`, `version`, `help`)
 - `./build/debug/src/cmd/buddd <unknown>` — prints error to stderr and exits with code 1
@@ -235,6 +260,7 @@ GLM headers are included **only inside `src/engine/math/`** (the wrapper headers
 - **New**: `Entity::name()` / `Entity::set_name()` allow reading and writing a per-entity `std::string` name. Default is empty string. Names are set from YAML scene files via the `name:` property.
 - **New**: Entity source tracking: `Entity::source()` / `Entity::set_source()` return/set an `EntitySource` struct (`EntitySourceType type` + `std::string path`) that records whether the entity was created directly (`None`), from a prefab (`Prefab`), or from a model (`Model`). `SceneLoader::load_entity()` sets source type to `Prefab` or `Model` when processing `prefab:` or `model:` directives. Model child entities expanded by `add_model_to_world()` keep source `None`.
 - **New**: `SceneSaver` class (symmetric to `SceneLoader`) serialises the `World` back to YAML. Prefab entities emit `prefab:` references (no components/children), model entities emit `model:` references, direct entities emit full expansion with components and children. Transform fields and component properties at default values are omitted from output.
+- **F-01**: Editor scene management: `Editor::new_scene()` (replaces World with fresh empty World), `Editor::open_scene(path)` (loads YAML via SceneLoader, restores World on failure), `Editor::save_scene()` (saves via SceneSaver, no-op if clean with path), `Editor::save_scene_as(path)` (saves to new path, updates file path). Dirty state: `Editor::mark_dirty()`, `Editor::clear_dirty()`, `Editor::is_dirty()`. Window title: `Editor::build_title_string()` returns formatted title with dirty `*` suffix. `Editor::update_window_title()` calls `Window::set_title()`. Save-prompt state machine via `PendingOp` enum and `draw_pending_op_modal()`. ImGuiFileDialog integration via `draw_file_dialog()`. OS close interception via `Platform::set_on_close_request()`.
 
 ## Reference
 

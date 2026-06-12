@@ -26,6 +26,9 @@ public:
 
     virtual auto on_resize(int w, int h) -> void = 0;
 
+    /// Set the OS window title string.
+    virtual auto set_title(std::string title) -> void = 0;
+
     virtual auto set_mouse_capture(bool captured) -> void = 0;
     virtual auto is_mouse_captured() const noexcept -> bool = 0;
 

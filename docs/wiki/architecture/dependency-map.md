@@ -82,6 +82,45 @@ RenderDevice  ──>  Window  ──>  Platform  ──>  InputSystem
 - `RenderDeviceHeadless::create_texture()` copies pixel data into an in-memory `TextureHeadless`.
 - `Texture` is backend-agnostic: `TextureOpenGL` and `TextureHeadless` are private headers inside `src/engine/render/`, maintaining the architecture boundary.
 
+## Editor internal dependencies (`buddd_editor`)
+
+The `buddd_editor` static library has the following internal file-level dependencies:
+
+```
+editor.h ──► command_stack.h, shortcut_registry.h, editor_menu.h, editor_panel.h
+                │                │                   │                │
+                ▼                ▼                   ▼                ▼
+           command.h       input/key_code.h     (standalone)      (standalone)
+                              input/input_system.h
+
+editor.cpp ──► commands/quit_command.h ──► command.h, engine_context.h
+            ──► panels/menu_bar.h ──► editor_menu.h, command_stack.h, commands/quit_command.h, imgui.h
+            ──► panels/scene_panel.h ──► editor_panel.h
+            ──► panels/properties_panel.h ──► editor_panel.h
+            ──► panels/console_panel.h ──► editor_panel.h
+            ──► panels/project_panel.h ──► editor_panel.h
+            ──► panels/assets_panel.h ──► editor_panel.h
+            ──► engine_context.h, engine_service.h, error.h
+            ──► imgui/engine_imgui.h, imgui.h
+            ──► input/key_code.h, input/input_system.h
+            ──► log/log.h, platform/platform.h, version.h
+
+command_stack.h ──► command.h
+command_stack.cpp ──► command_stack.h
+
+command.cpp ──► command.h
+
+shortcut_registry.h ──► input/key_code.h, input/input_system.h
+```
+
+Key design points:
+- All concrete panels and MenuBar are **header-only** (inline implementations) — no `.cpp` files needed.
+- `ShortcutRegistry` is **header-only** — `bind()` and `process()` are inline.
+- `QuitCommand` is **header-only** — inline in `commands/quit_command.h`.
+- Only `command.cpp` and `command_stack.cpp` have separate `.cpp` files (added to `CMakeLists.txt`).
+- No editor headers include `<imgui.h>` — ImGui is included only in `.cpp` files and header-only panel/menu implementation files.
+- The editor depends on engine types: `EngineContext`, `EngineService`, `EngineContext`, `InputSystem`, `KeyCode`, `version()`, `engine_imgui`, `Platform`.
+
 ## Key constraints
 
 - The engine is a **static library** (`STATIC`), not header-only. This may change in the future.

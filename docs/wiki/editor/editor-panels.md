@@ -1,6 +1,21 @@
 # Editor Panels
 
-## Current state
+> **Current status (F-01 — editor-scene-load-save, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented F-01 foundation includes:
+> - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
+> - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
+> - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
+> - **Keyboard shortcuts**: Ctrl+N (New), Ctrl+O (Open), Ctrl+S (Save), Ctrl+Shift+S (Save As), Ctrl+Q (Quit), Ctrl+Z (Undo), Ctrl+Shift+Z/Ctrl+Y (Redo), gated by `WantCaptureKeyboard`.
+> - **Command system**: `Command` base class + `CommandStack` with bounded 128-entry undo/redo.
+> - **Two-phase lifecycle**: `Editor::update()` (shortcuts, state) + `Editor::draw_ui()` (menus, dockspace, panels, popups).
+> - **Dirty state tracking**: `*` suffix in window title when scene has unsaved changes (via `Editor::mark_dirty()` / `Editor::is_dirty()`).
+> - **OS file dialogs**: ImGuiFileDialog for Open/Save As operations (`.yaml` filter).
+> - **Save-prompt modals**: Multi-frame modal with Save/Don't Save/Cancel for dirty-scene operations.
+> - **Error modals**: Displayed on SceneLoader/SceneSaver failures.
+> - **OS close interception**: Close button (X/Alt+F4) triggers same save-prompt as File > Quit.
+>
+> The north-star design below (tabs, viewport, inspector, toolbar, Play mode, prefabs) is **planned for future sprints** and is not yet implemented.
+
+## Future vision (north-star)
 
 The Buddd Editor has an Unreal Engine-like tab-based editing context system. One scene is open at a time in a dedicated Scene tab, with additional tabs for Prefab editing and Game testing. Each tab type has a fixed panel layout with user-resizable dividers.
 
@@ -424,7 +439,22 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 
 ## Important conventions
 
-- The Editor now owns a `World` via `std::unique_ptr<World>` — created in the **Editor constructor**, available via `editor.world()`, and destroyed in the destructor. The World is always valid (no null checks needed) and is separate from `ctx.world` (the engine's demo-scene world). See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
+### v1 foundation (currently implemented)
+
+- The `Editor` class orchestrates all subsystems. It owns a `CommandStack` (128-entry bounded undo/redo), a `ShortcutRegistry` (keyboard shortcut bindings), and vectors of `EditorMenu`/`EditorPanel` subclasses.
+- Panels and menus are registered via `Editor::add_menu()` / `Editor::add_panel()` in `Editor::setup()`. No runtime plugin discovery.
+- The editor uses **ImGui `DockBuilder`** for the default panel layout on first launch (Scene center, Properties right, Console bottom, Project/Assets bottom-left/bottom-right).
+- Docking layout is persisted via `buddd_editor.ini` in the current working directory (`ImGui::GetIO().IniFilename`).
+- Panels have a **100×100 minimum size constraint** via `ImGui::SetNextWindowSizeConstraints()`.
+- The editor has a **two-phase lifecycle**: `Editor::update()` (shortcuts, command dispatch, state updates) runs before `render_scene()`; `Editor::draw_ui()` (7-phase UI rendering) runs after `render_scene()` in `EditorApp::on_render()`.
+- Keyboard shortcuts are processed via `ShortcutRegistry::process()` gated by `ImGui::GetIO().WantCaptureKeyboard`.
+- The `App` base class has a `virtual update(EngineContext const&)` method (default no-op), called once per frame after `World::update_updatables()`. All existing demo apps are unaffected.
+- The editor also owns a `World` via `std::unique_ptr<World>` — created in the **Editor constructor**, available via `editor.world()`, and destroyed in the destructor. The World is always valid (no null checks needed) and is separate from `ctx.world` (the engine's demo-scene world). See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
+- No SDL3, OpenGL, or GLM headers are included in `src/editor/` (per ADR-019).
+- **F-01 additions**: File menu now includes New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S). Dirty state tracking (`dirty_` boolean + `*` in window title via `Window::set_title()`). OS file dialogs via ImGuiFileDialog (FetchContent). Save-prompt modal state machine (`PendingOp` enum). Error modals for SceneLoader/SceneSaver failures. OS close button interception via `Platform::set_on_close_request()`. Scene management methods: `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`.
+
+### North-star (future — not yet implemented)
+
 - The editor is a **consumer** of engine APIs — it does not own entities, worlds, or components. The engine's `World` class manages all entity lifecycle.
 - During Play mode, read-only enforcement is at the **editor UI level** (fields disabled, buttons hidden), not at the engine API level.
 - Panel size persistence is **session-only** (lost on restart). Cross-session persistence is deferred to post-MVP1.
@@ -436,7 +466,8 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 
 ## Related specs
 
-- [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document
+- [SPEC-028 — Editor Foundation](/.specs/sprint-2026-06/editor-foundation/spec.md) — Command system, menus, shortcuts, panels, docking persistence, About popup (v1 foundation, current)
+- [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (future vision)
 - [SPEC-Editor-Scaffolding](/.specs/sprint-2026-06/editor-scaffolding/spec.md) — Editor scaffolding and architecture setup
 
 ## Related ADRs
@@ -450,4 +481,4 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 
 ## Last reviewed
 
-2026-06-11 — Created from SPEC-2026-06 (Editor UX Design)
+2026-06-12 — Updated for editor-foundation v1 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension

@@ -2,7 +2,7 @@
 
 ## CLI data flow
 
-At the bootstrap stage, the CLI binary uses a simple dispatch to three commands (`run`, `version`, `help`). The `run` command creates an `App` subclass and delegates to `run_app()`:
+At the bootstrap stage, the CLI binary uses a simple dispatch to four commands (`run`, `edit`, `version`, `help`). The `run` command creates an `App` subclass and delegates to `run_app()`:
 
 ```
 User invocation
@@ -14,6 +14,7 @@ main(int argc, char* argv[])
       │       └── YES ──► RunApp → run_app()  ← default (empty window)
       │
       ├── argv[1] == "run"     ──► parse <scene>, create App subclass → run_app()
+      ├── argv[1] == "edit"    ──► EditorApp → run_app()
       ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
       ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
       │
@@ -52,8 +53,9 @@ Output:
 | `buddd run <scene>` | — | Scene-specific messages: frame-limited scenes print `"Scene started: <name> (N frames)"` + `"Scene complete: <name> (N frames rendered)"`. Interactive scenes print `"Scene started: <name> (interactive)"` and `"Scene complete: <name> (interactive)"` on Escape. On window close: `"Scene aborted by user (frame N)"`. If unknown scene: `"Unknown scene: '<name>'"` + usage. |
 | `buddd run asset-demo` | — | `"Scene started: asset-demo (120 frames)"`, `"Scene complete: asset-demo (120 frames rendered)"` (via `BUDDD_LOG_INFO`) |
 | `buddd run <scene> --capture N:path` | — | `"Captured: <path>"` (via `BUDDD_LOG_INFO` on stderr, no longer on stdout). Capture messages merged into scene output |
+| `buddd edit` | — | `"Editor: layout file: buddd_editor.ini"`. Menu actions: `"Editor: executing command: Quit"`, `"Editor: undo 'Quit'"`, `"Editor: redo 'Quit'"`, `"Editor: showing About dialog"`, `"Editor: shortcut suppressed (ImGui captures keyboard)"` (via `BUDDD_LOG_*`) |
 | `buddd version` | `"buddd 0.1.0"` | — |
-| `buddd help` | Usage text (3 commands: `run`, `version`, `help`) | — |
+| `buddd help` | Usage text (4 commands: `run`, `edit`, `version`, `help`) | — |
 | Unknown (including `demo`, `capture`, `test`) | — | `"Unknown command: '<cmd>'"` + usage text |
 
 The old `--test` and `--version` flags are removed — they are caught by the unknown-command handler.
@@ -181,38 +183,43 @@ The frame loop lives in `run_app()` in `src/cmd/app.cpp`. `run_app()` creates a 
         - Construct EngineContext with all 7 fields for setup()
         - app.setup(ctx) — one-time initialisation
 
-    - Each frame:
-        1. poll_events() — computes delta_time, calls InputSystem::begin_frame(),
-           then processes each SDL event. For `SDL_EVENT_WINDOW_RESIZED`,
-           `SDL_EVENT_WINDOW_MAXIMIZED`, and `SDL_EVENT_WINDOW_RESTORED`, looks up
-           the window via the windowID→Window* map and calls `Window::on_resize(w, h)`
-           to update the cached dimensions before any downstream handler reads them.
-           All events are then routed to `input_system_.on_sdl_event()` and
-           `engine_imgui::on_sdl_event()`. Returns false on window close → break.
-        2. device->begin_frame() — clears buffers, starts GPU frame. After the
-           buffer clear, calls `engine_imgui::new_frame()` if initialised
-           (no-op if not).
-        3. Construct per-frame EngineContext with all 7 fields:
-           {services, window, device, world, render_system, delta_time, frame}
-        4. app.on_frame_begin(ctx) — per-frame hook (default no-op, apps override
-           for tasks like hot-reload polling via ctx.services.assets().poll_file_events(),
-           transform updates, camera animation). If ctx.is_exit_requested() → end_frame + break.
-        5. World::update_updatables(ctx) — all registered Updatable components run.
-           If ctx.is_exit_requested() → end_frame + break.
-        6. render_system.render_scene() — automatic scene rendering (begin_frame/end_frame
-           are owned by run_app(), render_scene only issues draw calls).
-        7. app.on_render(ctx) — custom rendering overlay (default no-op, replaces old
-           app.render(device, frame)). Runs AFTER render_scene(). Apps call
-           `ImGui::Begin()`/`End()` here to build their UI.
-        8. device->render_ui() — renders any active UI overlay (ImGui).
-           Calls `engine_imgui::render()` in the OpenGL backend; no-op
-           in headless. Runs AFTER app.on_render() so app ImGui calls
-           are recorded in the draw list, and BEFORE capture so ImGui
-           appears in screenshots.
-        9. Capture injection (if --capture matches current frame). Captures
-           now include the ImGui overlay.
-        10. device->end_frame() — swap buffers, finalize GPU frame.
-        11. ++frame
+     - Each frame:
+         1. poll_events() — computes delta_time, calls InputSystem::begin_frame(),
+            then processes each SDL event. For `SDL_EVENT_WINDOW_RESIZED`,
+            `SDL_EVENT_WINDOW_MAXIMIZED`, and `SDL_EVENT_WINDOW_RESTORED`, looks up
+            the window via the windowID→Window* map and calls `Window::on_resize(w, h)`
+            to update the cached dimensions before any downstream handler reads them.
+            All events are then routed to `input_system_.on_sdl_event()` and
+            `engine_imgui::on_sdl_event()`. Returns false on window close → break.
+         2. device->begin_frame() — clears buffers, starts GPU frame. After the
+            buffer clear, calls `engine_imgui::new_frame()` if initialised
+            (no-op if not).
+         3. Construct per-frame EngineContext with all 7 fields:
+            {services, window, device, world, render_system, delta_time, frame}
+         4. app.on_frame_begin(ctx) — per-frame hook (default no-op, apps override
+            for tasks like hot-reload polling via ctx.services.assets().poll_file_events(),
+            transform updates, camera animation). If ctx.is_exit_requested() → end_frame + break.
+         5. World::update_updatables(ctx) — all registered Updatable components run.
+            If ctx.is_exit_requested() → end_frame + break.
+         6. **app.update(ctx)** — app per-frame logic (shortcuts, state updates).
+            Added for editor-foundation feature. `EditorApp` overrides this to call
+            `Editor::update()` for keyboard shortcut processing via `ShortcutRegistry`.
+            Default no-op for non-editor apps (all 14 demo scenes unaffected).
+            If ctx.is_exit_requested() → end_frame + break.
+         7. render_system.render_scene() — automatic scene rendering (begin_frame/end_frame
+            are owned by run_app(), render_scene only issues draw calls).
+         8. app.on_render(ctx) — custom rendering overlay (default no-op, replaces old
+            app.render(device, frame)). Runs AFTER render_scene(). Editor apps call
+            `Editor::draw_ui()` here for the 4-phase UI rendering (menus, dockspace, panels, popups).
+         9. device->render_ui() — renders any active UI overlay (ImGui).
+            Calls `engine_imgui::render()` in the OpenGL backend; no-op
+            in headless. Runs AFTER app.on_render() so app ImGui calls
+            are recorded in the draw list, and BEFORE capture so ImGui
+            appears in screenshots.
+         10. Capture injection (if --capture matches current frame). Captures
+            now include the ImGui overlay.
+         11. device->end_frame() — swap buffers, finalize GPU frame.
+         12. ++frame
 
     - After the loop:
         - app.shutdown() — cleanup

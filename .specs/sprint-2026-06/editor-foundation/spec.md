@@ -714,16 +714,6 @@ As an editor developer, I want to verify `CommandStack` logic in headless unit t
 - No secrets, credentials, or environment variables are consumed.
 - Architecture boundary (ADR-019) is preserved: no SDL3/OpenGL/GLM headers outside `src/engine/`.
 
-## Observability
-
-| Signal | Source |
-|---|---|
-| Editor ini file path | `ImGui::GetIO().IniFilename` set in `Editor::setup()`. Log via `BUDDD_LOG_INFO("Editor: layout file: {}", ...)`. |
-| Menu action executed | Log `BUDDD_LOG_DEBUG("Editor: executing command: {}", cmd->name())` for each command execution. |
-| Undo/Redo performed | Log `BUDDD_LOG_DEBUG("Editor: undo '{}'", name)` / `"Editor: redo '{}'", name`. |
-| About dialog opened | Log `BUDDD_LOG_DEBUG("Editor: showing About dialog")`. |
-| Shortcut suppressed by ImGui capture | Log `BUDDD_LOG_TRACE("Editor: shortcut suppressed (ImGui captures keyboard)")`. |
-| Ini file loaded | ImGui internally logs ini file info. If missing, default layout used (silent). |
 
 ## Out of scope
 

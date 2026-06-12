@@ -22,6 +22,10 @@ auto WindowHeadless::native_handle() const noexcept -> void* {
     return nullptr;
 }
 
+auto WindowHeadless::set_title(std::string /*title*/) -> void {
+    // no-op
+}
+
 auto WindowHeadless::set_mouse_capture(bool /*captured*/) -> void {
     // no-op
 }
