@@ -12,7 +12,7 @@ public:
     [[nodiscard]] auto id() const -> std::string_view override { return "properties"; }
     [[nodiscard]] auto title() const -> std::string_view override { return "Properties"; }
 
-    auto draw_ui(buddd::engine::EngineContext const& /*ctx*/) -> void override {
+    auto draw_ui(EditorContext const& /*ctx*/) -> void override {
         // (empty — placeholder for future content)
     }
 };

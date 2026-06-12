@@ -1,6 +1,6 @@
 # Scene Management
 
-> **Current status (F-01 — editor-scene-load-save, June 2026):** File > New Scene, Open Scene, Save Scene, Save Scene As, and Quit are fully implemented with dirty state tracking (`*` in window title), OS-native file dialogs (SDL3 native dialogs via Platform abstraction), save-prompt modals, error modals for load/save failures, and OS close-button interception. All scene operations use the engine's `SceneLoader` and `SceneSaver` APIs for YAML serialization. Implementation and tests completed — see [SPEC-F-01](/.specs/sprint-2026-06/editor-scene-load-save/spec.md).
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree, June 2026):** File > New Scene, Open Scene, Save Scene, Save Scene As, and Quit are fully implemented with dirty state tracking (`*` in window title), OS-native file dialogs (SDL3 native dialogs via Platform abstraction), save-prompt modals, error modals for load/save failures, and OS close-button interception. All scene operations use the engine's `SceneLoader` and `SceneSaver` APIs for YAML serialization. **F-02 added** the `EditorContext` aggregate struct — panels now access the editor's World via `ctx.editor.world()` (instead of being limited to `EngineContext const&`). See [SPEC-F-01](/.specs/sprint-2026-06/editor-scene-load-save/spec.md) and [SPEC-F-02](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md).
 
 The Buddd Editor follows an **Unreal Engine-like** model: one scene open at a time in the dedicated Scene tab. All scene file operations (New, Open, Save, Save As, Quit) go through the **File** menu. The engine's `SceneLoader` and `SceneSaver` APIs handle YAML serialization/deserialization of entity hierarchies.
 
@@ -136,6 +136,7 @@ Scenes are serialized as `.yaml` files via `SceneSaver` and loaded via `SceneLoa
 - The editor has a **two-phase lifecycle**: `Editor::update()` (shortcuts, state) + `Editor::draw_ui()` (menus, dockspace, panels, popups).
 - The editor owns its own `World` via `std::unique_ptr<World>`, created in the **Editor constructor**, accessible via `editor.world()`, and destroyed in the **Editor destructor**.
 - No SDL3, OpenGL, or GLM headers are included in `src/editor/` (per ADR-019).
+- **F-02 addition**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) introduced — panels and menus now receive `EditorContext const&` in their `update()`/`draw_ui()` methods, enabling panels to access the editor's World via `ctx.editor.world()` and engine services via `ctx.engine`. See [F-02 spec](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md).
 
 ### Future (post-MVP — not yet implemented)
 
@@ -157,13 +158,14 @@ Scenes are serialized as `.yaml` files via `SceneSaver` and loaded via `SceneLoa
 | **SceneLoader** | Engine API that parses YAML scene/prefab files and populates a `World` with entities and components. |
 | **SceneSaver** | Engine API that serializes a `World` back to YAML, respecting entity source types (scene entities expanded, prefab/model entities referenced). |
 | **World** | Container holding all entities, their hierarchy, and the component registry. |
-| **Editor World** | The `Editor` class owns its own `World` instance via `std::unique_ptr<World>`. It is created in the **Editor constructor** (always empty on creation), exposed via `editor.world()`, and destroyed in the **Editor destructor** via `unique_ptr`. The World is valid for the entire Editor lifetime — it outlives `shutdown()` and is not reset by it. The Editor World is **separate** from `ctx.world` (the engine's demo-scene world). |
+| **Editor World** | The `Editor` class owns its own `World` instance via `std::unique_ptr<World>`. It is created in the **Editor constructor** (always empty on creation), exposed via `editor.world()`, and destroyed in the **Editor destructor** via `unique_ptr`. The World is valid for the entire Editor lifetime — it outlives `shutdown()` and is not reset by it. The Editor World is **separate** from `ctx.world` (the engine's demo-scene world). **Panel access (F-02)**: Editor panels access this World via `ctx.editor.world()` where `ctx` is the `EditorContext` passed to `update()`/`draw_ui()` — see [F-02 spec](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md). |
 
 > **Lifecycle**: World is created in `Editor()` constructor → accessible via `world()` at any point (before `setup()`, after `setup()`, after `shutdown()`) → automatically destroyed by `~Editor()` destructor. No manual cleanup of the World is required in `shutdown()`. See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
 
 ## Related specs
 
 - [SPEC-F-01 — Editor Scene Load/Save](/.specs/sprint-2026-06/editor-scene-load-save/spec.md) — Scene management implementation (current)
+- [SPEC-F-02 — Scene Panel Entity Tree](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md) — `EditorContext` struct, panel World access via `ctx.editor.world()`
 - [SPEC-028 — Editor Foundation](/.specs/sprint-2026-06/editor-foundation/spec.md) — Command system, menus, shortcuts, panels, docking persistence (v1 foundation)
 - [SPEC-029 — Editor Scene State](/.specs/sprint-2026-06/editor-scene-state/spec.md) — Editor's own World lifecycle
 - [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (future vision)
@@ -179,4 +181,4 @@ Scenes are serialized as `.yaml` files via `SceneSaver` and loaded via `SceneLoa
 
 ## Last reviewed
 
-2026-06-12 — Updated for F-01 SDL3 native dialog switch: ImGuiFileDialog replaced with SDL3 native dialogs via Platform abstraction. Platform interface now provides `show_open_file_dialog()` / `show_save_file_dialog()` with `FileDialogCallback`. Direct callback design (no mutex/queue). `draw_file_dialog()` and ImGuiFileDialog integration removed from Editor.
+2026-06-12 — Updated for F-01 SDL3 native dialog switch: ImGuiFileDialog replaced with SDL3 native dialogs via Platform abstraction. Platform interface now provides `show_open_file_dialog()` / `show_save_file_dialog()` with `FileDialogCallback`. Direct callback design (no mutex/queue). `draw_file_dialog()` and ImGuiFileDialog integration removed from Editor. Updated for F-02: `EditorContext` struct, panel World access via `ctx.editor.world()`.

@@ -1,4 +1,5 @@
 #include "editor.h"
+#include "editor_context.h"
 
 #include "panels/menu_bar.h"
 #include "panels/scene_panel.h"
@@ -240,11 +241,12 @@ auto Editor::update(be::EngineContext const& ctx) -> void {
     // ═══════════════════════════════════════════════
     // Delegate to registered menus and panels
     // ═══════════════════════════════════════════════
+    auto editor_ctx = EditorContext{*this, ctx};
     for (auto& menu : menus_) {
-        menu->update(ctx);
+        menu->update(editor_ctx);
     }
     for (auto& panel : panels_) {
-        panel->update(ctx);
+        panel->update(editor_ctx);
     }
 }
 
@@ -261,11 +263,13 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
         return;
     }
 
+    auto editor_ctx = EditorContext{*this, ctx};
+
     // ═══════════════════════════════════════════════
     // Phase 1: Overlays (menus) — drawn before dockspace
     // ═══════════════════════════════════════════════
     for (auto& menu : menus_) {
-        menu->draw_ui(ctx);
+        menu->draw_ui(editor_ctx);
     }
 
     // ═══════════════════════════════════════════════
@@ -316,7 +320,7 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     for (auto& panel : panels_) {
         ImGui::SetNextWindowSizeConstraints(ImVec2(100, 100), ImVec2(FLT_MAX, FLT_MAX));
         ImGui::Begin(panel->title().data());
-        panel->draw_ui(ctx);
+        panel->draw_ui(editor_ctx);
         ImGui::End();
     }
 

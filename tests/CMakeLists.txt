@@ -24,6 +24,7 @@ endif()
 target_include_directories(buddd_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/src/cmd
     ${CMAKE_SOURCE_DIR}/src/engine
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # yaml-cpp include path (fetched in src/engine/CMakeLists.txt)

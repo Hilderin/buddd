@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented F-01 foundation includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -12,6 +12,7 @@
 > - **Save-prompt modals**: Multi-frame modal with Save/Don't Save/Cancel for dirty-scene operations.
 > - **Error modals**: Displayed on SceneLoader/SceneSaver failures.
 > - **OS close interception**: Close button (X/Alt+F4) triggers same save-prompt as File > Quit.
+> - **F-02 additions**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) provides panels with access to both `Editor&` and `EngineContext const&`; `EditorPanel`/`EditorMenu` signatures changed from `EngineContext const&` to `EditorContext const&`; `ScenePanel` renders the entity hierarchy tree via ImGui `TreeNodeEx` (empty state, expandable/collapsible, leaf/non-leaf, `PushID`/`PopID` per-entity).
 >
 > The north-star design below (tabs, viewport, inspector, toolbar, Play mode, prefabs) is **planned for future sprints** and is not yet implemented.
 
@@ -196,7 +197,7 @@ Present in Scene, Prefab, and Game tabs.
 
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and manage the entity hierarchy as a tree
-- **Content:** Tree view of all entities with parent/child indentation, selected entity highlighted
+- **Content (F-02 implemented):** Tree view of all entities with parent/child indentation. Root entities rendered as top-level `TreeNodeEx` nodes, children indented under parents. Empty state shows "No entities". Leaf/non-leaf distinction via `ImGuiTreeNodeFlags_Leaf`. Per-entity `PushID`/`PopID` prevents ImGui ID collisions. Entities with empty names display as "(unnamed)". Selection highlighting and entity CRUD operations deferred to future sprints (F-03, F-06+).
 - **Default position/size:** Left dock, ~250px width
 
 #### Inspector Panel
@@ -439,6 +440,24 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 
 ## Important conventions
 
+### EditorContext
+
+The `EditorContext` aggregate struct (defined in `src/editor/editor_context.h`) provides panels and menus with access to both editor state and engine services:
+
+```cpp
+struct EditorContext {
+    Editor& editor;                              // editor-specific state (e.g., editor.world())
+    buddd::engine::EngineContext const& engine;  // engine services
+};
+```
+
+- Introduced in F-02 (Scene Panel — Entity Tree) to replace `EngineContext const&` in `EditorPanel` and `EditorMenu` virtual methods.
+- Constructed stack-local each frame in `Editor::update()` and `Editor::draw_ui()` via `EditorContext{*this, ctx}`.
+- Panels access the editor's World via `ctx.editor.world()` and engine services via `ctx.engine`.
+- Lightweight aggregate — no constructors, destructors, or virtual methods. Trivially copyable.
+
+This is now the standard context-passing mechanism for all editor panels and menus. See [F-02 spec](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md).
+
 ### v1 foundation (currently implemented)
 
 - The `Editor` class orchestrates all subsystems. It owns a `CommandStack` (128-entry bounded undo/redo), a `ShortcutRegistry` (keyboard shortcut bindings), and vectors of `EditorMenu`/`EditorPanel` subclasses.
@@ -452,6 +471,7 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 - The editor also owns a `World` via `std::unique_ptr<World>` — created in the **Editor constructor**, available via `editor.world()`, and destroyed in the destructor. The World is always valid (no null checks needed) and is separate from `ctx.world` (the engine's demo-scene world). See [SPEC-029](/.specs/sprint-2026-06/editor-scene-state/spec.md).
 - No SDL3, OpenGL, or GLM headers are included in `src/editor/` (per ADR-019).
 - **F-01 additions**: File menu now includes New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S). Dirty state tracking (`dirty_` boolean + `*` in window title via `Window::set_title()`). OS file dialogs via Platform abstraction (SDL3 native dialogs — ImGuiFileDialog removed from build). Save-prompt modal state machine (`PendingOp` enum). Error modals for SceneLoader/SceneSaver failures. OS close button interception via `Platform::set_on_close_request()`. Scene management methods: `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`.
+- **F-02 additions**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) holds `Editor&` and `EngineContext const&` — provides panels with access to both editor state and engine services. `EditorPanel::update()`/`draw_ui()` and `EditorMenu::update()`/`draw_ui()` signatures changed from `EngineContext const&` to `EditorContext const&`. Panels access the editor's World via `ctx.editor.world()`. `ScenePanel` now renders the entity hierarchy tree via `ImGui::TreeNodeEx` (recursive traversal, empty state, expandable/collapsible, leaf/non-leaf distinction, `PushID`/`PopID` per-entity, `"(unnamed)"` fallback). See [F-02 spec](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md).
 
 ### North-star (future — not yet implemented)
 
@@ -467,6 +487,7 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 ## Related specs
 
 - [SPEC-028 — Editor Foundation](/.specs/sprint-2026-06/editor-foundation/spec.md) — Command system, menus, shortcuts, panels, docking persistence, About popup (v1 foundation, current)
+- [SPEC-F-02 — Scene Panel Entity Tree](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md) — `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation
 - [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (future vision)
 - [SPEC-Editor-Scaffolding](/.specs/sprint-2026-06/editor-scaffolding/spec.md) — Editor scaffolding and architecture setup
 
@@ -481,4 +502,4 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 
 ## Last reviewed
 
-2026-06-12 — Updated for editor-foundation v1 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension
+2026-06-12 — Updated for F-01 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension. Updated for F-02: `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation.

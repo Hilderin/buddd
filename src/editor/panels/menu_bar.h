@@ -2,6 +2,7 @@
 
 #include "editor_menu.h"
 #include "command_stack.h"
+#include "editor_context.h"
 
 #include <functional>
 #include <imgui.h>
@@ -53,7 +54,7 @@ public:
         return "menu_bar";
     }
 
-    auto draw_ui(buddd::engine::EngineContext const& ctx) -> void override {
+    auto draw_ui(EditorContext const& ctx) -> void override {
         if (ImGui::BeginMainMenuBar()) {
             // ── File menu ──
             if (ImGui::BeginMenu("File")) {
@@ -72,7 +73,7 @@ public:
                 }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Quit", "Ctrl+Q")) {
-                    if (on_quit_) on_quit_(ctx);
+                    if (on_quit_) on_quit_(ctx.engine);
                 }
                 ImGui::EndMenu();
             }
