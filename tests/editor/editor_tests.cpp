@@ -6,6 +6,7 @@
 #include "scene/world.h"
 #include "render/render_system.h"
 
+#include "editor_context.h"
 #include "command.h"
 #include "command_stack.h"
 #include "shortcut_registry.h"
@@ -23,14 +24,49 @@
 
 namespace ed = buddd::editor;
 
+// ── Minimal test context for command stack tests ──
+// Provides an Editor + EngineContext so EditorContext can be constructed.
+struct CmdTestCtx {
+    std::unique_ptr<buddd::engine::EngineService> engine;
+    std::unique_ptr<buddd::engine::World> engine_world;
+    std::unique_ptr<buddd::engine::RenderSystem> render_system;
+    std::unique_ptr<buddd::engine::EngineContext> engine_ctx;
+    ed::Editor editor;
+    ed::EditorContext editor_ctx;
+
+    CmdTestCtx()
+        : editor()
+        , editor_ctx(editor, get_or_create_engine_ctx())
+    {}
+
+    auto get_or_create_engine_ctx() -> buddd::engine::EngineContext const& {
+        if (!engine_ctx) {
+            auto eng = buddd::engine::EngineService::create(
+                buddd::engine::Backend::Headless,
+                buddd::engine::WindowConfig{.title = "CmdTest", .width = 128, .height = 128});
+            if (eng.has_value()) {
+                engine = std::move(*eng);
+                engine_world = std::make_unique<buddd::engine::World>();
+                render_system = std::make_unique<buddd::engine::RenderSystem>(
+                    engine->device(), *engine_world);
+                engine_ctx = std::make_unique<buddd::engine::EngineContext>(
+                    buddd::engine::EngineContext{
+                        *engine, engine->window(), engine->device(), *engine_world,
+                        *render_system, 0.016f, 0});
+            }
+        }
+        return *engine_ctx;
+    }
+};
+
 // ── Helper: a test command that toggles a bool ──
 class ToggleCommand final : public ed::Command {
 public:
     explicit ToggleCommand(bool* target, std::string_view name)
         : target_(target), name_(name) {}
 
-    auto execute() -> void override { *target_ = true;  }
-    auto undo()    -> void override { *target_ = false; }
+    auto execute(ed::EditorContext const& /*ctx*/) -> void override { *target_ = true;  }
+    auto undo(ed::EditorContext const& /*ctx*/)    -> void override { *target_ = false; }
     [[nodiscard]] auto name() const -> std::string_view override { return name_; }
 
 private:
@@ -40,18 +76,20 @@ private:
 
 TEST_CASE("CommandStack: fresh stack has no undo/redo", "[editor][command]") {
     ed::CommandStack stack;
+    CmdTestCtx ctx;
     REQUIRE_FALSE(stack.can_undo());
     REQUIRE_FALSE(stack.can_redo());
     REQUIRE(stack.undo_name().empty());
     REQUIRE(stack.redo_name().empty());
-    REQUIRE_FALSE(stack.undo());
-    REQUIRE_FALSE(stack.redo());
+    REQUIRE_FALSE(stack.undo(ctx.editor_ctx));
+    REQUIRE_FALSE(stack.redo(ctx.editor_ctx));
 }
 
 TEST_CASE("CommandStack: execute pushes to undo stack", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack;
     bool flag = false;
-    stack.execute(std::make_unique<ToggleCommand>(&flag, "Toggle"));
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "Toggle"), ctx.editor_ctx);
     REQUIRE(flag == true);               // execute() was called
     REQUIRE(stack.can_undo());
     REQUIRE_FALSE(stack.can_redo());     // redo cleared
@@ -59,61 +97,65 @@ TEST_CASE("CommandStack: execute pushes to undo stack", "[editor][command]") {
 }
 
 TEST_CASE("CommandStack: undo then redo cycle", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack;
     bool flag = false;
-    stack.execute(std::make_unique<ToggleCommand>(&flag, "Toggle"));
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "Toggle"), ctx.editor_ctx);
 
     // Undo
     flag = false;  // reset for verification
-    REQUIRE(stack.undo());
+    REQUIRE(stack.undo(ctx.editor_ctx));
     REQUIRE_FALSE(flag);                  // undo() was called
     REQUIRE_FALSE(stack.can_undo());
     REQUIRE(stack.can_redo());
     REQUIRE(stack.redo_name() == "Toggle");
 
     // Redo
-    REQUIRE(stack.redo());
+    REQUIRE(stack.redo(ctx.editor_ctx));
     REQUIRE(flag);                        // execute() called again
     REQUIRE(stack.can_undo());
     REQUIRE_FALSE(stack.can_redo());
 }
 
 TEST_CASE("CommandStack: new command clears redo stack", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack;
     bool flag1 = false, flag2 = false;
 
-    stack.execute(std::make_unique<ToggleCommand>(&flag1, "C1"));
-    [[maybe_unused]] auto _1 = stack.undo();   // redo stack has C1
+    stack.execute(std::make_unique<ToggleCommand>(&flag1, "C1"), ctx.editor_ctx);
+    [[maybe_unused]] auto _1 = stack.undo(ctx.editor_ctx);   // redo stack has C1
     REQUIRE(stack.can_redo());
 
-    stack.execute(std::make_unique<ToggleCommand>(&flag2, "C2"));
+    stack.execute(std::make_unique<ToggleCommand>(&flag2, "C2"), ctx.editor_ctx);
     REQUIRE_FALSE(stack.can_redo());           // redo cleared
     REQUIRE(stack.can_undo());
     REQUIRE(stack.undo_name() == "C2");        // C2 is now on top
 }
 
 TEST_CASE("CommandStack: max_history bound enforced", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack(2);  // max 2
     bool f1 = false, f2 = false, f3 = false;
 
-    stack.execute(std::make_unique<ToggleCommand>(&f1, "C1"));
-    stack.execute(std::make_unique<ToggleCommand>(&f2, "C2"));
-    stack.execute(std::make_unique<ToggleCommand>(&f3, "C3"));
+    stack.execute(std::make_unique<ToggleCommand>(&f1, "C1"), ctx.editor_ctx);
+    stack.execute(std::make_unique<ToggleCommand>(&f2, "C2"), ctx.editor_ctx);
+    stack.execute(std::make_unique<ToggleCommand>(&f3, "C3"), ctx.editor_ctx);
 
     // Stack has 2 entries: C2 (bottom) and C3 (top)
     REQUIRE(stack.can_undo());
-    REQUIRE(stack.undo());
+    REQUIRE(stack.undo(ctx.editor_ctx));
     REQUIRE(stack.undo_name() == "C2");  // C2 should be on top after undoing C3
-    REQUIRE(stack.undo());
+    REQUIRE(stack.undo(ctx.editor_ctx));
     REQUIRE_FALSE(stack.can_undo());     // Both undone
 }
 
 TEST_CASE("CommandStack: clear empties both stacks", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack;
     bool flag = false;
 
-    stack.execute(std::make_unique<ToggleCommand>(&flag, "C1"));
-    REQUIRE(stack.undo());               // Now undo is empty, redo has C1
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "C1"), ctx.editor_ctx);
+    REQUIRE(stack.undo(ctx.editor_ctx));               // Now undo is empty, redo has C1
     REQUIRE_FALSE(stack.can_undo());
     REQUIRE(stack.can_redo());
 
@@ -123,15 +165,16 @@ TEST_CASE("CommandStack: clear empties both stacks", "[editor][command]") {
 }
 
 TEST_CASE("CommandStack: max_history clamped to minimum 1", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack(0);  // Should clamp to 1
     bool f1 = false, f2 = false;
 
-    stack.execute(std::make_unique<ToggleCommand>(&f1, "C1"));
-    stack.execute(std::make_unique<ToggleCommand>(&f2, "C2"));
+    stack.execute(std::make_unique<ToggleCommand>(&f1, "C1"), ctx.editor_ctx);
+    stack.execute(std::make_unique<ToggleCommand>(&f2, "C2"), ctx.editor_ctx);
 
     // With max_history=1, only C2 should remain
     REQUIRE(stack.can_undo());
-    REQUIRE(stack.undo());
+    REQUIRE(stack.undo(ctx.editor_ctx));
     // After undoing C2, stack should be empty (C1 was dropped)
     REQUIRE_FALSE(stack.can_undo());
 }
@@ -143,10 +186,11 @@ TEST_CASE("CommandStack: undo_name returns empty on empty stack", "[editor][comm
 }
 
 TEST_CASE("CommandStack: redo_name returns command name after undo", "[editor][command]") {
+    CmdTestCtx ctx;
     ed::CommandStack stack;
     bool flag = false;
-    stack.execute(std::make_unique<ToggleCommand>(&flag, "MyCommand"));
-    REQUIRE(stack.undo());
+    stack.execute(std::make_unique<ToggleCommand>(&flag, "MyCommand"), ctx.editor_ctx);
+    REQUIRE(stack.undo(ctx.editor_ctx));
     REQUIRE(stack.redo_name() == "MyCommand");
 }
 

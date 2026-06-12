@@ -51,6 +51,15 @@
             "preLaunchTask": "CMake: build debug"
         },
         {
+            "name": "Debug buddd editor (LLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/src/cmd/buddd",
+            "args": ["edit"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake: build debug"
+        },
+        {
             "name": "Debug buddd_tests (LLDB)",
             "type": "lldb",
             "request": "launch",

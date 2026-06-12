@@ -81,10 +81,10 @@ public:
             // ── Edit menu ──
             if (ImGui::BeginMenu("Edit")) {
                 if (ImGui::MenuItem("Undo", "Ctrl+Z", false, command_stack_.can_undo())) {
-                    [[maybe_unused]] auto _ = command_stack_.undo();
+                    [[maybe_unused]] auto _ = command_stack_.undo(ctx);
                 }
                 if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z", false, command_stack_.can_redo())) {
-                    [[maybe_unused]] auto _ = command_stack_.redo();
+                    [[maybe_unused]] auto _ = command_stack_.redo(ctx);
                 }
                 ImGui::EndMenu();
             }

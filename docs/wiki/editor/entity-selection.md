@@ -132,30 +132,31 @@ public:
 
 ## Snapshot / Restore Pattern (Undo/Redo)
 
-Commands that modify entities (F-04+) use this pattern to preserve selection across undo/redo:
+All three F-04 Commands (`CreateEntityCommand`, `DeleteEntityCommand`, `RenameEntityCommand`) use this pattern to preserve selection across undo/redo. Each command captures a `Selection` snapshot in its constructor (before mutation) and restores it in `undo()`. On redo, the command re-snapshots the current selection, performs the operation, then restores the snapshot.
+
+Example — `DeleteEntityCommand`:
 
 ```cpp
 class DeleteEntityCommand final : public Command {
 public:
-    DeleteEntityCommand(Editor& editor, /* ... */)
-        : editor_(&editor)
-    {
-        pre_selection_ = editor.selection().snapshot();  // 📸 capture
+    explicit DeleteEntityCommand(std::vector<buddd::engine::EntityId> entity_ids)
+        : entity_ids_(std::move(entity_ids))
+    {}
+
+    auto execute(EditorContext const& ctx) -> void override {
+        pre_selection_ = ctx.editor.selection().snapshot();  // 📸 capture
+        // ... delete entities from world ...
+        ctx.editor.selection().clear();  // update selection
     }
 
-    auto execute() -> void override {
-        // ... delete entity from world ...
-        editor_->selection().clear();  // update selection
-    }
-
-    auto undo() -> void override {
-        // ... restore entity in world ...
-        editor_->selection().restore(pre_selection_);  // ↩️ restore
+    auto undo(EditorContext const& ctx) -> void override {
+        // ... restore entities in world ...
+        ctx.editor.selection().restore(pre_selection_);  // ↩️ restore
     }
 
 private:
-    Editor* editor_;
-    Selection pre_selection_;
+    std::vector<buddd::engine::EntityId> entity_ids_;
+    Selection pre_execution_selection_;
 };
 ```
 
@@ -178,9 +179,9 @@ This approach is preferred over path-based resolution (walking the hierarchy by 
 | `Ctrl+A` | All entities selected | `Editor::update()` (shortcut) |
 | `new_scene()` | Cleared | `Editor::new_scene()` |
 | `open_scene(path)` | Cleared | `Editor::open_scene()` |
-| Entity destroyed while selected | *Not auto-cleared* | Deferred to F-04 Commands |
+| Entity destroyed while selected | Cleared on delete (F-04) | `DeleteEntityCommand` clears selection after operation |
 
-**Note:** F-03 does not auto-clear selection when an entity is destroyed. When F-04 adds entity CRUD, each Command will manage selection explicitly via the snapshot/restore pattern. Meanwhile, if an entity is destroyed programmatically while selected, the selection will contain a stale `EntityId`. This is safe — the `EntityId` will fail to resolve in the World — but the selection will not be cleared until the user clicks elsewhere.
+**Note:** F-04 now handles selection during entity operations: `DeleteEntityCommand` clears selection after deletion, `CreateEntityCommand` and `RenameEntityCommand` preserve selection. All three Commands snapshot selection before mutation and restore it on undo. See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
 
 ---
 
@@ -265,4 +266,4 @@ Callbacks fire on **every mutation** regardless of whether the selection set act
 
 ## Last reviewed
 
-2026-06-12 — Initial version for F-03 (Entity Selection with Multi-Select)
+2026-06-12 — Initial version for F-03 (Entity Selection with Multi-Select). Updated for F-04: snapshot/restore now used by all three entity operation Commands.

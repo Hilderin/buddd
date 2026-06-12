@@ -54,6 +54,10 @@ auto Editor::selection() -> EditorSelection& {
     return selection_;
 }
 
+auto Editor::command_stack() -> CommandStack& {
+    return command_stack_;
+}
+
 auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     engine_ = &ctx.services;
     window_ = &ctx.window;
@@ -207,14 +211,17 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
             },
             "YAML Scene", "yaml", dialog_default_path().c_str());
     });
-    shortcuts_.bind(be::KeyCode::Z, {.ctrl = true}, [this](be::EngineContext const&) {
-        [[maybe_unused]] auto _ = command_stack_.undo();
+    shortcuts_.bind(be::KeyCode::Z, {.ctrl = true}, [this](be::EngineContext const& ectx) {
+        auto editor_ctx = EditorContext{*this, ectx};
+        [[maybe_unused]] auto _ = command_stack_.undo(editor_ctx);
     });
-    shortcuts_.bind(be::KeyCode::Z, {.ctrl = true, .shift = true}, [this](be::EngineContext const&) {
-        [[maybe_unused]] auto _ = command_stack_.redo();
+    shortcuts_.bind(be::KeyCode::Z, {.ctrl = true, .shift = true}, [this](be::EngineContext const& ectx) {
+        auto editor_ctx = EditorContext{*this, ectx};
+        [[maybe_unused]] auto _ = command_stack_.redo(editor_ctx);
     });
-    shortcuts_.bind(be::KeyCode::Y, {.ctrl = true}, [this](be::EngineContext const&) {
-        [[maybe_unused]] auto _ = command_stack_.redo();
+    shortcuts_.bind(be::KeyCode::Y, {.ctrl = true}, [this](be::EngineContext const& ectx) {
+        auto editor_ctx = EditorContext{*this, ectx};
+        [[maybe_unused]] auto _ = command_stack_.redo(editor_ctx);
     });
     shortcuts_.bind(be::KeyCode::A, {.ctrl = true}, [this](be::EngineContext const&) {
         // Gate: do nothing if ImGui captures keyboard (e.g., text input focused)
@@ -278,6 +285,9 @@ auto Editor::update(be::EngineContext const& ctx) -> void {
     for (auto& panel : panels_) {
         panel->update(editor_ctx);
     }
+
+    // Remove entities marked for destruction this frame
+    world().flush_destroyed();
 }
 
 auto Editor::add_menu(std::unique_ptr<EditorMenu> menu) -> void {

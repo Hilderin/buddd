@@ -2,33 +2,29 @@
 
 #include "command.h"
 
-#include "engine_context.h"
+#include "editor_context.h"
 
 #include <string_view>
 
 namespace buddd::editor {
 
 /// Command that requests the engine to exit.
-/// execute() calls ctx->request_exit(). undo() is a no-op.
+/// execute() calls ctx.engine.request_exit(). undo() is a no-op.
 class QuitCommand final : public Command {
 public:
-    explicit QuitCommand(buddd::engine::EngineContext const& ctx)
-        : ctx_(&ctx) {}
+    QuitCommand() = default;
 
-    auto execute() -> void override {
-        ctx_->request_exit();
+    auto execute(EditorContext const& ctx) -> void override {
+        ctx.engine.request_exit();
     }
 
-    auto undo() -> void override {
+    auto undo(EditorContext const& /*ctx*/) -> void override {
         // No-op: cannot un-request exit
     }
 
     [[nodiscard]] auto name() const -> std::string_view override {
         return "Quit";
     }
-
-private:
-    buddd::engine::EngineContext const* ctx_;
 };
 
 } // namespace buddd::editor

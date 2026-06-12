@@ -61,6 +61,9 @@ public:
     /// Returns the active selection manager.
     [[nodiscard]] auto selection() -> EditorSelection&;
 
+    /// Returns the command stack for executing undoable commands.
+    [[nodiscard]] auto command_stack() -> CommandStack&;
+
     // ── Scene management operations ──
 
     /// Mark the current scene as having unsaved changes.

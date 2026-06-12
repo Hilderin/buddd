@@ -1,6 +1,6 @@
 # Cross-Panel Communication
 
-> **Current status (v1 foundation — editor-foundation + F-03 — entity-selection-multi-select, June 2026):** This document describes the **north-star vision** for cross-panel communication (entity selection flow, play mode state transitions, visual mode indicators). F-03 partially implements **entity selection flow**: clicking an entity in the Scene Panel (Hierarchy) now updates the `EditorSelection` state, and selected entities are highlighted in the tree via `ImGuiTreeNodeFlags_Selected`. No downstream consumers exist yet (Inspector, Viewport updates deferred to F-05/F-07). The command system (`CommandStack`) provides the infrastructure for future undoable panel interactions. Keyboard shortcuts are dispatched via `ShortcutRegistry` and gated by `WantCaptureKeyboard`.
+> **Current status (v1 foundation — editor-foundation + F-03 — entity-selection-multi-select + F-04 — entity-operations, June 2026):** This document describes the **north-star vision** for cross-panel communication (entity selection flow, play mode state transitions, visual mode indicators). F-03 partially implements **entity selection flow**: clicking an entity in the Scene Panel (Hierarchy) now updates the `EditorSelection` state, and selected entities are highlighted in the tree via `ImGuiTreeNodeFlags_Selected`. No downstream consumers exist yet (Inspector, Viewport updates deferred to F-05/F-07). F-04 implements **entity operations** (Create, Delete, Rename) via Commands that use `EditorContext` to access the World and selection, with snapshot/restore pattern for undo/redo. Keyboard shortcuts are dispatched via `ShortcutRegistry` and gated by `WantCaptureKeyboard`.
 
 ## Future vision (north-star)
 
@@ -31,8 +31,9 @@ User manipulates gizmo in Viewport (future: viewport picking)
 ### MVP1 Selection Paths
 
 | Path | Status | Description |
-|---|---|---|
+|---|---|---|---|
 | Hierarchy click → EditorSelection | ✅ Implemented (F-03) | Clicking an entity in the hierarchy sets the selection state. Selection highlighting via `ImGuiTreeNodeFlags_Selected`. Multi-select with Ctrl+click toggle, Shift+click range, Ctrl+A select all, empty-area click clears. Accessible via `ctx.editor.selection()`. |
+| Hierarchy context menu → Entity CRUD | ✅ Implemented (F-04) | Right-click entity shows "Create Empty", "Delete", "Rename". Right-click empty area shows "Create Empty". Delete key and F2 also trigger operations. All via Commands with undo/redo. |
 | Hierarchy click → Inspector + Viewport | ⏳ Deferred (F-05/F-07) | Selecting an entity in the hierarchy does NOT yet update the Inspector or Viewport — those are future features. |
 | Gizmo interaction → Inspector Transform fields | ✅ Fully implemented | Dragging a translate gizmo arrow updates Position fields in the Inspector in real-time. |
 | Viewport click-to-select (mouse picking) | ❌ Deferred to post-MVP1 | Clicking an entity in the 3D viewport to select it is not available in MVP1. |
@@ -105,6 +106,7 @@ On Stop, all indicators are removed and panels return to Edit mode state.
 - The About popup is rendered via `ImGui::BeginPopupModal()` — a modal popup that blocks interaction with other windows until dismissed.
 - The editor has a two-phase lifecycle: `update()` for logic, `draw_ui()` for rendering.
 - **F-03 (Entity Selection):** `Editor` owns an `EditorSelection` manager, accessible via `editor.selection()`. Scene Panel handles entity clicks with modifier-key awareness (plain → Replace, Ctrl → Toggle, Shift → range). Selected entities highlighted via `ImGuiTreeNodeFlags_Selected`. `EditorSelection` provides `snapshot()`/`restore()` for Command undo/redo integration. Selection cleared on `new_scene()`/`open_scene()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
+- **F-04 (Entity Operations):** `Command::execute()`/`undo()` signatures changed to accept `EditorContext const&`, giving Commands access to the Editor, World, and selection state. `CommandStack` forwards the context through. `Editor` gains `command_stack()` accessor. Three new Commands in `src/editor/commands/`: `CreateEntityCommand`, `DeleteEntityCommand`, `RenameEntityCommand`. Each captures a selection snapshot before mutation and restores it on undo. Commands execute during `draw_ui()` (triggered by context menu or keyboard); entities are physically removed the next frame via `World::flush_destroyed()` in `Editor::update()`. See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
 
 ### North-star (future — not yet implemented)
 - Read-only enforcement during Play mode is at the **editor UI level** (fields disabled, buttons hidden), not at the engine API level.
@@ -126,4 +128,4 @@ On Stop, all indicators are removed and panels return to Edit mode state.
 
 ## Last reviewed
 
-2026-06-12 — Updated for editor-foundation v1 (SPEC-028): marked as north-star future vision
+2026-06-12 — Updated for editor-foundation v1 (SPEC-028): marked as north-star future vision. Updated for F-04: Command signature change (EditorContext), entity operations selection interaction, flush_destroyed lifecycle.

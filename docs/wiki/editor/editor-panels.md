@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -14,6 +14,7 @@
 > - **OS close interception**: Close button (X/Alt+F4) triggers same save-prompt as File > Quit.
 > - **F-02 additions**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) provides panels with access to both `Editor&` and `EngineContext const&`; `EditorPanel`/`EditorMenu` signatures changed from `EngineContext const&` to `EditorContext const&`; `ScenePanel` renders the entity hierarchy tree via ImGui `TreeNodeEx` (empty state, expandable/collapsible, leaf/non-leaf, `PushID`/`PopID` per-entity).
 > - **F-03 additions**: `Selection` value class and `EditorSelection` manager in `src/editor/editor_selection.h` (see [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md)). `Editor` owns an `EditorSelection`, accessible via `editor.selection()`. Scene Panel: click to select, Ctrl+click to toggle, Shift+click for range select, Ctrl+A for select all. Selection highlighting with `ImGuiTreeNodeFlags_Selected`. Snapshot/restore for future Command undo/redo integration. `Editor::new_scene()` and `Editor::open_scene()` clear selection.
+> - **F-04 additions**: Three new Command classes in `src/editor/commands/`: `CreateEntityCommand`, `DeleteEntityCommand`, `RenameEntityCommand`. `Command::execute()` and `undo()` now accept `EditorContext const&` (breaking change). `Editor::command_stack()` accessor added. Context menu on entity (Create Empty, Delete, Rename) and on empty area (Create Empty). Delete key (focused) and F2 key (rename) keyboard shortcuts. Confirmation dialog for deletion of entities with children. `World::flush_destroyed()` called each frame in `Editor::update()`. Selection snapshot/restore via `EditorSelection::snapshot()`/`restore()` in Commands. Entity hierarchy preserved on delete undo (component state not preserved in v1). See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
 >
 > The north-star design below (tabs, viewport, inspector, toolbar, Play mode, prefabs) is **planned for future sprints** and is not yet implemented.
 
@@ -198,7 +199,7 @@ Present in Scene, Prefab, and Game tabs.
 
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and manage the entity hierarchy as a tree
-- **Content (F-02 + F-03 implemented):** Tree view of all entities with parent/child indentation. Root entities rendered as top-level `TreeNodeEx` nodes, children indented under parents. Empty state shows "No entities". Leaf/non-leaf distinction via `ImGuiTreeNodeFlags_Leaf`. Per-entity `PushID`/`PopID` prevents ImGui ID collisions. Entities with empty names display as "(unnamed)". Entity CRUD operations deferred to future sprints (F-06+).
+- **Content (F-02 + F-03 + F-04 implemented):** Tree view of all entities with parent/child indentation. Root entities rendered as top-level `TreeNodeEx` nodes, children indented under parents. Empty state shows "No entities". Leaf/non-leaf distinction via `ImGuiTreeNodeFlags_Leaf`. Per-entity `PushID`/`PopID` prevents ImGui ID collisions. Entities with empty names display as "(unnamed)". **Entity CRUD (F-04)**: Create Empty via context menu (entity right-click or empty-area right-click). Delete via Delete key or context menu (confirmation dialog when children exist). Rename via F2 or context menu (inline `ImGui::InputText` with Enter confirm, Escape cancel, empty name rejection). All operations support undo/redo via Command pattern. See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
   - **Selection (F-03):** Left-click selects an entity (Replace modifier — clears previous, selects clicked). Ctrl+click toggles entity in/out of selection (add/remove). Shift+click selects a range in depth-first tree order (anchor to clicked entity, inclusive). Ctrl+A selects all entities in the World. Clicking empty space clears the selection and anchor. Selected entities display with `ImGuiTreeNodeFlags_Selected` highlighting. The `EditorSelection` manager is owned by `Editor` and accessible via `ctx.editor.selection()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
 - **Default position/size:** Left dock, ~250px width
 
@@ -322,13 +323,13 @@ When ▶ Play is pressed:
 ### Entity Operations
 
 | Operation | Trigger | Behavior |
-|---|---|---|
+|---|---|---|---|
 | **Select entity** | Left-click entity row in hierarchy | Inspector updates, viewport highlights entity + shows gizmo |
 | **Deselect** | Click empty area in hierarchy | Selection clears, Inspector shows "No entity selected", gizmo hidden |
-| **Create empty entity** | Right-click → "Create Empty" OR + button | Creates entity named "Entity". If single entity selected → last child. Otherwise → root level. |
-| **Delete entity** | Right-click → "Delete" OR Edit menu OR Delete key | Removes entity. Children prompt confirmation dialog. Undo stack records deletion. |
-| **Rename entity** | Double-click name OR select + F2 | In-place editable text field. Enter confirms, Escape cancels. Empty name rejected. Duplicates allowed. |
-| **Undo delete** | Edit > Undo (Ctrl+Z) | Restores last deleted entity + children (single-level only). Disabled during Play. |
+| **Create empty entity** | Right-click entity → "Create Empty" OR right-click empty area → "Create Empty" | Creates entity with empty name (displays as "(unnamed)"). If selection anchor exists → last child. Otherwise → root level. Not auto-selected. Undo/redo via `CreateEntityCommand`. |
+| **Delete entity** | Right-click entity → "Delete" OR Delete key (Scene Panel focused) | Removes entity. If any selected entity has children → confirmation dialog. Selection cleared after deletion. Undo restores entity identity, name, and hierarchy (component state not preserved in v1). Undo/redo via `DeleteEntityCommand`. |
+| **Rename entity** | Select + F2 OR right-click entity → "Rename" (exactly one selected) | Inline `ImGui::InputText` replaces tree node label. Enter confirms, Escape cancels, focus loss confirms. Empty name rejected (no command pushed). Same name → no-op. Undo/redo via `RenameEntityCommand`. |
+| **Undo delete** | Edit > Undo (Ctrl+Z) | Restores deleted entities with hierarchy preserved, selection restored via snapshot. Disabled during Play. |
 | **Add component** | "+ Add Component" button in Inspector | Opens searchable dropdown of registered component types. Selecting adds it to entity. |
 | **Remove component** | ⓧ button on component header | Removes component from entity. |
 | **Focus camera** | F key (entity selected) | Editor camera snaps to frame selected entity's bounding box. |
@@ -415,7 +416,7 @@ Editor:UI        — Panel/tab/layout events (open, close, detach, dock)
 | A-06 | The `ComponentRegistry` and `TypeRegistry` provide enough information for the Inspector to render type-appropriate property editors generically. |
 | A-07 | The project directory is determined by the current working directory at editor launch (or a future project selection dialog). |
 | A-08 | Panel sizes are remembered per-session only (in-memory). Cross-session persistence is deferred. |
-| A-09 | Undo is limited to single-level entity deletion undo (Ctrl+Z). More complex undo systems are deferred. |
+| A-09 | Undo for entity operations (Create, Delete, Rename) is implemented via the Command pattern with full selection snapshots. Delete undo restores entity identity, name, and hierarchy (component state not preserved in v1). 128-entry bounded undo stack. |
 | A-10 | The editor operates on a **clone** of the World during Play mode (see A-03). The editor World is never modified while the game runs. |
 | A-11 | Detached tab windows each have their own GL context and ImGui context, initialized by the engine's `Window` abstraction (preserving ADR-019 architecture boundaries). |
 | A-12 | Console messages are buffered in-memory. No hard limit in MVP1, but excessive spam (>10K messages/frame) is throttled. |
@@ -475,6 +476,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 - **F-01 additions**: File menu now includes New Scene (Ctrl+N), Open Scene (Ctrl+O), Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S). Dirty state tracking (`dirty_` boolean + `*` in window title via `Window::set_title()`). OS file dialogs via Platform abstraction (SDL3 native dialogs — ImGuiFileDialog removed from build). Save-prompt modal state machine (`PendingOp` enum). Error modals for SceneLoader/SceneSaver failures. OS close button interception via `Platform::set_on_close_request()`. Scene management methods: `new_scene()`, `open_scene(path)`, `save_scene()`, `save_scene_as(path)`.
 - **F-02 additions**: `EditorContext` aggregate struct (`src/editor/editor_context.h`) holds `Editor&` and `EngineContext const&` — provides panels with access to both editor state and engine services. `EditorPanel::update()`/`draw_ui()` and `EditorMenu::update()`/`draw_ui()` signatures changed from `EngineContext const&` to `EditorContext const&`. Panels access the editor's World via `ctx.editor.world()`. `ScenePanel` now renders the entity hierarchy tree via `ImGui::TreeNodeEx` (recursive traversal, empty state, expandable/collapsible, leaf/non-leaf distinction, `PushID`/`PopID` per-entity, `"(unnamed)"` fallback). See [F-02 spec](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md).
 - **F-03 additions**: `Selection` value class (`src/editor/editor_selection.h`) stores a set of `EntityId`s — cloneable, comparable, independently testable, and savable in Commands. Provides `contains(id)`, `size()`, `empty()`, `first()`, iteration, `add()`, `remove()`, `clear()`, `operator==`. `EditorSelection` manager owns the active selection state with `select(id, modifier)`, `clear()`, `set_selection(ids)`, `snapshot()`/`restore()`, anchor management, and callback infrastructure (`on_change()`/`remove_on_change()`). `SelectionModifier` enum: `Replace` (plain click — clear + select) and `Toggle` (Ctrl+click — add/remove). Multi-select: Ctrl+click toggle, Shift+click range (depth-first tree order), Ctrl+A select all. Selection highlighting via `ImGuiTreeNodeFlags_Selected`. Panels access selection via `ctx.editor.selection()`. Snapshot/restore for Command undo/redo future-proofing. Selection cleared on `Editor::new_scene()` and `Editor::open_scene()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
+- **F-04 additions**: `Command::execute()` and `undo()` now accept `EditorContext const&` (breaking change to `src/editor/command.h`). `CommandStack::execute()`, `undo()`, `redo()` accept `EditorContext const&` and forward it to the command. `Editor::command_stack()` accessor added. Three new Command classes in `src/editor/commands/`: `CreateEntityCommand` (creates entity as child of anchor or root), `DeleteEntityCommand` (destroys selected entities, saves state for undo), `RenameEntityCommand` (renames a single entity). All three capture selection snapshot before mutation and restore on undo. `ScenePanel` gains context menu (entity: Create Empty, Delete, Rename; empty area: Create Empty), Delete key handler (gated by focus), F2 key handler (inline rename), confirmation modal for deletion of entities with children. Inline rename uses `ImGui::InputText` (Enter confirm, Escape cancel, focus loss confirms, empty name rejected). `World::flush_destroyed()` called each frame in `Editor::update()` after command processing. See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
 
 ### North-star (future — not yet implemented)
 
@@ -492,6 +494,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 - [SPEC-028 — Editor Foundation](/.specs/sprint-2026-06/editor-foundation/spec.md) — Command system, menus, shortcuts, panels, docking persistence, About popup (v1 foundation, current)
 - [SPEC-F-02 — Scene Panel Entity Tree](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md) — `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation
 - [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (future vision)
+- [SPEC-F-04 — Entity Operations](/.specs/sprint-2026-06/entity-operations/spec.md) — Create Empty, Delete, Rename, context menu, keyboard shortcuts, Command signature change, flush_destroyed lifecycle
 - [SPEC-Editor-Scaffolding](/.specs/sprint-2026-06/editor-scaffolding/spec.md) — Editor scaffolding and architecture setup
 
 ## Related ADRs
@@ -505,4 +508,4 @@ This is now the standard context-passing mechanism for all editor panels and men
 
 ## Last reviewed
 
-2026-06-12 — Updated for F-01 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension. Updated for F-02: `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation.
+2026-06-12 — Updated for F-01 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension. Updated for F-02: `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation. Updated for F-04: entity operations (Create, Delete, Rename), context menu, keyboard shortcuts, Command signature change, `flush_destroyed()` lifecycle.

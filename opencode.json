@@ -5,7 +5,22 @@
       "description": "Main interface with the human. Coordinates the spec-driven development workflow.",
       "mode": "primary",
       "prompt": "{file:.opencode/agents/orchestrator.md}",
-      "temperature": 0.1
+      "temperature": 0.1,
+      "permission": {
+        "task": {
+          "*": "deny",
+          "scout": "allow",
+          "spec-author": "allow",
+          "spec-critic": "allow",
+          "implementation-contract-author": "allow",
+          "implementation-contract-critic": "allow",
+          "code-implementer": "allow",
+          "code-reviewer": "allow",
+          "adr-agent": "allow",
+          "wiki-agent": "allow",
+          "governance-reviewer": "allow"
+        }
+      }
     },
     "spec-author": {
       "description": "Drafts functional specs from human intent and project context.",

@@ -8,6 +8,8 @@
 
 namespace buddd::editor {
 
+struct EditorContext;
+
 /// Bounded undo/redo stack for editor commands.
 /// Thread-compatible: not thread-safe — used from the main thread only.
 class CommandStack {
@@ -18,13 +20,13 @@ public:
 
     /// Execute a command and push it onto the undo stack.
     /// Clears the redo stack (any previously undone commands are discarded).
-    auto execute(std::unique_ptr<Command> command) -> void;
+    auto execute(std::unique_ptr<Command> command, EditorContext const& ctx) -> void;
 
     /// Undo the most recent command. Returns false if undo stack is empty.
-    [[nodiscard]] auto undo() -> bool;
+    [[nodiscard]] auto undo(EditorContext const& ctx) -> bool;
 
     /// Redo the most recently undone command. Returns false if redo stack is empty.
-    [[nodiscard]] auto redo() -> bool;
+    [[nodiscard]] auto redo(EditorContext const& ctx) -> bool;
 
     /// Returns true if there is at least one command to undo.
     [[nodiscard]] auto can_undo() const -> bool;
