@@ -695,27 +695,24 @@ TEST_CASE("AC-019: save_all writes dirty stores and skips clean ones", "[setting
     auto save_result = mgr.save_all();
     REQUIRE(save_result.has_value());
 
-    // Verify each file exists
-    auto editor_path = be::os_user_config_dir() / "editor.yaml";
+    // Verify project and user files exist on disk (they go to temp dir — hermetic)
     auto project_path = tmp / "buddd.project.yaml";
     auto user_path = be::editor_user_data_root(tmp) / "settings.yaml";
-
-    REQUIRE(std::filesystem::exists(editor_path));
     REQUIRE(std::filesystem::exists(project_path));
     REQUIRE(std::filesystem::exists(user_path));
 
-    // Verify content
-    auto editor_node = YAML::LoadFile(editor_path.string());
-    REQUIRE(editor_node["key"].as<std::string>() == "editor_value");
-
+    // Verify content of project and user files
     auto project_node = YAML::LoadFile(project_path.string());
     REQUIRE(project_node["key"].as<std::string>() == "project_value");
 
     auto user_node = YAML::LoadFile(user_path.string());
     REQUIRE(user_node["key"].as<std::string>() == "user_value");
 
-    // Clean up created files in OS config dir
-    std::filesystem::remove(editor_path);
+    // Editor settings go to os_user_config_dir() — we don't check the file on disk
+    // to avoid OS config dir side effects (the save behaviour itself is verified
+    // by AC-006). Verify editor data in-memory instead.
+    REQUIRE(mgr.editor_settings().get<std::string>("key", "") == "editor_value");
+    REQUIRE_FALSE(mgr.editor_settings().is_dirty()); // save() was called, store is clean
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
