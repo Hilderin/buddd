@@ -230,36 +230,33 @@ auto SceneSaver::save_entity(Entity entity) -> YAML::Node {
 // ---------------------------------------------------------------------------
 auto SceneSaver::save_transform(const Transform& t) -> YAML::Node {
     YAML::Node node;
+    auto ser_ctx = SerializationContext{assets_};
 
     // Only emit fields that differ from defaults (skip default-valued fields
     // for cleaner YAML output).
 
     // Default position: [0, 0, 0]
     if (t.position.x != 0.0f || t.position.y != 0.0f || t.position.z != 0.0f) {
-        YAML::Node pos;
-        pos.push_back(t.position.x);
-        pos.push_back(t.position.y);
-        pos.push_back(t.position.z);
-        node["position"] = pos;
+        auto encoded = TypeRegistry::yaml_encode(t.position, ser_ctx);
+        if (encoded) {
+            node["position"] = *std::move(encoded);
+        }
     }
 
     // Default rotation: identity quaternion [1, 0, 0, 0]
     if (t.rotation.w != 1.0f || t.rotation.x != 0.0f || t.rotation.y != 0.0f || t.rotation.z != 0.0f) {
-        YAML::Node rot;
-        rot.push_back(t.rotation.w);
-        rot.push_back(t.rotation.x);
-        rot.push_back(t.rotation.y);
-        rot.push_back(t.rotation.z);
-        node["rotation"] = rot;
+        auto encoded = TypeRegistry::yaml_encode(t.rotation, ser_ctx);
+        if (encoded) {
+            node["rotation"] = *std::move(encoded);
+        }
     }
 
     // Default scale: [1, 1, 1]
     if (t.scale.x != 1.0f || t.scale.y != 1.0f || t.scale.z != 1.0f) {
-        YAML::Node scl;
-        scl.push_back(t.scale.x);
-        scl.push_back(t.scale.y);
-        scl.push_back(t.scale.z);
-        node["scale"] = scl;
+        auto encoded = TypeRegistry::yaml_encode(t.scale, ser_ctx);
+        if (encoded) {
+            node["scale"] = *std::move(encoded);
+        }
     }
 
     return node;
