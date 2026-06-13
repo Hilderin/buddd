@@ -40,7 +40,9 @@ auto buddd::cmd::run_app(App& app, const RunningArgs& args) -> int {
     auto cfg = app.config();
 
     // 2. Create EngineService (creates Platform + Window + RenderDevice + AssetManager)
-    auto engine = be::EngineService::create(k_app_backend, {cfg.title, cfg.width, cfg.height});
+    //    Pass window geometry from AppConfig (may include saved position/size/state).
+    auto engine = be::EngineService::create(k_app_backend,
+        {cfg.title, cfg.width, cfg.height, cfg.window_x, cfg.window_y, cfg.window_state});
     if (!engine) {
         BUDDD_LOG_ERROR("FATAL: {}", be::to_string(engine.error()));
         return EXIT_FAILURE;

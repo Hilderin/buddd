@@ -15,6 +15,13 @@ struct WindowConfig {
     std::string title;
     int width;
     int height;
+
+    /// Window position (screen coordinates). (-1, -1) = let system decide.
+    int x = -1;
+    int y = -1;
+
+    /// Window state (Normal / Maximized / Minimized).
+    WindowState state = WindowState::Normal;
 };
 
 class Window {

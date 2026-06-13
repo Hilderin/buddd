@@ -45,11 +45,16 @@ auto conn = store.observe("editor.theme", [](const std::string& key) {
 
 ## Editor lifecycle
 
+Window geometry application moved from a single `Editor::setup()` phase to a two-tier App-level flow (see [Refactoring note in coordination.md](/.specs/sprint-2026-06/editor-window-settings/coordination.md#L26)):
+
 | Phase | Action |
-|---|---|
-| `Editor::setup()` | Constructs `SettingsManager` with CWD and `SerializationContext`, calls `load_all()`, sets `ImGui::GetIO().IniFilename` to `layout_ini_path()`. **After load**: reads window geometry from `user_project_settings`, validates, and applies to window (see First consumer below). |
+|---|---|---|
+| `EditorApp::config()` | Reads saved settings YAML directly (before `SettingsManager` exists), validates window size (minimum 400×300) and state (never start minimised), returns `AppConfig` with saved geometry. |
+| `run_app()` / `Platform::create_window()` | Passes `AppConfig` fields as `WindowConfig` to `PlatformSDL3::create_window()`, which creates the SDL window at the saved size, then applies position (`SDL_SetWindowPosition`) and state (`SDL_MaximizeWindow`/etc) from `WindowConfig`. |
+| `EditorApp::setup()` | Re-validates window position against live `Platform::display_count()` / `display_bounds()`. If the saved position is off-screen, the window keeps its default (system-centred) position. |
+| `Editor::setup()` | Constructs `SettingsManager` with CWD and `SerializationContext`, calls `load_all()`, sets `ImGui::GetIO().IniFilename` to `layout_ini_path()`. Window geometry is NOT applied here — it was already applied during window creation. Only initialises the geometry cache from the current window state. |
 | Runtime | Editor features read/write settings via `SettingsManager` accessors. `Editor::update()` caches the window's last known Normal position/size for later use during shutdown. |
-| `Editor::shutdown()` | **Before save**: writes current window geometry (position, size, state) to `user_project_settings`. Then calls `save_all()` — dirty stores are flushed to disk, clean stores are skipped. |
+| `Editor::shutdown()` | **Before save**: writes cached window geometry (position, size, state) to `user_project_settings`. Then calls `save_all()` — dirty stores are flushed to disk, clean stores are skipped. |
 
 `SettingsManager::save_all()` can also be called on-demand at any point to persist critical settings (crash safety).
 
@@ -79,11 +84,26 @@ Settings keys (all under `user_project_settings`):
 | `editor.window.height` | `int32_t` | `800` | Window inner height in pixels |
 | `editor.window.state` | `std::string` | `"normal"` | Window state: `"normal"`, `"maximized"`, `"minimized"` |
 
-**On startup** (`Editor::setup()` after `load_all()`): raw values are read from settings, validated (minimum 400×300 size, at-least-partially-visible position via `Platform::display_count()`/`display_bounds()`, minimized→normal force), and applied to the window via `Window::resize()`, `Window::set_position()`, and `Window::set_state()`.
+**On startup** (in two phases before `Editor::setup()` is called):
+
+1. **`EditorApp::config()`** reads the saved YAML file directly (no `SettingsManager` needed), validates window size (minimum 400×300) and state (minimized→normal), and returns the geometry in `AppConfig` (`window_x`, `window_y`, `window_state`).
+2. **`run_app()`** passes these values as `WindowConfig` (`x`, `y`, `state`) to `Platform::create_window()`. `PlatformSDL3::create_window()` creates the SDL window at the saved size, then applies position (`SDL_SetWindowPosition`) and state (`SDL_MaximizeWindow`/`SDL_RestoreWindow`/`SDL_MinimizeWindow`).
+3. **`EditorApp::setup()`** re-validates position against the live `Platform::display_count()`/`display_bounds()` API — if the saved position is off-screen, the window keeps its default (system-centred) position.
+
+Later, **`Editor::setup()`** only initialises the geometry cache from the current window state and does **not** call `Window::resize()`, `Window::set_position()`, or `Window::set_state()`.
 
 **On shutdown** (`Editor::shutdown()` before `save_all()`): the current window position, size, and state are written to `user_project_settings` via the `editor.window.*` keys, then `save_all()` persists all dirty stores.
 
 **Geometry tracking**: During `Editor::update()`, the Editor caches the window's last known Normal position and size. When the window is maximized or minimized, the cached Normal geometry is saved instead of the current maximized/minimized values, ensuring that restoring from a maximized session yields the user's intended un-maximised position and size.
+
+### App-level config flow
+
+`AppConfig` (in `src/cmd/app.h`) and `WindowConfig` (in `src/engine/window/window.h`) now carry position and state fields to enable geometry to be applied at window-creation time:
+
+| Type | Fields | Role |
+|---|---|---|
+| `AppConfig` | `window_x`, `window_y`, `window_state` | Returned by `EditorApp::config()` from YAML; consumed by `run_app()` |
+| `WindowConfig` | `x`, `y`, `state` | Passed to `Platform::create_window()`; `PlatformSDL3` applies after `SDL_CreateWindow` |
 
 ### Associated API additions
 

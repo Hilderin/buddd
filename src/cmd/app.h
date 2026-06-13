@@ -3,6 +3,7 @@
 #include "app_config.h"
 
 #include "error.h"
+#include "window/window.h"
 
 #include <string>
 
@@ -11,10 +12,19 @@ namespace buddd::engine { class EngineContext; }
 namespace buddd::cmd {
 
 /// Window configuration returned by App::config().
+/// The window position/size/state fields may contain saved values
+/// from a previous session (e.g. Editor persistence).
 struct AppConfig {
     std::string title = "Buddd Engine";
     int width = 1024;
     int height = 768;
+
+    /// Window position (screen coordinates). (-1, -1) = let system decide.
+    int window_x = -1;
+    int window_y = -1;
+
+    /// Window state (Normal / Maximized / Minimized).
+    buddd::engine::WindowState window_state = buddd::engine::WindowState::Normal;
 };
 
 /// Base class for all renderable applications.

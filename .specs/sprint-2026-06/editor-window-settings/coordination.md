@@ -23,6 +23,7 @@
 ### Loop history
 - **2026-06-13**: Loop #1 — implementation-contract-critic found a blocking issue: integration test file `tests/editor/settings_integration_tests.cpp` not in "Files allowed to change" list. Looping back to implementation-contract-author to fix.
 - **2026-06-13**: Loop #2 — code review feedback: save should not update position/size when window is maximized or minimized (to preserve restore geometry). Fixed in editor.cpp. Also fixed pre-existing test failure in cli_app_tests.cpp. Re-running code-reviewer.
+- **2026-06-13**: Refactoring — moved window geometry from Editor::setup() to EditorApp::config() + AppConfig: EditorApp now reads saved settings via YAML before window creation, and AppConfig/WindowConfig carry position/state. Window is created at the correct size from the start. Editor::setup() only initialises the geometry cache. EditorApp::setup() validates position via Platform API.
 
 ## spec-author
 
@@ -141,15 +142,15 @@ none
 
 **Status**: completed
 **Summary**:
-Updated the operational wiki to reflect the Editor Window Geometry Persistence feature (SPEC-037). Edited settings-system.md with the first-consumer section describing `editor.window.*` keys, window geometry save/load lifecycle, and validation algorithm. Updated architecture/overview.md directory listing to mention WindowState, WindowPosition, DisplayBounds, and new APIs. Updated module-map.md platform and window sections with detailed new method descriptions including window_utils.h/.cpp.
+Refactored wiki pages to reflect the window geometry architecture refactoring. Window geometry application moved from `Editor::setup()` to the App level: `EditorApp::config()` reads YAML and returns saved geometry in `AppConfig`; `PlatformSDL3::create_window()` applies position/state from `WindowConfig`; `EditorApp::setup()` re-validates position via Platform API; `Editor::setup()` only initialises the geometry cache. Updated Editor lifecycle table, First consumer section, overview window description, and module-map entries for editor.cpp, editor_app, platform_sdl3, window.h, and app.h.
 **Artifacts**:
 - `docs/wiki/editor/settings-system.md` (modified)
 - `docs/wiki/architecture/overview.md` (modified)
 - `docs/wiki/architecture/module-map.md` (modified)
 **Changes made**:
-- `settings-system.md`: Added `(window geometry)` to user_project_settings scope; expanded Editor lifecycle table with window geometry save/load phases; added "First consumer: Editor Window Geometry" section with settings keys table, validation/save/geometry-tracking descriptions, and associated API summary.
-- `architecture/overview.md`: Updated `platform/` and `window/` directory entries to mention WindowState, WindowPosition, DisplayBounds, window_utils, and new position/state/resize/display APIs.
-- `architecture/module-map.md`: Updated Platform submodule table to document DisplayBounds, display_count(), display_bounds(); updated Window submodule table to document WindowState, WindowPosition, all five new virtual methods, and window_utils.h/.cpp.
+- `settings-system.md`: Replaced Editor lifecycle table to show the two-tier App-level flow; rewrote "On startup" paragraph describing the three-phase geometry application; added App-level config flow section documenting AppConfig/WindowConfig position/state fields.
+- `architecture/overview.md`: Updated `buddd edit` description to note window size may differ from default 1280×800 if saved settings exist.
+- `architecture/module-map.md`: Updated `app.h` AppConfig fields (added window_x, window_y, window_state); updated `window.h` WindowConfig fields (added x, y, state); updated `platform_sdl3.cpp` to document position/state application after SDL_CreateWindow; updated `editor.cpp` setup() to note it no longer applies window geometry (only caches); updated `editor_app.h/.cpp` to document config() YAML reading and setup() position validation.
 **Questions for human**:
 none
 **Warnings**:

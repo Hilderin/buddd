@@ -68,6 +68,23 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     window_ = &ctx.window;
     initialized_ = true;
 
+    // ── Editor window geometry: initialise tracking cache ──
+    // Window position/size/state are already applied by EditorApp before
+    // Editor::setup() is called (via AppConfig → WindowConfig → create_window).
+    // We initialise the cache early (before the ImGui check) so that headless
+    // tests also get correct cache initialisation.
+    {
+        cached_w_ = window_->width();
+        cached_h_ = window_->height();
+        auto pos = window_->position();
+        cached_x_ = pos.x;
+        cached_y_ = pos.y;
+        has_cached_geometry_ = true;
+        BUDDD_LOG_DEBUG("Editor: initialised geometry cache ({}x{} + {{{}, {}}}, {})",
+            cached_w_, cached_h_, cached_x_, cached_y_,
+            be::window_state_to_string(window_->state()));
+    }
+
     if (!be::engine_imgui::is_initialized()) {
         return make_error(be::Error::Category::InitFailed,
             "ImGui is not initialized. The editor requires a display with working ImGui.");
@@ -89,83 +106,6 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
             BUDDD_LOG_WARN("Editor: settings load warning: {} (using defaults)",
                 load_result.error().message);
         }
-    }
-
-    // ── Editor window geometry: load and validate from settings ──
-    {
-        constexpr int MIN_W = 400;
-        constexpr int MIN_H = 300;
-        constexpr int DEFAULT_W = 1280;
-        constexpr int DEFAULT_H = 800;
-
-        auto& ups = settings_manager_->user_project_settings();
-
-        // Read raw values (defaults used if keys missing)
-        int raw_w = ups.get<int32_t>("editor.window.width",  DEFAULT_W);
-        int raw_h = ups.get<int32_t>("editor.window.height", DEFAULT_H);
-        int raw_x = ups.get<int32_t>("editor.window.x",      0);
-        int raw_y = ups.get<int32_t>("editor.window.y",      0);
-        auto raw_s = ups.get<std::string>("editor.window.state", "normal");
-
-        // 1. Size validation
-        int valid_w = raw_w;
-        int valid_h = raw_h;
-        if (raw_w < MIN_W || raw_h < MIN_H) {
-            BUDDD_LOG_WARN("Editor: window size below minimum ({}x{}), using default ({}x{})",
-                raw_w, raw_h, DEFAULT_W, DEFAULT_H);
-            valid_w = DEFAULT_W;
-            valid_h = DEFAULT_H;
-        }
-
-        // 2. Position validation
-        bool position_valid = false;
-        int display_count = engine_->platform().display_count();
-        if (display_count > 0) {
-            for (int i = 0; i < display_count; ++i) {
-                auto bounds = engine_->platform().display_bounds(i);
-                // Overlap test: at least 1 pixel of window rect must be inside display rect
-                if (raw_x < bounds.x + bounds.width
-                    && raw_x + valid_w > bounds.x
-                    && raw_y < bounds.y + bounds.height
-                    && raw_y + valid_h > bounds.y)
-                {
-                    position_valid = true;
-                    break;
-                }
-            }
-        }
-        if (!position_valid) {
-            BUDDD_LOG_WARN("Editor: window position invalid (no overlapping display), using default");
-        }
-
-        // 3. State validation
-        auto state = be::parse_window_state(raw_s);
-        if (state == be::WindowState::Minimized) {
-            BUDDD_LOG_INFO("Editor: saved window state was 'minimized' — forcing normal on startup");
-            state = be::WindowState::Normal;
-        } else if (raw_s != "normal" && raw_s != "maximized" && raw_s != "minimized") {
-            BUDDD_LOG_INFO("Editor: saved window state '{}' is unknown — using normal", raw_s);
-        }
-
-        // 4. Apply to window
-        window_->resize(valid_w, valid_h);
-        if (position_valid) {
-            window_->set_position({raw_x, raw_y});
-        }
-        window_->set_state(state);
-
-        BUDDD_LOG_INFO("Editor: restoring window geometry from user settings ({}x{} + {{{}, {}}}, {})",
-            valid_w, valid_h, raw_x, raw_y, be::window_state_to_string(state));
-
-        // 5. Initialise the normal-geometry cache with the values we just applied.
-        //    After the first frame in Normal state the cache will track live values.
-        cached_w_ = valid_w;
-        cached_h_ = valid_h;
-        if (position_valid) {
-            cached_x_ = raw_x;
-            cached_y_ = raw_y;
-        } // else: keep default (0,0) — will be overwritten on first Normal frame anyway
-        has_cached_geometry_ = true;
     }
 
     // ── Create menu bar ──

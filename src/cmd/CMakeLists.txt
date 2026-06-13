@@ -11,6 +11,16 @@ target_include_directories(buddd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(buddd PRIVATE buddd_engine buddd_editor)
 
+# yaml-cpp include + link (fetched in src/engine/CMakeLists.txt).
+# Needed for EditorApp to read saved window settings before the SettingsManager
+# (and therefore the engine's yaml-cpp accessibility) is available.
+if(EXISTS "${CMAKE_BINARY_DIR}/_deps/yaml-cpp-src/include")
+    target_include_directories(buddd PRIVATE
+        ${CMAKE_BINARY_DIR}/_deps/yaml-cpp-src/include
+    )
+    target_link_libraries(buddd PRIVATE yaml-cpp)
+endif()
+
 if(BUDDD_HAS_DISPLAY)
     target_compile_definitions(buddd PRIVATE BUDDD_HAS_DISPLAY)
     message(STATUS "buddd: BUDDD_HAS_DISPLAY=ON (SDL3 backend)")

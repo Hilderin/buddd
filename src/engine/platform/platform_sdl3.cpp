@@ -178,6 +178,19 @@ auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::uniq
     }
 
     auto win = std::unique_ptr<Window>(new WindowSDL3(sdl_window, config.width, config.height, *this));
+
+    // Apply saved position if provided (non-sentinel)
+    if (config.x != -1 && config.y != -1) {
+        SDL_SetWindowPosition(sdl_window, config.x, config.y);
+    }
+
+    // Apply saved state
+    switch (config.state) {
+        case WindowState::Maximized: SDL_MaximizeWindow(sdl_window);   break;
+        case WindowState::Minimized: SDL_MinimizeWindow(sdl_window);   break;
+        case WindowState::Normal:    /* default — no action needed */  break;
+    }
+
     SDL_WindowID win_id = SDL_GetWindowID(sdl_window);
     register_window(win_id, win.get());
     BUDDD_LOG_INFO("Window created (resizable): {}x{} (windowID={})", config.width, config.height, +win_id);
