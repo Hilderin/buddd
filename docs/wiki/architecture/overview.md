@@ -18,6 +18,8 @@ buddd2/
 ├── src/
 │   ├── engine/              # Engine library (static lib)
 │   │   ├── error.h          # Project-wide Error/Result types
+│   │   ├── util/            # Utility path helpers (os_config_dir, editor_data_root)
+│   │   ├── settings/        # Settings system (SettingsStore, SettingsManager)
 │   │   ├── math/            # Math foundations (Vec2, Vec3, Vec4, Mat4, Quat, view_matrix, look_at_rotation)
 │   │   ├── scene/           # Scene graph (World, Entity, Transform, Component, CameraComponent, light components)
 │   │   ├── platform/        # Platform abstraction (Platform, Backend)
@@ -80,6 +82,12 @@ src/engine/
 ├── engine_context.h         # EngineContext — per-frame context (EngineService&, Window&, delta_time, request_exit)
 ├── version.h / version.cpp  # Version API
 ├── error.h                  # Error struct, Result<T>, make_error, to_string
+├── util/                    # Utility path helpers (os_config_dir, editor_data_root)
+│   ├── os_config_dir.h/.cpp # os_user_config_dir() — OS-standard user config directory (Linux: ~/.config, macOS: ~/Library/Application Support, Windows: %APPDATA%)
+│   └── editor_data_root.h/.cpp  # editor_data_root() / editor_user_data_root() — single source of truth for .buddd/ directory paths
+├── settings/                # Settings system (three-tier YAML-backed settings with TypeRegistry integration)
+│   ├── settings_store.h/.cpp    # SettingsStore — YAML-backed key-value store with dot-path access, dirty tracking, observer pattern
+│   └── settings_manager.h/.cpp  # SettingsManager — orchestrator owning editor/project/user-project stores, path resolution, layout_ini_path()
 ├── math/                    # Math foundations
 │   ├── math.h               # Convenience header — includes all math types, utilities
 │   ├── vec2.h               # Vec2 — 2D vector wrapper around glm::vec2

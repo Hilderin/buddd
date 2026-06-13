@@ -2,6 +2,8 @@
 
 #include "error.h"
 
+#include "settings/settings_manager.h"
+
 #include "command_stack.h"
 #include "editor_menu.h"
 #include "editor_panel.h"
@@ -63,6 +65,9 @@ public:
 
     /// Returns the command stack for executing undoable commands.
     [[nodiscard]] auto command_stack() -> CommandStack&;
+
+    /// Returns the settings manager (Settings System MVP1).
+    [[nodiscard]] auto settings_manager() -> buddd::engine::SettingsManager&;
 
     // ── Scene management operations ──
 
@@ -159,6 +164,9 @@ private:
 
     // ── Selection state (F-03) ──
     EditorSelection selection_;
+
+    // ── Settings system (MVP1) ──
+    std::unique_ptr<buddd::engine::SettingsManager> settings_manager_;
 };
 
 } // namespace buddd::editor

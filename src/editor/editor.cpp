@@ -58,6 +58,10 @@ auto Editor::command_stack() -> CommandStack& {
     return command_stack_;
 }
 
+auto Editor::settings_manager() -> be::SettingsManager& {
+    return *settings_manager_;
+}
+
 auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     engine_ = &ctx.services;
     window_ = &ctx.window;
@@ -71,28 +75,20 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     // Enable docking
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    // Enable docking layout persistence.
-    // Before loading, validate the ini file: if it has window entries but no docking data,
-    // it was saved by a buggy version (e.g. with double ImGui::Begin/End) and must be reset.
+    // ── Settings system initialisation (MVP1) ──
     {
-        std::ifstream ini("buddd_editor.ini");
-        bool has_docking = false;
-        bool has_windows = false;
-        std::string line;
-        while (std::getline(ini, line)) {
-            if (line.find("[Docking][Data]") != std::string::npos)
-                has_docking = true;
-            if (line.find("[Window][") != std::string::npos)
-                has_windows = true;
-        }
-        ini.close();
-        if (has_windows && !has_docking) {
-            BUDDD_LOG_WARN("Editor: stale ini file detected (no docking data) — resetting");
-            std::remove("buddd_editor.ini");
+        auto sctx = be::SerializationContext{engine_->assets()};
+        settings_manager_ = std::make_unique<be::SettingsManager>(
+            std::filesystem::current_path(), sctx);
+        ImGui::GetIO().IniFilename = settings_manager_->layout_ini_path().c_str();
+        BUDDD_LOG_INFO("Editor: layout file: {}", settings_manager_->layout_ini_path());
+
+        auto load_result = settings_manager_->load_all();
+        if (!load_result) {
+            BUDDD_LOG_WARN("Editor: settings load warning: {} (using defaults)",
+                load_result.error().message);
         }
     }
-    ImGui::GetIO().IniFilename = "buddd_editor.ini";
-    BUDDD_LOG_INFO("Editor: layout file: buddd_editor.ini");
 
     // ── Create menu bar ──
     auto menu_bar = std::make_unique<MenuBar>(command_stack_);
@@ -414,6 +410,17 @@ auto Editor::draw_about_popup(be::EngineContext const& /*ctx*/) -> void {
 }
 
 auto Editor::shutdown() -> void {
+    if (settings_manager_) {
+        auto save_result = settings_manager_->save_all();
+        if (!save_result) {
+            BUDDD_LOG_WARN("Editor: settings save warning: {}",
+                save_result.error().message);
+        }
+        // Prevent dangling pointer in ImGui::GetIO().IniFilename:
+        // settings_manager_ will be destroyed before ImGui shutdown,
+        // so the string backing layout_ini_path() would become invalid.
+        ImGui::GetIO().IniFilename = nullptr;
+    }
     initialized_ = false;
     engine_ = nullptr;
     window_ = nullptr;

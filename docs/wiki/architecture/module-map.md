@@ -31,6 +31,28 @@ See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) for th
 |---|---|
 | `error.h` | Public header: defines `Error` struct (with `Category` enum: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `TextureCreationFailed`, `IoFailed`, `InputInitFailed`, `Unsupported`, `Unknown`), `int code`, `std::string message`, `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
 
+### Utilities submodule (`util/`)
+
+All types in namespace `buddd::engine`. Provides OS-standard path resolution and editor data directory path utilities. These are standalone utilities with no dependencies beyond `std::filesystem` and `<cstdlib>`, making them reusable across the codebase without pulling in any platform/graphics dependencies (ADR-019 compliant). See [SPEC-036](/.specs/sprint-2026-06/settings-system/spec.md) for the full specification.
+
+| File | Role |
+|---|---|
+| `util/os_config_dir.h` | Declares `buddd::engine::os_user_config_dir() -> std::filesystem::path` — returns the OS-standard user config directory (Linux: `$XDG_CONFIG_HOME` or `~/.config`, macOS: `~/Library/Application Support`, Windows: `%APPDATA%`). Platform-dependent but stdlib-only. |
+| `util/os_config_dir.cpp` | Platform-specific implementation using `std::getenv` and `std::filesystem`. |
+| `util/editor_data_root.h` | Declares `buddd::engine::editor_data_root(project_root) -> std::filesystem::path` (returns `<root>/.buddd/`) and `editor_user_data_root(project_root) -> std::filesystem::path` (returns `<root>/.buddd/user/`). Single source of truth for `.buddd/` directory structure. |
+| `util/editor_data_root.cpp` | Simple delegation implementation — delegates to `project_root / ".buddd"` and `editor_data_root(project_root) / "user"`. |
+
+### Settings submodule (`settings/`)
+
+All types in namespace `buddd::engine`. Provides a three-tier YAML-backed persistent settings infrastructure for the editor. Uses TypeRegistry for type-safe get/set, yaml-cpp (PRIVATE dependency via pimpl pattern, ADR-016 compliant), and RAII observer pattern. See [SPEC-036](/.specs/sprint-2026-06/settings-system/spec.md) for the full specification.
+
+| File | Role |
+|---|---|
+| `settings/settings_store.h` | **Public header.** `SettingsStore` class — YAML-backed key-value store with dot-separated key paths, TypeRegistry-based type conversion (`get<T>()`, `set<T>()`), dirty tracking (`is_dirty()`), and RAII observer registration (`observe()` returns `std::unique_ptr<Connection>`). Uses pimpl pattern (`std::unique_ptr<YAML::Node>`) to keep yaml-cpp out of public headers (ADR-016). Also declares `Connection` RAII handle class in namespace `buddd::engine`. |
+| `settings/settings_store.cpp` | Implementation: yaml-cpp load/save, TypeRegistry encode/decode delegation, dot-path node navigation, observer notification. Explicit template instantiations for `bool`, `int32_t`, `float`, `std::string`. |
+| `settings/settings_manager.h` | **Public header.** `SettingsManager` class — orchestrator owning three `SettingsStore` instances (editor/project/user-project). Handles path resolution per tier. Provides `load_all()`/`save_all()` lifecycle, per-store accessors (`editor_settings()`, `project_settings()`, `user_project_settings()`), and `layout_ini_path()` for ImGui INI file path (returns `const std::string&` to persistent member for lifetime-safe `.c_str()` use). |
+| `settings/settings_manager.cpp` | Implementation: path resolution (`os_user_config_dir()` for editor settings, `editor_user_data_root()` for user project settings), directory creation for `.buddd/user/`, delegation to individual stores. |
+
 ### Log submodule (`log/`)
 
 All types in namespace `buddd::log`. The logging system is a lightweight, self-contained structured logging framework with six log levels (`Trace`, `Debug`, `Info`, `Warn`, `Error`, `Fatal`), a macro-based C++ API (`BUDDD_LOG_INFO`, etc.), mandatory per-file source tags via `BUDDD_LOG_TAG("Module:Sub")`, two sinks (console stderr and optional file), thread safety via `std::mutex`, and `std::format`-style formatting. Zero external dependencies beyond the C++26 standard library (plus POSIX `write(2)` for pre-init stderr warnings in `FileSink`).
@@ -514,3 +536,4 @@ The unit test binary. Links `buddd_engine` (PRIVATE) and `Catch2::Catch2WithMain
 - ADR: [ADR-014](/docs/adr/ADR-014-cli-app-system.md) — CLI App System: centralised render loop with App lifecycle, unified `run` command (partially supersedes ADR-004)
 - ADR: [ADR-021](/docs/adr/ADR-021-developer-assertions.md) — Developer Assertions (Fatal level, five macros, debug break, fixed Assert tag)
 - ADR: [ADR-023](/docs/adr/ADR-023-updatable-components.md) — Updatable Components & EngineContext (Updatable interface, EngineContext struct, World auto-registration, App::setup(EngineService&), run_app auto-dispatch)
+- Spec: [SPEC-036](/.specs/sprint-2026-06/settings-system/spec.md) — Settings System (three tiers, TypeRegistry integration, YAML storage, observer pattern)

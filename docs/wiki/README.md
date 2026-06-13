@@ -13,6 +13,7 @@ The wiki describes the current operational understanding of the system.
 | [Scene Management](editor/scene-management.md) | Scene file management workflow (New, Open, Save, Save As) |
 | [Entity Selection](editor/entity-selection.md) | Entity selection system: Selection value class, EditorSelection manager, multi-select interactions, undo/redo snapshot pattern |
 | [Cross-Panel Communication](editor/cross-panel-communication.md) | Cross-panel communication and play mode state transitions |
+| [Settings System](editor/settings-system.md) | Three-tier YAML-backed settings infrastructure: SettingsStore, SettingsManager, observer pattern, TypeRegistry integration |
 | [Module Map](architecture/module-map.md) | Module structure and relationships |
 | [Dependency Map](architecture/dependency-map.md) | Module dependency relationships |
 | [Data Flow](architecture/data-flow.md) | Data flow through the system |
