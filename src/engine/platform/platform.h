@@ -22,6 +22,8 @@ class InputSystem;
 /// The callback is invoked on the main thread during poll_events().
 using FileDialogCallback = std::function<void(std::optional<std::string> filepath)>;
 
+struct DisplayBounds { int x; int y; int width; int height; };
+
 class Platform {
 public:
     [[nodiscard]] static auto create(Backend backend) -> Result<std::unique_ptr<Platform>>;
@@ -49,6 +51,13 @@ public:
     /// Returns the time elapsed since the last poll_events() call, in seconds.
     /// Under normal operation, always > 0. Useful for framerate-independent movement.
     [[nodiscard]] virtual auto delta_time() const noexcept -> float = 0;
+
+    /// Returns the number of connected video displays.
+    [[nodiscard]] virtual auto display_count() const noexcept -> int = 0;
+
+    /// Returns the bounding rectangle of the specified display in virtual screen coordinates.
+    /// If index is out of range, returns {0, 0, 0, 0}.
+    [[nodiscard]] virtual auto display_bounds(int index) const noexcept -> DisplayBounds = 0;
 
     /// Show a native "Open File" dialog (non-blocking).
     /// callback is invoked on the main thread (during poll_events()) when

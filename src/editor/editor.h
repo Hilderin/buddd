@@ -167,6 +167,19 @@ private:
 
     // ── Settings system (MVP1) ──
     std::unique_ptr<buddd::engine::SettingsManager> settings_manager_;
+
+    // ── Window geometry tracking ──
+    // Cache the last-known window position/size when in Normal state.
+    // On shutdown, these cached values are always saved (even if the
+    // window is currently Maximized/Minimized), so that the "restored"
+    // geometry is correct when the user un-maximises.
+    // We use raw ints + a bool rather than std::optional<WindowPosition>
+    // to avoid including window/window.h in this header.
+    bool has_cached_geometry_ = false;
+    int cached_x_ = 0;
+    int cached_y_ = 0;
+    int cached_w_ = 0;
+    int cached_h_ = 0;
 };
 
 } // namespace buddd::editor

@@ -11,101 +11,8 @@ The engine library is the core of the project. It provides a version API, a math
 ### EngineService (`src/engine/`)
 
 | File | Role |
-|---|---|
-| `engine_service.h` | Public header: `EngineService` class — owns the `Platform` → `Window` → `RenderDevice` → `AssetManager` → `ComponentRegistry` chain via `unique_ptr`. Factory: `EngineService::create(Backend, WindowConfig) -> Result<unique_ptr<EngineService>>`. Accessors: `platform() -> Platform&`, `window() -> Window&`, `device() -> RenderDevice&`, `assets() -> AssetManager&`, `registry() -> ComponentRegistry&`. Member declaration order (`platform_`, `window_`, `device_`, `asset_manager_`, `registry_`) guarantees correct destruction ordering. `ComponentRegistry` is created during `create()` and persists for the lifetime of `EngineService`. See [SPEC scene-yaml-loader](/.specs/sprint-2026-06/scene-yaml-loader/spec.md). |
-| `engine_service.cpp` | Factory implementation: creates `Platform`, then `Window` (via `platform->create_window()`), then `RenderDevice` (via `RenderDevice::create()`), wrapping them in an `EngineService`. Then creates `AssetManager` via `AssetManager::create(engine_service.device(), "assets")` and stores it in `asset_manager_`. |
-| `engine_context.h` | Public header: `EngineContext` struct — bundles 7 per-frame fields (`EngineService& services`, `Window& window`, `RenderDevice& device`, `World& world`, `RenderSystem& render_system`, `float delta_time`, `int frame`) with `request_exit()` (mutable) and `is_exit_requested()` methods. Used by `Updatable::update(const EngineContext&)` and all `App` lifecycle methods to provide complete per-frame context. See ADR-023. |
-
-See [ADR-012](/docs/adr/ADR-012-navigable-object-graph-engine-service.md) for the architectural rationale.
-
-### Version module
-
-| File | Role |
-|---|---|
-| `version.h` | Public header: declares `buddd::engine::version() -> std::string_view` |
-| `version.cpp` | Implementation: returns `"0.1.0"` |
-
-### Error handling module
-
-| File | Role |
-|---|---|
-| `error.h` | Public header: defines `Error` struct (with `Category` enum: `InitFailed`, `WindowCreationFailed`, `RenderDeviceCreationFailed`, `ShaderCompilationFailed`, `LinkingFailed`, `ResourceCreationFailed`, `InvalidArgument`, `UniformNotFound`, `ReadbackFailed`, `TextureCreationFailed`, `IoFailed`, `InputInitFailed`, `Unsupported`, `Unknown`), `int code`, `std::string message`, `to_string()`, `make_error()`, and `Result<T>` alias (`std::expected<T, Error>`) |
-
-### Utilities submodule (`util/`)
-
-All types in namespace `buddd::engine`. Provides OS-standard path resolution and editor data directory path utilities. These are standalone utilities with no dependencies beyond `std::filesystem` and `<cstdlib>`, making them reusable across the codebase without pulling in any platform/graphics dependencies (ADR-019 compliant). See [SPEC-036](/.specs/sprint-2026-06/settings-system/spec.md) for the full specification.
-
-| File | Role |
-|---|---|
-| `util/os_config_dir.h` | Declares `buddd::engine::os_user_config_dir() -> std::filesystem::path` — returns the OS-standard user config directory (Linux: `$XDG_CONFIG_HOME` or `~/.config`, macOS: `~/Library/Application Support`, Windows: `%APPDATA%`). Platform-dependent but stdlib-only. |
-| `util/os_config_dir.cpp` | Platform-specific implementation using `std::getenv` and `std::filesystem`. |
-| `util/editor_data_root.h` | Declares `buddd::engine::editor_data_root(project_root) -> std::filesystem::path` (returns `<root>/.buddd/`) and `editor_user_data_root(project_root) -> std::filesystem::path` (returns `<root>/.buddd/user/`). Single source of truth for `.buddd/` directory structure. |
-| `util/editor_data_root.cpp` | Simple delegation implementation — delegates to `project_root / ".buddd"` and `editor_data_root(project_root) / "user"`. |
-
-### Settings submodule (`settings/`)
-
-All types in namespace `buddd::engine`. Provides a three-tier YAML-backed persistent settings infrastructure for the editor. Uses TypeRegistry for type-safe get/set, yaml-cpp (PRIVATE dependency via pimpl pattern, ADR-016 compliant), and RAII observer pattern. See [SPEC-036](/.specs/sprint-2026-06/settings-system/spec.md) for the full specification.
-
-| File | Role |
-|---|---|
-| `settings/settings_store.h` | **Public header.** `SettingsStore` class — YAML-backed key-value store with dot-separated key paths, TypeRegistry-based type conversion (`get<T>()`, `set<T>()`), dirty tracking (`is_dirty()`), and RAII observer registration (`observe()` returns `std::unique_ptr<Connection>`). Uses pimpl pattern (`std::unique_ptr<YAML::Node>`) to keep yaml-cpp out of public headers (ADR-016). Also declares `Connection` RAII handle class in namespace `buddd::engine`. |
-| `settings/settings_store.cpp` | Implementation: yaml-cpp load/save, TypeRegistry encode/decode delegation, dot-path node navigation, observer notification. Explicit template instantiations for `bool`, `int32_t`, `float`, `std::string`. |
-| `settings/settings_manager.h` | **Public header.** `SettingsManager` class — orchestrator owning three `SettingsStore` instances (editor/project/user-project). Handles path resolution per tier. Provides `load_all()`/`save_all()` lifecycle, per-store accessors (`editor_settings()`, `project_settings()`, `user_project_settings()`), and `layout_ini_path()` for ImGui INI file path (returns `const std::string&` to persistent member for lifetime-safe `.c_str()` use). |
-| `settings/settings_manager.cpp` | Implementation: path resolution (`os_user_config_dir()` for editor settings, `editor_user_data_root()` for user project settings), directory creation for `.buddd/user/`, delegation to individual stores. |
-
-### Log submodule (`log/`)
-
-All types in namespace `buddd::log`. The logging system is a lightweight, self-contained structured logging framework with six log levels (`Trace`, `Debug`, `Info`, `Warn`, `Error`, `Fatal`), a macro-based C++ API (`BUDDD_LOG_INFO`, etc.), mandatory per-file source tags via `BUDDD_LOG_TAG("Module:Sub")`, two sinks (console stderr and optional file), thread safety via `std::mutex`, and `std::format`-style formatting. Zero external dependencies beyond the C++26 standard library (plus POSIX `write(2)` for pre-init stderr warnings in `FileSink`).
-
-The logger is fully decoupled from `buddd::engine::Error`/`Result<T>`. CLI flags (`--log-level`, `--log-file`, `--log-filter`) are parsed in `src/cmd/app_config.cpp` before startup and passed to `Logger::init(LogConfig)`.
-
-See [ADR-020](/docs/adr/ADR-020-custom-logging-system.md) for architectural decisions.
-
-| File | Role |
-|---|---|
-| `log/log.h` | **Public header.** `LogLevel` enum, `LogMessage` struct, `Sink` abstract interface, `LogConfig` struct, `ConsoleSink`, `FileSink` (factory), `MemorySink`, `Logger` singleton, all `BUDDD_LOG_*` and `BUDDD_LOG_TAGGED_*` macros, `BUDDD_LOG_TAG` declaration macro. This is the sole public entry point. |
-| `log/log_filter.h` | **Internal header.** `LogFilter` class — holds global minimum level and per-tag prefix overrides, provides `is_enabled(level, tag) -> bool`. |
-| `log/log_filter.cpp` | LogFilter implementation — tag override matching, prefix-based lookup with last-match-wins semantics. |
-| `log/logger.h` | **Internal header.** `Logger` singleton class declaration — `init(LogConfig)`, `shutdown()`, `reset()`, `instance()`, `log(...)`, `is_enabled(...)`. |
-| `log/logger.cpp` | Logger implementation — pimpl pattern (`unique_ptr<Impl>` hiding mutex, filter, sink list, lifecycle flags), `init()`/`shutdown()`/`reset()` lifecycle, mutex-guarded `write_to_sinks()`, tag truncation at 255 chars, message truncation at 32 KB. |
-| `log/console_sink.h` | `ConsoleSink` class declaration — writes `[HH:MM:SS.fff] [LEVEL] [Tag] message\n` to stderr. |
-| `log/console_sink.cpp` | ConsoleSink implementation — `std::fprintf(stderr, ...)`, wall-clock timestamp `HH:MM:SS.fff`. |
-| `log/file_sink.h` | `FileSink` class declaration — static factory `FileSink::create(path) -> unique_ptr<FileSink>`. Private constructor. Returns `nullptr` on failure with raw `write(2)` stderr warning. |
-| `log/file_sink.cpp` | FileSink implementation — opens file in append mode (`std::ios::app`), writes `YYYY-MM-DDTHH:MM:SS [LEVEL] [Tag] message\n` with ISO 8601 timestamp, flushed after every write. |
-| `log/memory_sink.h` | `MemorySink` header-only class (inherits `Sink`). Always compiled. Stores messages in `std::vector<LogMessage>`, provides `messages()` and `clear()`. |
-
-### Debug submodule (`debug/`)
-
-All types in namespace `buddd::engine`. Provides a lightweight assertion system for checking engine invariants during development, with five assertion macros, a platform-aware debug break utility, and a testable assertion failure formatter. The assertion system integrates with the logging system using `LogLevel::Fatal` and the fixed tag `"Assert"`. Zero external dependencies beyond the C++26 standard library plus `log/log.h`. See ADR-021 for architectural decisions and SPEC-023 for the full specification.
-
-| File | Role |
-|---|---|
-| `debug/debug_break.h` | Header-only: `buddd::engine::debug_break()` inline function — platform-aware breakpoint intrinsic (`__builtin_trap()` on GCC/Clang, `__debugbreak()` on MSVC). No-op in `NDEBUG` (release) builds. |
-| `debug/assert.h` | **Public header.** Declares `format_assertion_failure_message()`, `handle_assertion_failure()`, and all five assertion macros: `BUDDD_ASSERT`, `BUDDD_ASSERT_MSG`, `BUDDD_VERIFY`, `BUDDD_FAIL`, `BUDDD_FAIL_MSG`. Includes `debug/debug_break.h` and `log/log.h`. |
-| `debug/assert.cpp` | Implementation of `format_assertion_failure_message()` (pure string builder, testable without abort) and `handle_assertion_failure()` (logs via `Logger`, calls `debug_break()`, then `std::abort()`). |
-
-### Math submodule (`math/`)
-
-All types in namespace `buddd::engine::math`. The math module wraps GLM (`glm`) with zero-overhead C++ wrapper types — all header-only (Camera class removed in ADR-024). GLM headers are included only inside `src/engine/math/`.
-
-| File | Role |
-|---|---|
-| `math.h` | Convenience header: includes all math types, provides `radians()`, `degrees()`, math constants (`pi`, `half_pi`, `two_pi`, `epsilon`), common math functions (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sqrt`), `view_matrix(Vec3, Quat)`, and `look_at_rotation(Vec3, Vec3, Vec3)`. |
-| `vec2.h` | `Vec2` struct — 2D vector (x, y), wrapper around `glm::vec2`. Header-only. |
-| `vec3.h` | `Vec3` struct — 3D vector (x, y, z), wrapper around `glm::vec3`. Header-only. |
-| `vec4.h` | `Vec4` struct — 4D vector (x, y, z, w), wrapper around `glm::vec4`. Header-only. |
-| `mat4.h` | `Mat4` struct — 4×4 column-major matrix, wrapper around `glm::mat4`. Header-only. |
-| `quat.h` | `Quat` struct — quaternion (w, x, y, z), wrapper around `glm::quat`. Header-only. |
-
-Each wrapper type provides a `.glm()` accessor for zero-overhead GLM interop, guarded by `static_assert(std::is_standard_layout_v<T>)`, `static_assert(sizeof(T) == sizeof(GLMType))`, and `static_assert(std::is_trivially_copyable_v<T>)`.
-
-### Platform submodule (`platform/`)
-
-The Platform abstraction now integrates the InputSystem: each concrete Platform backend owns an embedded InputSystem backend, and `poll_events()` calls `begin_frame()` and routes SDL events to the input system.
-
-| File | Role |
-|---|---|
-| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory, `virtual auto input_system() -> InputSystem& = 0`, and `virtual auto delta_time() const noexcept -> float = 0`. **F-01**: Added `auto set_on_close_request(std::function<bool()>) -> void` concrete method and `std::function<bool()> close_request_callback_` protected member. Allows Editor to intercept OS close requests (X button / Alt+F4) and show save-prompt before exiting. **F-01 (SDL3 native dialogs)**: Added `#include <optional>`, `FileDialogCallback` type alias (`std::function<void(std::optional<std::string>)>`), and two pure virtual methods: `show_open_file_dialog(FileDialogCallback, const char* filter_name, const char* filter_pattern)` and `show_save_file_dialog(FileDialogCallback, const char* filter_name, const char* filter_pattern, const char* default_name)`. |
+|---|---|---|
+| `platform.h` | Public header: `Backend` enum (`SDL3`, `Headless`), abstract `Platform` class with `create(Backend)` static factory, `virtual auto input_system() -> InputSystem& = 0`, and `virtual auto delta_time() const noexcept -> float = 0`. **F-01**: Added `auto set_on_close_request(std::function<bool()>) -> void` concrete method and `std::function<bool()> close_request_callback_` protected member. Allows Editor to intercept OS close requests (X button / Alt+F4) and show save-prompt before exiting. **F-01 (SDL3 native dialogs)**: Added `#include <optional>`, `FileDialogCallback` type alias (`std::function<void(std::optional<std::string>)>`), and two pure virtual methods: `show_open_file_dialog(FileDialogCallback, const char* filter_name, const char* filter_pattern)` and `show_save_file_dialog(FileDialogCallback, const char* filter_name, const char* filter_pattern, const char* default_name)`. **SPEC-037 (window geometry)**: Added `DisplayBounds` struct (`int x, y, width, height`) and two pure virtual methods: `display_count() -> int` and `display_bounds(int index) -> DisplayBounds`. `PlatformSDL3` implements via `SDL_GetNumVideoDisplays()` / `SDL_GetDisplayBounds()`. `PlatformHeadless` returns 0 / `{0,0,0,0}`. |
 | `platform.cpp` | Factory implementation: dispatches to SDL3 or Headless backend based on `Backend` enum |
 | `platform_sdl3.h` | Private header: `PlatformSDL3` concrete class (final) with embedded `InputSystemSDL3` member, `delta_time_` member, `last_frame_ticks_` for frame timing, `register_window()`/`unregister_window()` public methods, and `std::unordered_map<SDL_WindowID, Window*> window_map_` private member for routing SDL events to the correct `Window` instance. **F-01 (SDL3 native dialogs)**: Added `#include <SDL3/SDL_dialog.h>`, dialog method declarations (`show_open_file_dialog`, `show_save_file_dialog`), and private `get_sdl_window()` helper that returns the first `SDL_Window*` via `win->native_handle()` for use as dialog parent. |
 | `platform_sdl3.cpp` | SDL3 backend: `SDL_Init`/`SDL_Quit` lifecycle, `SDL_CreateWindow` delegation with `SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE` flag, `SDL_SetWindowMinimumSize(320, 240)` for minimum size enforcement, window registration via `SDL_GetWindowID()` + `register_window()` in `create_window()`, `poll_events()` computes delta from `SDL_GetTicks`, calls `begin_frame()`, handles `SDL_EVENT_WINDOW_RESIZED`/`MAXIMIZED`/`RESTORED` events via windowID map lookup before routing to `InputSystemSDL3::on_sdl_event()` then `engine_imgui::on_sdl_event()` for ImGui. **F-01**: `SDL_EVENT_QUIT` handler now checks `close_request_callback_` before returning `false`. If a callback is registered and returns `false`, the quit event is swallowed (`continue` — editor stays open). If no callback or returns `true`, `poll_events()` returns `false` (normal exit). **F-01 (SDL3 native dialogs)**: Implements `show_open_file_dialog()` via `SDL_ShowOpenFileDialog()` and `show_save_file_dialog()` via `SDL_ShowSaveFileDialog()` using heap-allocated callback pattern (no mutex/queue — SDL3 fires on main thread during `SDL_PollEvent`). `get_sdl_window()` iterates `window_map_` to obtain the `SDL_Window*` parent. |
@@ -117,12 +24,14 @@ The Platform abstraction now integrates the InputSystem: each concrete Platform 
 The `Window` class now stores a non-owning `Platform&` reference, creating a navigable back-link from `Window` to its creating `Platform`. It also exposes mouse capture API. (`window/` now forward-declares `Platform` from `platform/` — see ADR-012.)
 
 | File | Role |
-|---|---|
-| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via new `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, pure virtual `on_resize(int w, int h)` (for updating cached dimensions on window resize), and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. **F-01**: Added `virtual auto set_title(std::string title) -> void = 0;` — pure virtual method for setting the OS window title. Used by Editor for dirty-state window title updates. |
-| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Declares `on_resize()` override to update cached `width_`/`height_`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. **F-01**: Added `auto set_title(std::string title) -> void override;`. |
-| `window_sdl3.cpp` | SDL3 implementation: `on_resize()` updates `width_` and `height_`. Destructor un-registers from `PlatformSDL3`'s windowID map via `unregister_window()` before `SDL_DestroyWindow`. `native_handle()` casts to `void*`. **F-01**: `set_title()` implemented via `SDL_SetWindowTitle(window_, title.c_str())`. |
-| `window_headless.h` | Private header: `WindowHeadless` concrete class. Declares `on_resize()` override to update cached `width_`/`height_`. Mouse capture is no-op; `is_mouse_captured()` returns `false`. **F-01**: Added `auto set_title(std::string title) -> void override;`. |
-| `window_headless.cpp` | Headless implementation: stores width/height, `on_resize()` updates cached dimensions (no clamping by design — accepts any values for test flexibility), `native_handle()` returns `nullptr`. **F-01**: `set_title()` is a no-op. |
+|---|---|---|
+| `window.h` | Public header: `WindowConfig` struct (`title`, `width`, `height`), `WindowState` enum (`Normal`, `Maximized`, `Minimized`), `WindowPosition` struct (`int x, y`), abstract `Window` class. Stores `Platform& platform_` (protected member, set via `Window(Platform&)` protected constructor). Provides `platform() -> Platform&`, width/height getters, `native_handle()`, pure virtual `on_resize(int w, int h)` (for updating cached dimensions on window resize), and pure virtual `set_mouse_capture(bool)` / `is_mouse_captured() -> bool`. **F-01**: Added `virtual auto set_title(std::string title) -> void = 0;` for OS window title updates. **SPEC-037 (window geometry)**: Added five pure virtual methods: `position() -> WindowPosition`, `set_position(WindowPosition)`, `state() -> WindowState`, `set_state(WindowState)`, `resize(int w, int h)`. |
+| `window_utils.h` | Public header (new in SPEC-037): Declares `window_state_to_string(WindowState) -> std::string` and `parse_window_state(const std::string&) -> WindowState` free functions for state↔string conversion. |
+| `window_utils.cpp` | Implementation: `Normal` ↔ `"normal"`, `Maximized` ↔ `"maximized"`, `Minimized` ↔ `"minimized"`. Unknown strings parse to `Normal`. |
+| `window_sdl3.h` | Private header: `WindowSDL3` concrete class wrapping `SDL_Window*`. Declares `on_resize()` override to update cached `width_`/`height_`. Implements `set_mouse_capture(bool)` via `SDL_SetWindowRelativeMouseMode` and caches state in `bool captured_`. **F-01**: Added `auto set_title(std::string title) -> void override;`. **SPEC-037**: Added `position()`, `set_position()`, `state()`, `set_state()`, `resize()` overrides. |
+| `window_sdl3.cpp` | SDL3 implementation: `on_resize()` updates `width_` and `height_`. Destructor un-registers from `PlatformSDL3`'s windowID map via `unregister_window()` before `SDL_DestroyWindow`. `native_handle()` casts to `void*`. **F-01**: `set_title()` via `SDL_SetWindowTitle()`. **SPEC-037**: `position()` via `SDL_GetWindowPosition()`, `set_position()` via `SDL_SetWindowPosition()`, `state()` via `SDL_GetWindowFlags()`, `set_state()` via `SDL_RestoreWindow`/`SDL_MaximizeWindow`/`SDL_MinimizeWindow`, `resize()` via `SDL_SetWindowSize()` with immediate `width_/height_` update. |
+| `window_headless.h` | Private header: `WindowHeadless` concrete class. Declares `on_resize()` override to update cached `width_`/`height_`. Mouse capture is no-op; `is_mouse_captured()` returns `false`. **F-01**: Added `auto set_title(std::string title) -> void override;`. **SPEC-037**: Added `position()`, `set_position()`, `state()`, `set_state()`, `resize()` overrides. |
+| `window_headless.cpp` | Headless implementation: stores width/height, `on_resize()` updates cached dimensions (no clamping by design — accepts any values for test flexibility), `native_handle()` returns `nullptr`. **F-01**: `set_title()` is a no-op. **SPEC-037**: `position()` returns `{0,0}`, `state()` returns `WindowState::Normal`, `set_position()`/`set_state()` are no-ops, `resize()` updates `width_/height_` only. |
 
 ### Scene submodule (`scene/`)
 

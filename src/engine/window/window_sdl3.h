@@ -22,6 +22,12 @@ public:
     auto set_mouse_capture(bool captured) -> void override;
     auto is_mouse_captured() const noexcept -> bool override;
 
+    [[nodiscard]] auto position() const noexcept -> WindowPosition override;
+    auto set_position(WindowPosition pos) -> void override;
+    [[nodiscard]] auto state() const noexcept -> WindowState override;
+    auto set_state(WindowState state) -> void override;
+    auto resize(int width, int height) -> void override;
+
     WindowSDL3(const WindowSDL3&) = delete;
     auto operator=(const WindowSDL3&) -> WindowSDL3& = delete;
     WindowSDL3(WindowSDL3&&) = delete;

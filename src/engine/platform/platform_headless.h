@@ -20,6 +20,8 @@ public:
                                 const char* filter_pattern,
                                 const char* default_name) -> void override;
     [[nodiscard]] auto delta_time() const noexcept -> float override;
+    [[nodiscard]] auto display_count() const noexcept -> int override;
+    [[nodiscard]] auto display_bounds(int index) const noexcept -> DisplayBounds override;
 
     PlatformHeadless(const PlatformHeadless&) = delete;
     auto operator=(const PlatformHeadless&) -> PlatformHeadless& = delete;

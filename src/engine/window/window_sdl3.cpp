@@ -50,4 +50,35 @@ auto WindowSDL3::is_mouse_captured() const noexcept -> bool {
     return captured_;
 }
 
+auto WindowSDL3::position() const noexcept -> WindowPosition {
+    int x, y;
+    SDL_GetWindowPosition(window_, &x, &y);
+    return {x, y};
+}
+
+auto WindowSDL3::set_position(WindowPosition pos) -> void {
+    SDL_SetWindowPosition(window_, pos.x, pos.y);
+}
+
+auto WindowSDL3::state() const noexcept -> WindowState {
+    SDL_WindowFlags flags = SDL_GetWindowFlags(window_);
+    if (flags & SDL_WINDOW_MAXIMIZED) return WindowState::Maximized;
+    if (flags & SDL_WINDOW_MINIMIZED) return WindowState::Minimized;
+    return WindowState::Normal;
+}
+
+auto WindowSDL3::set_state(WindowState state) -> void {
+    switch (state) {
+        case WindowState::Normal:    SDL_RestoreWindow(window_);   break;
+        case WindowState::Maximized: SDL_MaximizeWindow(window_);  break;
+        case WindowState::Minimized: SDL_MinimizeWindow(window_);  break;
+    }
+}
+
+auto WindowSDL3::resize(int width, int height) -> void {
+    SDL_SetWindowSize(window_, width, height);
+    width_  = width;
+    height_ = height;
+}
+
 } // namespace buddd::engine

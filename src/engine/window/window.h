@@ -8,6 +8,9 @@ namespace buddd::engine {
 class Platform;
 struct WindowConfig;
 
+enum class WindowState { Normal, Maximized, Minimized };
+struct WindowPosition { int x; int y; };
+
 struct WindowConfig {
     std::string title;
     int width;
@@ -31,6 +34,12 @@ public:
 
     virtual auto set_mouse_capture(bool captured) -> void = 0;
     virtual auto is_mouse_captured() const noexcept -> bool = 0;
+
+    [[nodiscard]] virtual auto position() const noexcept -> WindowPosition = 0;
+    virtual auto set_position(WindowPosition pos) -> void = 0;
+    [[nodiscard]] virtual auto state() const noexcept -> WindowState = 0;
+    virtual auto set_state(WindowState state) -> void = 0;
+    virtual auto resize(int width, int height) -> void = 0;
 
     Window(const Window&) = delete;
     auto operator=(const Window&) -> Window& = delete;

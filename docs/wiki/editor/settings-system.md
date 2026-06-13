@@ -8,7 +8,7 @@ The settings system provides a three-tier YAML-backed persistent settings infras
 |---|---|---|---|
 | **Editor settings** | `~/.config/buddd/editor.yaml` (Linux) / `~/Library/Application Support/buddd/editor.yaml` (macOS) / `%APPDATA%/buddd/editor.yaml` (Windows) | Global per-machine preferences (theme, keyboard shortcuts) | No |
 | **Project settings** | `<cwd>/buddd.project.yaml` | Per-project settings shared with the team (project name, renderer config) | Yes |
-| **User project settings** | `<cwd>/.buddd/user/settings.yaml` | Per-project per-user state (last paths, open tabs, panel layout overrides) | No (gitignored) |
+| **User project settings** | `<cwd>/.buddd/user/settings.yaml` | Per-project per-user state (last paths, open tabs, panel layout overrides, **window geometry**) | No (gitignored) |
 
 ## YAML storage format
 
@@ -47,9 +47,9 @@ auto conn = store.observe("editor.theme", [](const std::string& key) {
 
 | Phase | Action |
 |---|---|
-| `Editor::setup()` | Constructs `SettingsManager` with CWD and `SerializationContext`, calls `load_all()`, sets `ImGui::GetIO().IniFilename` to `layout_ini_path()` |
-| Runtime | Editor features read/write settings via `SettingsManager` accessors |
-| `Editor::shutdown()` | Calls `save_all()` — dirty stores are flushed to disk, clean stores are skipped |
+| `Editor::setup()` | Constructs `SettingsManager` with CWD and `SerializationContext`, calls `load_all()`, sets `ImGui::GetIO().IniFilename` to `layout_ini_path()`. **After load**: reads window geometry from `user_project_settings`, validates, and applies to window (see First consumer below). |
+| Runtime | Editor features read/write settings via `SettingsManager` accessors. `Editor::update()` caches the window's last known Normal position/size for later use during shutdown. |
+| `Editor::shutdown()` | **Before save**: writes current window geometry (position, size, state) to `user_project_settings`. Then calls `save_all()` — dirty stores are flushed to disk, clean stores are skipped. |
 
 `SettingsManager::save_all()` can also be called on-demand at any point to persist critical settings (crash safety).
 
@@ -65,8 +65,40 @@ auto conn = store.observe("editor.theme", [](const std::string& key) {
 - **`editor_data_root(project_root)`** — `src/engine/util/editor_data_root.h` — returns `<root>/.buddd/`.
 - **`editor_user_data_root(project_root)`** — `src/engine/util/editor_data_root.h` — returns `<root>/.buddd/user/`.
 
+## First consumer: Editor Window Geometry
+
+[SPEC-037](/.specs/sprint-2026-06/editor-window-settings/spec.md) is the first concrete consumer of the settings infrastructure. It uses the `user_project_settings` tier to persist the editor window's position, size, and state (normal/maximized/minimized) across sessions.
+
+Settings keys (all under `user_project_settings`):
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `editor.window.x` | `int32_t` | (unset) | Window left edge position in screen coordinates |
+| `editor.window.y` | `int32_t` | (unset) | Window top edge position in screen coordinates |
+| `editor.window.width` | `int32_t` | `1280` | Window inner width in pixels |
+| `editor.window.height` | `int32_t` | `800` | Window inner height in pixels |
+| `editor.window.state` | `std::string` | `"normal"` | Window state: `"normal"`, `"maximized"`, `"minimized"` |
+
+**On startup** (`Editor::setup()` after `load_all()`): raw values are read from settings, validated (minimum 400×300 size, at-least-partially-visible position via `Platform::display_count()`/`display_bounds()`, minimized→normal force), and applied to the window via `Window::resize()`, `Window::set_position()`, and `Window::set_state()`.
+
+**On shutdown** (`Editor::shutdown()` before `save_all()`): the current window position, size, and state are written to `user_project_settings` via the `editor.window.*` keys, then `save_all()` persists all dirty stores.
+
+**Geometry tracking**: During `Editor::update()`, the Editor caches the window's last known Normal position and size. When the window is maximized or minimized, the cached Normal geometry is saved instead of the current maximized/minimized values, ensuring that restoring from a maximized session yields the user's intended un-maximised position and size.
+
+### Associated API additions
+
+- **`WindowState`** enum (`window.h`): `Normal`, `Maximized`, `Minimized`
+- **`WindowPosition`** struct (`window.h`): `int x`, `int y`
+- **`Window`** abstract class gains: `position()`, `set_position()`, `state()`, `set_state()`, `resize()`
+- **`DisplayBounds`** struct (`platform.h`): `int x`, `int y`, `int width`, `int height`
+- **`Platform`** abstract class gains: `display_count()`, `display_bounds()`
+- **`window_utils.h/.cpp`**: `window_state_to_string()` / `parse_window_state()` conversion helpers
+
+No SDL3 or platform-specific types are exposed to editor code — all platform interaction goes through the abstract `Window` and `Platform` interfaces (ADR-019).
+
 ## References
 
 - [SPEC-036](/.specs/sprint-2026-06/settings-system/spec.md) — Full specification
 - [Implementation Contract](/.specs/sprint-2026-06/settings-system/implementation-contract.md)
 - [Code Review](/.specs/sprint-2026-06/settings-system/code-review.md)
+- [SPEC-037](/.specs/sprint-2026-06/editor-window-settings/spec.md) — Editor Window Geometry Persistence

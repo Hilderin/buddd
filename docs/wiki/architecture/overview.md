@@ -115,12 +115,13 @@ src/engine/
 │   ├── scene_saver.h/.cpp                  # SceneSaver — serializes a World back to YAML, preserving prefab/model references
 │   └── component_registry/                 # Component registration and property system (TypeRegistry, ComponentInfo, ComponentRegistry, serialization)
 ├── platform/
-│   ├── platform.h           # Abstract Platform class, Backend enum
+│   ├── platform.h           # Abstract Platform class, Backend enum, DisplayBounds struct, display_count/display_bounds APIs
 │   ├── platform.cpp         # Platform::create() factory
 │   ├── platform_sdl3.h/cpp  # SDL3 backend (PlatformSDL3)
 │   └── platform_headless.h/cpp # Headless backend (PlatformHeadless)
 ├── window/
-│   ├── window.h             # Abstract Window class, WindowConfig struct
+│   ├── window.h             # Abstract Window class, WindowConfig struct, WindowState enum, WindowPosition struct, position/state/resize APIs
+│   ├── window_utils.h/cpp   # window_state_to_string() / parse_window_state() helpers
 │   ├── window_sdl3.h/cpp    # SDL3 backend (WindowSDL3)
 │   └── window_headless.h/cpp # Headless backend (WindowHeadless)
 ├── image/

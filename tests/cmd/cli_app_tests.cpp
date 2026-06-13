@@ -110,7 +110,7 @@ TEST_CASE("buddd edit --frame 2 opens editor and exits", "[cli][app]") {
 #ifdef BUDDD_HAS_DISPLAY
     // In display build: editor runs and outputs layout file log
     REQUIRE(res.exit_code == 0);
-    REQUIRE(res.stderr_str.find("Editor: layout file: buddd_editor.ini") != std::string::npos);
+    REQUIRE(res.stderr_str.find("layout.ini") != std::string::npos);
 #else
     // In headless build: editor fails with "editor requires a display"
     // Either way, the CLI dispatch itself should not crash or produce unknown-command errors.

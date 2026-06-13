@@ -34,4 +34,25 @@ auto WindowHeadless::is_mouse_captured() const noexcept -> bool {
     return false;
 }
 
+auto WindowHeadless::position() const noexcept -> WindowPosition {
+    return {0, 0};
+}
+
+auto WindowHeadless::set_position(WindowPosition /*pos*/) -> void {
+    // no-op
+}
+
+auto WindowHeadless::state() const noexcept -> WindowState {
+    return WindowState::Normal;
+}
+
+auto WindowHeadless::set_state(WindowState /*state*/) -> void {
+    // no-op
+}
+
+auto WindowHeadless::resize(int width, int height) -> void {
+    width_  = width;
+    height_ = height;
+}
+
 } // namespace buddd::engine

@@ -133,6 +133,29 @@ auto PlatformSDL3::delta_time() const noexcept -> float {
     return delta_time_;
 }
 
+auto PlatformSDL3::display_count() const noexcept -> int {
+    int count = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&count);
+    SDL_free(displays);
+    return count;
+}
+
+auto PlatformSDL3::display_bounds(int index) const noexcept -> DisplayBounds {
+    int count = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&count);
+    if (index < 0 || index >= count || displays == nullptr) {
+        SDL_free(displays);
+        return {0, 0, 0, 0};
+    }
+    SDL_Rect rect;
+    if (SDL_GetDisplayBounds(displays[index], &rect)) {
+        SDL_free(displays);
+        return {rect.x, rect.y, rect.w, rect.h};
+    }
+    SDL_free(displays);
+    return {0, 0, 0, 0};
+}
+
 auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::unique_ptr<Window>> {
     if (config.width <= 0 || config.height <= 0) {
         return make_error(Error::Category::WindowCreationFailed, "Invalid window dimensions");

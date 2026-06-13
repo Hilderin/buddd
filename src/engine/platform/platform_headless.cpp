@@ -20,6 +20,14 @@ auto PlatformHeadless::delta_time() const noexcept -> float {
     return 1.0f / 60.0f;
 }
 
+auto PlatformHeadless::display_count() const noexcept -> int {
+    return 0;
+}
+
+auto PlatformHeadless::display_bounds(int /*index*/) const noexcept -> DisplayBounds {
+    return {0, 0, 0, 0};
+}
+
 auto PlatformHeadless::show_open_file_dialog(FileDialogCallback callback,
                                               const char* /*filter_name*/,
                                               const char* /*filter_pattern*/) -> void {

@@ -28,6 +28,8 @@ public:
     auto register_window(SDL_WindowID id, Window* window) -> void;
     auto unregister_window(SDL_WindowID id) -> void;
     [[nodiscard]] auto delta_time() const noexcept -> float override;
+    [[nodiscard]] auto display_count() const noexcept -> int override;
+    [[nodiscard]] auto display_bounds(int index) const noexcept -> DisplayBounds override;
 
     PlatformSDL3(const PlatformSDL3&) = delete;
     auto operator=(const PlatformSDL3&) -> PlatformSDL3& = delete;
