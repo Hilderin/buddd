@@ -683,6 +683,12 @@ TEST_CASE("AC-019: save_all writes dirty stores and skips clean ones", "[setting
     SettingsTestCtx ctx;
     auto tmp = temp_dir();
 
+    // Pre-create the OS config dir for editor settings so save() can write there
+    // on all platforms (CI, local). The settings system is designed to create this
+    // directory — it is a well-known, expected location.
+    std::filesystem::create_directories(
+        be::os_user_config_dir());
+
     be::SettingsManager mgr(tmp, ctx.ctx());
     auto load_result = mgr.load_all();
     REQUIRE(load_result.has_value());
@@ -708,11 +714,13 @@ TEST_CASE("AC-019: save_all writes dirty stores and skips clean ones", "[setting
     auto user_node = YAML::LoadFile(user_path.string());
     REQUIRE(user_node["key"].as<std::string>() == "user_value");
 
-    // Editor settings go to os_user_config_dir() — we don't check the file on disk
-    // to avoid OS config dir side effects (the save behaviour itself is verified
-    // by AC-006). Verify editor data in-memory instead.
+    // Editor settings file exists on disk
+    auto editor_path = be::os_user_config_dir() / "editor.yaml";
+    REQUIRE(std::filesystem::exists(editor_path));
+
+    // In-memory data preserved, store is clean after save
     REQUIRE(mgr.editor_settings().get<std::string>("key", "") == "editor_value");
-    REQUIRE_FALSE(mgr.editor_settings().is_dirty()); // save() was called, store is clean
+    REQUIRE_FALSE(mgr.editor_settings().is_dirty());
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
