@@ -107,11 +107,16 @@ TEST_CASE("buddd run with no args runs empty window", "[cli][app]") {
 TEST_CASE("buddd edit --frame 2 opens editor and exits", "[cli][app]") {
     const auto res = run_buddd("edit --frame 2 --log-level=info");
 
+#ifdef BUDDD_HAS_DISPLAY
     // In display build: editor runs and outputs layout file log
-    // In headless build: editor fails with "editor requires a display"
-    // Either way, the CLI dispatch itself should not crash or produce unknown-command errors.
     REQUIRE(res.exit_code == 0);
     REQUIRE(res.stderr_str.find("Editor: layout file: buddd_editor.ini") != std::string::npos);
+#else
+    // In headless build: editor fails with "editor requires a display"
+    // Either way, the CLI dispatch itself should not crash or produce unknown-command errors.
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("editor requires a display") != std::string::npos);
+#endif
 }
 
 TEST_CASE("buddd edit nonexistent.yaml prints error and exits 1", "[cli][app]") {
