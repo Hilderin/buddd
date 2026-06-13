@@ -101,3 +101,86 @@ TEST_CASE("buddd run with no args runs empty window", "[cli][app]") {
 
     REQUIRE(stderr_str.find("[INFO] [App] Window opened: 1024x768") != std::string::npos);
 }
+
+// ── buddd edit [<scene>] tests ──
+
+TEST_CASE("buddd edit --frame 2 opens editor and exits", "[cli][app]") {
+    const auto res = run_buddd("edit --frame 2 --log-level=info");
+
+    // In display build: editor runs and outputs layout file log
+    // In headless build: editor fails with "editor requires a display"
+    // Either way, the CLI dispatch itself should not crash or produce unknown-command errors.
+    REQUIRE(res.exit_code == 0);
+    REQUIRE(res.stderr_str.find("Editor: layout file: buddd_editor.ini") != std::string::npos);
+}
+
+TEST_CASE("buddd edit nonexistent.yaml prints error and exits 1", "[cli][app]") {
+    const auto res = run_buddd("edit nonexistent.yaml");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Scene file not found: 'nonexistent.yaml'") != std::string::npos);
+}
+
+TEST_CASE("buddd edit somearg unknown argument exits 1", "[cli][app]") {
+    const auto res = run_buddd("edit somearg");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Unknown argument for edit: 'somearg'") != std::string::npos);
+}
+
+TEST_CASE("buddd edit --capture flag not mistaken for unknown arg", "[cli][app]") {
+    // --capture 2:path starts with '-', should be treated as flags, not unknown arg
+    // In display build: exit 0 (editor runs)
+    // In headless build: exit 1 (editor requires display)
+    // Key assertion: NOT "Unknown argument for edit"
+    const auto res = run_buddd("edit --capture 2:/tmp/test_cap_edit.png --frame 2");
+    REQUIRE(res.stderr_str.find("Unknown argument for edit") == std::string::npos);
+}
+
+TEST_CASE("buddd edit .yaml extension-only exits 1", "[cli][app]") {
+    const auto res = run_buddd("edit .yaml");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Scene file not found: '.yaml'") != std::string::npos);
+}
+
+TEST_CASE("buddd edit .yml extension-only exits 1", "[cli][app]") {
+    const auto res = run_buddd("edit .yml");
+
+    REQUIRE(res.exit_code == 1);
+    REQUIRE(res.stderr_str.find("[ERROR] [App] Scene file not found: '.yml'") != std::string::npos);
+}
+
+TEST_CASE("buddd edit with valid yaml file --frame 2 accepts scene path", "[cli][app]") {
+    // Create a temp valid YAML scene file
+    const auto scene_file = temp_filename("buddd_test_scene");
+    {
+        std::ofstream f(scene_file);
+        f << "# empty test scene\nentities: []\n";
+    }
+
+    const auto res = run_buddd("edit \"" + scene_file + "\" --frame 2 --log-level=info");
+
+    std::remove(scene_file.c_str());
+
+    // Key assertion: no "Scene file not found" error (file was accepted)
+    REQUIRE(res.stderr_str.find("Scene file not found") == std::string::npos);
+    // Editor may or may not run (depends on display build), but dispatch was correct
+}
+
+TEST_CASE("buddd edit with .YML file is case-insensitive", "[cli][app]") {
+    // Create temp file with .YML extension
+    const auto scene_file = temp_filename("buddd_test_scene");
+    const std::string yml_file = scene_file + ".YML";
+    {
+        std::ofstream f(yml_file);
+        f << "# empty test scene\nentities: []\n";
+    }
+
+    const auto res = run_buddd("edit \"" + yml_file + "\" --frame 2 --log-level=info");
+
+    std::remove(yml_file.c_str());
+
+    // Key assertion: no "Scene file not found" (case-insensitive matching works)
+    REQUIRE(res.stderr_str.find("Scene file not found") == std::string::npos);
+}

@@ -13,8 +13,15 @@ main(int argc, char* argv[])
       ├── argc < 2 or argv[1] == nullptr ?
       │       └── YES ──► RunApp → run_app()  ← default (empty window)
       │
-      ├── argv[1] == "run"     ──► parse <scene>, create App subclass → run_app()
-      ├── argv[1] == "edit"    ──► EditorApp → run_app()
+       ├── argv[1] == "run"     ──► parse <scene>, create App subclass → run_app()
+       ├── argv[1] == "edit"    ──► parse optional scene, 4-step dispatch:
+       │                           │   1. No arg or empty string → EditorApp{std::nullopt}
+       │                           │   2. YAML extension (.yaml/.yml) → validate is_regular_file():
+       │                           │      ├── Not regular file → error + exit 1 (no editor opened)
+       │                           │      └── Valid → EditorApp{scene_path}
+       │                           │   3. Starts with '-' → flags only, EditorApp{std::nullopt}
+       │                           │   4. Otherwise → unknown argument error + exit 1
+       │                           └── EditorApp → run_app()
       ├── argv[1] == "version" ──► VersionCommand.run(argc, argv)
       ├── argv[1] == "help"    ──► HelpCommand.run(argc, argv)
       │
@@ -54,6 +61,9 @@ Output:
 | `buddd run asset-demo` | — | `"Scene started: asset-demo (120 frames)"`, `"Scene complete: asset-demo (120 frames rendered)"` (via `BUDDD_LOG_INFO`) |
 | `buddd run <scene> --capture N:path` | — | `"Captured: <path>"` (via `BUDDD_LOG_INFO` on stderr, no longer on stdout). Capture messages merged into scene output |
 | `buddd edit` | — | `"Editor: layout file: buddd_editor.ini"`. Menu actions: `"Editor: executing command: Quit"`, `"Editor: undo 'Quit'"`, `"Editor: redo 'Quit'"`, `"Editor: showing About dialog"`, `"Editor: shortcut suppressed (ImGui captures keyboard)"` (via `BUDDD_LOG_*`) |
+| `buddd edit <path.yaml>` | — | Same editor output as `buddd edit`, plus scene-loading messages from `SceneLoader` (YAML parsed, entities created) |
+| `buddd edit <nonexistent>.yaml` | — | `"Scene file not found: '<path>'"` (via `BUDDD_LOG_ERROR`), exits with code 1 (no editor window opened) |
+| `buddd edit <unknown>` | — | `"Unknown argument for edit: '<arg>'"` (via `BUDDD_LOG_ERROR`), exits with code 1 (no editor window opened) |
 | `buddd version` | `"buddd 0.1.0"` | — |
 | `buddd help` | Usage text (4 commands: `run`, `edit`, `version`, `help`) | — |
 | Unknown (including `demo`, `capture`, `test`) | — | `"Unknown command: '<cmd>'"` + usage text |

@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -69,8 +70,40 @@ auto main(int argc, char* argv[]) -> int {
         return bc::HelpCommand{}.run(argc, argv);
 
     if (cmd == "edit") {
-        bc::app::EditorApp editor_app;
-        auto args = bc::parse_running_args(argc, argv, 2);
+        std::optional<std::string> scene_path;
+        int flags_start = 2;
+
+        if (argc >= 3 && argv[2] != nullptr && argv[2][0] != '\0') {
+            std::string_view arg{argv[2]};
+
+            auto is_yaml_file = [](std::string_view path) -> bool {
+                auto pos = path.rfind('.');
+                if (pos == std::string_view::npos || pos == path.size() - 1)
+                    return false;
+                std::string_view ext = path.substr(pos + 1);
+                std::string lower_ext;
+                for (auto c : ext)
+                    lower_ext.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+                return (lower_ext == "yaml" || lower_ext == "yml");
+            };
+
+            if (is_yaml_file(arg)) {
+                if (!std::filesystem::is_regular_file(arg)) {
+                    BUDDD_LOG_ERROR("Scene file not found: '{}'", arg);
+                    return EXIT_FAILURE;
+                }
+                scene_path = std::string(arg);
+                flags_start = 3;
+            } else if (arg[0] == '-') {
+                // Flag argument — no scene, use default flags_start=2
+            } else {
+                BUDDD_LOG_ERROR("Unknown argument for edit: '{}'", arg);
+                return EXIT_FAILURE;
+            }
+        }
+
+        bc::app::EditorApp editor_app{std::move(scene_path)};
+        auto args = bc::parse_running_args(argc, argv, flags_start);
         if (!args) {
             BUDDD_LOG_ERROR("Error: {}", be::to_string(args.error()));
             return EXIT_FAILURE;

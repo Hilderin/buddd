@@ -357,6 +357,8 @@ The `demo_helpers.*` files are now **empty placeholders**. All helper functions 
 - `buddd run <scene> [--frame N] [--capture N:path]...` → runs the named scene. Available scenes: `triangle` (120 frames, coloured triangle), `cube` (120 frames, rotating coloured cube), `cube-scene` (120 frames, ECS-based cube), `textured-cube` (120 frames, UV-mapped cube with brick texture), `free-camera` (interactive, WASD + mouse look + Space/Control), `phong` (interactive, Phong lighting with orbiting point light + directional fill), `hot-reload` (60 frames, hot-reload verification, swaps texture at frame 30), `multi-material` (120 frames, cube with red/green/blue submeshes), `gltf-demo` (interactive, loads Box/DamagedHelmet glTF model with PBR materials and orbit camera), `hot-reload-gltf` (hot-reload verification for glTF models, swaps model file at frame N), **`imgui-demo`** (300 frames, ImGui overlay with demo window and custom panel on cleared background, 1280×720). `--frame N` limits rendering to N frames. `--capture N:path` captures frame N to a PNG file (repeatable for multiple captures). If no scene is given, defaults to `RunApp` (empty window). If scene is unknown, prints error to stderr and exits 1. Extra unexpected positional arguments print a warning on stderr.
 - `buddd version` → prints `buddd 0.1.0` to stdout
 - `buddd edit` → opens the editor (1280×800 ImGui-docked window, title "Buddd Editor"). Requires display; errors out if `BUDDD_HAS_DISPLAY=OFF`. Editor does not exit on Escape — only window close exits.
+- `buddd edit <path.yaml>` — opens the editor with the given scene file pre-loaded. The argument is detected as a YAML path (`.yaml`/`.yml`, case-insensitive). If the path is a regular file, the editor opens with that scene loaded during `setup()`. If the path does not exist or is not a regular file, an error is printed to stderr and the process exits with code 1 (no editor window opened). `--frame N` and `--capture N:path` flags continue to work after the scene path.
+- `buddd edit <arg>` where `<arg>` is not a YAML path and does not start with `-` → unknown argument error to stderr, exit code 1.
 - `buddd help` → prints usage information listing four commands (`run`, `edit`, `version`, `help`)
 - Unknown command → prints `"Unknown command: '<cmd>'"` followed by usage to stderr, exits with code 1
 - `buddd test` is **removed** — produces an unknown command error
@@ -427,8 +429,8 @@ Five header-only `EditorPanel` subclasses, each with 100×100 minimum size const
 
 | File | Role |
 |---|---|
-| `editor_app.h` | `EditorApp` — `App` subclass. Stores `unique_ptr<Editor>`. Declares `update()` override in addition to existing `setup()`, `on_render()`, `shutdown()`. |
-| `editor_app.cpp` | Implementation: `setup()` calls `editor_->setup(ctx)`. `update()` calls `editor_->update(ctx)` (new — processes shortcuts/state). `on_render()` calls `editor_->draw_ui(ctx)`. `shutdown()` calls `editor_->shutdown()`. |
+| `editor_app.h` | `EditorApp` — `App` subclass. Stores `unique_ptr<Editor>`. Constructor takes `std::optional<std::string> scene_path` (default `std::nullopt`). Declares `update()` override in addition to existing `setup()`, `on_render()`, `shutdown()`. |
+| `editor_app.cpp` | Implementation: stores `scene_path_` from constructor. `setup()` calls `editor_->setup(ctx)`, then if `scene_path_` has a value, opens the scene via `editor_->open_scene()`. `update()` calls `editor_->update(ctx)`. `on_render()` calls `editor_->draw_ui(ctx)`. `shutdown()` calls `editor_->shutdown()`. |
 
 ### App lifecycle extension (`src/cmd/`)
 
@@ -439,7 +441,7 @@ Five header-only `EditorPanel` subclasses, each with 100×100 minimum size const
 
 ### CLI integration
 
-- `buddd edit` → creates `EditorApp`, calls `run_app()`. Requires display; errors out in headless mode.
+- `buddd edit [<scene>]` → if a YAML scene path is provided, creates `EditorApp{scene_path}` which loads the scene during `setup()`. Without a path, creates `EditorApp{std::nullopt}` (empty untitled editor — existing behaviour). Requires display; errors out in headless mode.
 - The editor does NOT exit on Escape — only window close exits.
 - Editor has a two-phase lifecycle: `update()` (logic: shortcuts, state) runs before `render_scene()`, `draw_ui()` (UI rendering) runs in `on_render()` after `render_scene()`.
 - Docking layout persisted via `buddd_editor.ini` in the current working directory.

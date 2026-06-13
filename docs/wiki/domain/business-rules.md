@@ -22,6 +22,10 @@
 | `buddd run <nonexistent>.yaml` | — | Error "file not found" + exit 1 |
 | `buddd run <scene> --frame N` | (same App) | Limit to N frames |
 | `buddd run <scene> --capture N:path` | (same App) | Capture frame N to path |
+| `buddd edit` | `EditorApp` | Opens empty untitled editor |
+| `buddd edit <path.yaml>` | `EditorApp` | Opens editor with scene loaded from YAML file |
+| `buddd edit <nonexistent>.yaml` | — | Error "Scene file not found" to stderr, exit 1 (no editor window) |
+| `buddd edit <unknown>` | — | Error "Unknown argument for edit" to stderr, exit 1 (no editor window) |
 | `buddd version` | — | Prints version to stdout |
 | `buddd help` | — | Prints usage text to stdout |
 | `buddd <unknown>` | — | Error + usage to stderr, exit 1 |
@@ -203,6 +207,8 @@ All three fields are optional — missing fields use defaults:
 | Window shutdown | stderr | `BUDDD_LOG_INFO` → `"Window closed, shutting down."` |
 | Unknown scene | stderr | `BUDDD_LOG_ERROR` → `"Unknown scene: '<name>'"` + `fprintf(stderr)` scene usage |
 | Unknown command | stderr | `BUDDD_LOG_ERROR` → `"Unknown command: '<cmd>'"` + `fprintf(stderr)` usage |
+| Edit: scene file not found | stderr | `BUDDD_LOG_ERROR` → `"Scene file not found: '<path>'"` |
+| Edit: unknown argument | stderr | `BUDDD_LOG_ERROR` → `"Unknown argument for edit: '<arg>'"` |
 | Error (parse, setup, etc.) | stderr | `BUDDD_LOG_ERROR` → `"Error: <description>"` |
 
 ### Structured logging (new system as of SPEC-021)
@@ -231,10 +237,12 @@ See the full API reference in [docs/wiki/domain/logging.md](/docs/wiki/domain/lo
 ### Exit codes
 
 | Condition | Code |
-|---|---|
+|---|---|---|
 | Normal completion | EXIT_SUCCESS (0) |
 | Unknown command | EXIT_FAILURE (1) |
 | Unknown scene | EXIT_FAILURE (1) |
+| Edit: nonexistent scene file | EXIT_FAILURE (1) |
+| Edit: unknown argument | EXIT_FAILURE (1) |
 | --frame parse error | EXIT_FAILURE (1) |
 | --frame too small for captures | EXIT_FAILURE (1) |
 | --capture parse error | EXIT_FAILURE (1) |

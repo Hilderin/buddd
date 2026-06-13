@@ -11,7 +11,7 @@ inline constexpr std::string_view k_usage_text =
     "\n"
     "Commands:\n"
     "  run       Run a scene or the interactive window (default)\n"
-    "  edit      Open the editor [--frame N] [--capture N:path]\n"
+    "  edit      Open the editor (optionally with a scene file)\n"
     "  version   Print version information\n"
     "  help      Show this help message\n"
     "\n"
