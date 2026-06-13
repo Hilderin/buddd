@@ -62,6 +62,11 @@ struct Quat {
     /// Create a quaternion from Euler angles (pitch, yaw, roll) in radians.
     /// Convention: pitch around X, yaw around Y, roll around Z, applied in XYZ order.
     static auto from_euler(float pitch, float yaw, float roll) noexcept -> Quat;
+
+    /// Convert quaternion to Euler angles (pitch, yaw, roll) in radians.
+    /// Convention: pitch around X, yaw around Y, roll around Z, in XYZ order.
+    /// Matches the convention of from_euler().
+    [[nodiscard]] auto to_euler() const noexcept -> Vec3;
 };
 
 // -- Out-of-body inline implementations (use .glm() accessor) --
@@ -84,6 +89,11 @@ inline auto Quat::angle_axis(float angle, Vec3 axis) noexcept -> Quat {
 
 inline auto Quat::from_euler(float pitch, float yaw, float roll) noexcept -> Quat {
     return Quat{glm::quat(glm::vec3{pitch, yaw, roll})};
+}
+
+inline auto Quat::to_euler() const noexcept -> Vec3 {
+    auto const euler = glm::eulerAngles(glm());
+    return Vec3{euler.x, euler.y, euler.z};
 }
 
 // -- Static assertions --

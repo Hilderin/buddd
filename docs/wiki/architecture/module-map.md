@@ -337,14 +337,22 @@ The editor library provides the interactive editor for `buddd edit`. It links `b
 |---|---|---|
 | `menu_bar.h` | `MenuBar` | Header-only concrete `EditorMenu`. `id()` returns `"menu_bar"`. `draw_ui()` renders main menu bar via `ImGui::BeginMainMenuBar()`: **File** > New Scene (Ctrl+N), Open Scene (Ctrl+O), separator, Save Scene (Ctrl+S), Save Scene As (Ctrl+Shift+S), separator, Quit (Ctrl+Q), **Edit** > Undo (Ctrl+Z, disabled when undo stack empty) / Redo (Ctrl+Shift+Z/Ctrl+Y, disabled when redo stack empty), **Help** > About (opens modal popup via `set_on_about()` callback). **F-01**: Added callbacks `set_on_new_scene()`, `set_on_open_scene()`, `set_on_save_scene()`, `set_on_save_scene_as()`, `set_on_quit()`. The old direct `ctx.request_exit()` call for Quit is replaced by the `on_quit_` callback which checks dirty state first. Takes `CommandStack&`. |
 
+### Inspector editors (`src/editor/`)
+
+| File | Role |
+|---|---|
+| `inspector_editors.h` | `InspectorTypeEditor` abstract base class, `TypedInspectorEditor<T>` typed template, `EditorFlags` struct, `InspectorTypeEditorRegistry` static class, `register_builtin_inspector_editors()` declaration. See [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md). |
+| `inspector_editors.cpp` | 8 built-in editor implementations (float, int, bool, string, Vec2, Vec3, Vec4, Quat), fallback text-input helpers, `register_builtin_inspector_editors()` registration. See [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md). |
+
 ### Concrete dockable panels (`src/editor/panels/`)
 
-Five header-only `EditorPanel` subclasses, each with 100×100 minimum size constraint via `ImGui::SetNextWindowSizeConstraints()`. No functional content — placeholders for future features.
+Panels have a minimum size constraint of 100×100 via `ImGui::SetNextWindowSizeConstraints()`. The `PropertiesPanel` (F-05) now has a full `.cpp` implementation with entity name editing and Transform section — see [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md). Other panels remain placeholder headers for future features.
 
 | File | Class | Id | Title |
 |---|---|---|---|
 | `scene_panel.h` | `ScenePanel` | `"scene"` | `"Scene"` |
 | `properties_panel.h` | `PropertiesPanel` | `"properties"` | `"Properties"` |
+| `properties_panel.cpp` | PropertiesPanel implementation — `draw_ui()`, `draw_no_selection_state()`, `draw_entity_name()`, `draw_transform_section()`. See [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md). |
 | `console_panel.h` | `ConsolePanel` | `"console"` | `"Console"` |
 | `project_panel.h` | `ProjectPanel` | `"project"` | `"Project"` |
 | `assets_panel.h` | `AssetsPanel` | `"assets"` | `"Assets"` |

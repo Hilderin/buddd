@@ -55,12 +55,22 @@ public:
     auto remove(EntityId id) -> void;
     auto clear() -> void;
 
+    // -- Primary (last-selected) --
+    [[nodiscard]] auto primary() const noexcept -> std::optional<EntityId> { return primary_; }
+    [[nodiscard]] auto anchor() const noexcept -> std::optional<EntityId> { return anchor_; }
+    void set_primary(EntityId id) { primary_ = id; }
+    void set_anchor(EntityId id) { anchor_ = id; }
+    void reset_primary() { primary_ = std::nullopt; }
+    void reset_anchor() { anchor_ = std::nullopt; }
+
     // -- Comparison --
     auto operator==(const Selection&) const noexcept -> bool = default;
 
 private:
     friend class EditorSelection;
     std::unordered_set<EntityId> selected_;
+    std::optional<EntityId> primary_;
+    std::optional<EntityId> anchor_;
 };
 
 // ── EditorSelection manager ──────────────────────────────────────────
@@ -82,6 +92,9 @@ public:
     [[nodiscard]] auto snapshot() const noexcept -> Selection;
     void restore(const Selection& saved);  // fires callbacks
 
+    // -- Primary (last-selected) --
+    [[nodiscard]] auto primary() const noexcept -> std::optional<EntityId>;
+
     // -- Shift+click anchor --
     [[nodiscard]] auto anchor() const noexcept -> std::optional<EntityId>;
     void set_anchor(EntityId id);
@@ -98,7 +111,6 @@ private:
     void fire_callbacks();
 
     Selection current_;
-    std::optional<EntityId> anchor_;
     std::vector<std::pair<size_t, ChangeCallback>> callbacks_;
     size_t next_token_ = 0;
 };
@@ -164,12 +176,16 @@ inline auto EditorSelection::snapshot() const noexcept -> Selection {
     return current_;  // copy — independent clone
 }
 
+inline auto EditorSelection::primary() const noexcept -> std::optional<EntityId> {
+    return current_.primary();
+}
+
 inline auto EditorSelection::anchor() const noexcept -> std::optional<EntityId> {
-    return anchor_;
+    return current_.anchor();
 }
 
 inline auto EditorSelection::set_anchor(EntityId id) -> void {
-    anchor_ = id;
+    current_.set_anchor(id);
 }
 
 inline auto EditorSelection::current() const noexcept -> const Selection& {
@@ -183,13 +199,15 @@ inline void EditorSelection::select(EntityId id, SelectionModifier modifier) {
     if (modifier == SelectionModifier::Replace) {
         current_.selected_.clear();
         current_.selected_.insert(id);
-        anchor_ = id;
+        current_.set_primary(id);
+        current_.set_anchor(id);
     } else {  // Toggle
         if (current_.selected_.contains(id)) {
             current_.selected_.erase(id);
         } else {
             current_.selected_.insert(id);
         }
+        current_.set_primary(id);
         // anchor_ unchanged
     }
     fire_callbacks();
@@ -197,7 +215,8 @@ inline void EditorSelection::select(EntityId id, SelectionModifier modifier) {
 
 inline void EditorSelection::clear() {
     current_.selected_.clear();
-    anchor_ = std::nullopt;
+    current_.reset_primary();
+    current_.reset_anchor();
     fire_callbacks();
 }
 
@@ -207,6 +226,11 @@ inline void EditorSelection::set_selection(std::span<const EntityId> ids) {
         if (id != EntityId::none()) {
             current_.selected_.insert(id);
         }
+    }
+    if (!ids.empty()) {
+        current_.set_primary(ids[0]);
+    } else {
+        current_.reset_primary();
     }
     // anchor_ unchanged
     fire_callbacks();

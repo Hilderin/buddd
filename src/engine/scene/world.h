@@ -89,6 +89,11 @@ public:
     /// Returns the root entity at the given index. Returns Entity{} if index out of bounds.
     auto get_root_entity(size_t index) const noexcept -> Entity;
 
+    /// Returns an Entity handle for the given EntityId.
+    /// If the ID is invalid, stale, or the entity is pending destroy,
+    /// returns a default-constructed Entity (check with entity.id() != EntityId::none()).
+    [[nodiscard]] auto entity(EntityId id) noexcept -> Entity;
+
     // -- Camera registration --
     /// Registers a CameraComponent as the active camera.
     /// Last-registered camera wins (single active camera for v1).
@@ -299,6 +304,12 @@ inline auto Entity::get_component() noexcept -> std::optional<T&> {
 template<typename T>
 inline auto Entity::remove_component() -> bool {
     return world_->remove_component<T>(id_);
+}
+
+inline auto World::entity(EntityId id) noexcept -> Entity {
+    auto* node = lookup_node(id);
+    if (!node || node->pending_destroy_) return Entity{};
+    return Entity(*this, id);
 }
 
 } // namespace buddd::engine

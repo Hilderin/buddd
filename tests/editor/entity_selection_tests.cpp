@@ -456,6 +456,135 @@ struct HeadlessTestContext {
     }
 };
 
+// ═════════════════════════════════════════════════════════════════════
+// EditorSelection: primary() tracking
+// ═════════════════════════════════════════════════════════════════════
+
+TEST_CASE("EditorSelection: primary is nullopt after construction", "[editor][selection]") {
+    ed::EditorSelection esel;
+    REQUIRE_FALSE(esel.primary().has_value());
+}
+
+TEST_CASE("EditorSelection: primary after select(Replace)", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+
+    esel.select(ID2, ed::SelectionModifier::Replace);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID2);
+}
+
+TEST_CASE("EditorSelection: primary after select(Toggle)", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    esel.select(ID1, ed::SelectionModifier::Toggle);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+
+    esel.select(ID2, ed::SelectionModifier::Toggle);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID2);
+}
+
+TEST_CASE("EditorSelection: primary after clear()", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    REQUIRE(esel.primary().has_value());
+
+    esel.clear();
+    REQUIRE_FALSE(esel.primary().has_value());
+}
+
+TEST_CASE("EditorSelection: primary after set_selection", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    // Non-empty span: primary should be first element
+    std::vector<be::EntityId> ids = {ID1, ID2, ID3};
+    esel.set_selection(ids);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+
+    // Empty span: primary should be nullopt
+    esel.set_selection(std::span<const be::EntityId>{});
+    REQUIRE_FALSE(esel.primary().has_value());
+}
+
+TEST_CASE("EditorSelection: primary and select(none())", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    // select(EntityId::none()) is a no-op
+    esel.select(be::EntityId::none(), ed::SelectionModifier::Replace);
+    REQUIRE_FALSE(esel.primary().has_value());
+
+    // First select a valid id, then select none
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+
+    esel.select(be::EntityId::none(), ed::SelectionModifier::Replace);
+    // Should still be ID1 (none() is a no-op)
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+}
+
+TEST_CASE("EditorSelection: snapshot/restore preserves primary", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    // Select A, snapshot, select B, restore → primary should be A
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    REQUIRE(*esel.primary() == ID1);
+
+    auto saved = esel.snapshot();
+
+    esel.select(ID2, ed::SelectionModifier::Replace);
+    REQUIRE(*esel.primary() == ID2);
+
+    esel.restore(saved);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+    REQUIRE(esel.contains(ID1));
+
+    // Select A, snapshot, clear, restore → primary should be A and set should contain A
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    saved = esel.snapshot();
+
+    esel.clear();
+    REQUIRE_FALSE(esel.primary().has_value());
+    REQUIRE(esel.empty());
+
+    esel.restore(saved);
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+    REQUIRE(esel.contains(ID1));
+}
+
+TEST_CASE("EditorSelection: primary with Toggle in multi-select", "[editor][selection]") {
+    ed::EditorSelection esel;
+
+    // select(A, Replace), then select(B, Toggle) → primary() == B
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    REQUIRE(*esel.primary() == ID1);
+
+    esel.select(ID2, ed::SelectionModifier::Toggle);
+    REQUIRE(*esel.primary() == ID2);
+
+    // select(A, Replace), select(B, Toggle), select(A, Toggle) (toggle A, removes it)
+    // → primary() == A (last select() argument regardless of add/remove)
+    esel.select(ID1, ed::SelectionModifier::Replace);
+    esel.select(ID2, ed::SelectionModifier::Toggle);
+    esel.select(ID1, ed::SelectionModifier::Toggle);
+
+    // Toggle removed A from selection, but primary should still be A
+    REQUIRE_FALSE(esel.contains(ID1));
+    REQUIRE(esel.contains(ID2));
+    REQUIRE(esel.primary().has_value());
+    REQUIRE(*esel.primary() == ID1);
+}
+
 TEST_CASE("Editor::open_scene() clears selection on success", "[editor][selection]") {
     HeadlessTestContext htc;
     ed::Editor editor;

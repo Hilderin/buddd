@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "editor_context.h"
 
+#include "inspector_editors.h"
 #include "panels/menu_bar.h"
 #include "panels/scene_panel.h"
 #include "panels/properties_panel.h"
@@ -107,6 +108,9 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
                 load_result.error().message);
         }
     }
+
+    // ── Register built-in inspector editors ──
+    register_builtin_inspector_editors();
 
     // ── Create menu bar ──
     auto menu_bar = std::make_unique<MenuBar>(command_stack_);
