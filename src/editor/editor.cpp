@@ -669,39 +669,56 @@ auto Editor::draw_error_modals() -> void {
 
 // ── Save-prompt modal ──
 
-auto Editor::draw_save_prompt_modal() -> SavePromptResult {
-    SavePromptResult result = SavePromptResult::Cancel;
-
-    ImGui::OpenPopup("Save Changes");
-    if (ImGui::BeginPopupModal("Save Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        std::string scene_name = "Untitled";
-        if (current_file_path_.has_value()) {
-            scene_name = std::filesystem::path(*current_file_path_).filename().string();
-        }
-        ImGui::Text("Save changes to %s?", scene_name.c_str());
-
-        if (ImGui::Button("Save")) {
-            ImGui::CloseCurrentPopup();
-            result = SavePromptResult::Save;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Don't Save")) {
-            ImGui::CloseCurrentPopup();
-            result = SavePromptResult::Discard;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
-            ImGui::CloseCurrentPopup();
-            result = SavePromptResult::Cancel;
-        }
-
-        ImGui::EndPopup();
-    } else {
-        // Dismissed by Escape or click-outside → Cancel
-        result = SavePromptResult::Cancel;
+auto Editor::draw_save_prompt_modal() -> std::optional<SavePromptResult> {
+    // OpenPopup only once per request (on the frame where save_prompt_requested_ is set)
+    if (save_prompt_requested_) {
+        ImGui::OpenPopup("Save Changes");
+        save_prompt_requested_ = false;
     }
 
-    return result;
+    if (!ImGui::BeginPopupModal("Save Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (save_prompt_seen_) {
+            // Popup was visible on a previous frame but is now closed
+            // (Escape / click-outside) → treat as cancellation.
+            save_prompt_seen_ = false;
+            return SavePromptResult::Cancel;
+        }
+        // Popup not yet visible this frame (first frame after OpenPopup) — wait.
+        return std::nullopt;
+    }
+
+    // Popup is visible this frame
+    save_prompt_seen_ = true;
+
+    // ── Draw buttons ──
+    std::string scene_name = "Untitled";
+    if (current_file_path_.has_value()) {
+        scene_name = std::filesystem::path(*current_file_path_).filename().string();
+    }
+    ImGui::Text("Save changes to %s?", scene_name.c_str());
+
+    if (ImGui::Button("Save")) {
+        ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+        return SavePromptResult::Save;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Don't Save")) {
+        ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+        return SavePromptResult::Discard;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+        return SavePromptResult::Cancel;
+    }
+
+    // If popup was dismissed by Escape/click-outside, BeginPopupModal returned
+    // false above (handled). If we're here the popup is still open — no decision yet.
+    ImGui::EndPopup();
+    return std::nullopt;
 }
 
 // ── Pending op state machine ──
@@ -715,8 +732,17 @@ auto Editor::draw_pending_op_modal(be::EngineContext const& ctx) -> void {
         return;
     }
 
+    // Request the save prompt once — don't re-open if the user dismissed it
+    if (!save_prompt_requested_ && !save_prompt_seen_) {
+        save_prompt_requested_ = true;
+    }
+
     auto result = draw_save_prompt_modal();
-    switch (result) {
+    if (!result.has_value()) {
+        return;
+    }
+
+    switch (*result) {
         case SavePromptResult::Save: {
             auto save_result = save_scene();
             if (save_result.has_value()) {
@@ -789,6 +815,7 @@ auto Editor::draw_pending_op_modal(be::EngineContext const& ctx) -> void {
             BUDDD_LOG_INFO("Save prompt cancelled");
             break;
         }
+        default: break;
     }
 }
 

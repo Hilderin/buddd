@@ -117,7 +117,10 @@ private:
 
     // ── Scene management helpers ──
     auto update_window_title() -> void;
-    auto draw_save_prompt_modal() -> SavePromptResult;
+    /// Shows the save-prompt modal. Returns std::nullopt if the popup is not
+    /// yet open / not visible this frame (caller should wait and retry).
+    /// Returns SavePromptResult when the user makes a choice.
+    auto draw_save_prompt_modal() -> std::optional<SavePromptResult>;
     auto show_error_modal(const std::string& title, const std::string& message) -> void;
     auto draw_error_modals() -> void;
     auto draw_pending_op_modal(buddd::engine::EngineContext const& ctx) -> void;
@@ -153,6 +156,10 @@ private:
 
     // ── Exit-after-save flag (set by Platform dialog callbacks, checked in draw_ui) ──
     bool request_exit_next_frame_ = false;
+
+    // ── Save prompt state ──
+    bool save_prompt_requested_ = false;  // set when user triggers an action on dirty scene
+    bool save_prompt_seen_ = false;       // set when the popup was successfully shown at least once
 
     // ── Error modal state ──
     std::string error_modal_title_;
