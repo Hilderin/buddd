@@ -11,7 +11,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ## Phase 0 — Editor Foundation
 
-### F-00: Editor Scene State
+### ~~F-00: Editor Scene State~~ ✅
 
 **Goal:** The `Editor` class owns a `World*` and manages its lifecycle. No panels use it yet — this is the plumbing.
 
@@ -27,7 +27,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ---
 
-### F-01: Scene Load/Save via File Menu
+### ~~F-01: Scene Load/Save via File Menu~~ ✅
 
 **Goal:** File > Open loads a YAML scene into the Editor's World. File > Save / Save As persists it. Dirty state tracked.
 
@@ -47,7 +47,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ## Phase 1 — Hierarchy & Selection
 
-### F-02: Scene Panel — Entity Tree
+### ~~F-02: Scene Panel — Entity Tree~~ ✅
 
 **Goal:** ScenePanel renders the entity hierarchy tree from the Editor's World.
 
@@ -64,7 +64,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ---
 
-### F-03: Entity Selection
+### ~~F-03: Entity Selection~~ ✅
 
 **Goal:** Click an entity in ScenePanel → it becomes selected. Inspector clears when nothing selected.
 
@@ -81,7 +81,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ---
 
-### F-04: Scene Panel — Entity Operations
+### ~~F-04: Scene Panel — Entity Operations~~ ✅
 
 **Goal:** Create, Delete, Rename entities from the ScenePanel.
 
@@ -99,7 +99,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ## Phase 2 — Inspector
 
-### F-05: Inspector — Transform
+### ~~F-05: Inspector — Transform~~ ✅
 
 **Goal:** PropertiesPanel shows the selected entity's Transform. Position fields are editable.
 
@@ -118,7 +118,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ---
 
-### F-06: Inspector — Component Properties
+### ~~F-06: Inspector — Component Properties~~ ✅
 
 **Goal:** Inspector shows all attached components with type-appropriate property editors. Add/Remove components.
 
@@ -144,7 +144,7 @@ spec → critic → contract → critic → human validation → implement → r
 
 ## Phase 3 — Viewport
 
-### F-07: Viewport Panel — Scene Rendering
+### ~~F-07: Viewport Panel — Scene Rendering~~ ✅
 
 **Goal:** The ViewportPanel renders the 3D scene into an ImGui window using an editor camera.
 
@@ -382,64 +382,64 @@ spec → critic → contract → critic → human validation → implement → r
 ## Summary: Dependencies & Parallelism
 
 ```
-F-00 (Editor World)
+F-00 (Editor World) .......................... ✅
   │
-  ├── F-01 (Load/Save)
+  ├── F-01 (Load/Save) ....................... ✅
   │     │
-  │     ├── F-02 (Entity Tree) ←─ can start after F-00, before F-01
+  │     ├── F-02 (Entity Tree) ............... ✅
   │     │     │
-  │     │     ├── F-03 (Selection)
+  │     │     ├── F-03 (Selection) ........... ✅
   │     │     │     │
-  │     │     │     ├── F-04 (Entity Ops) ←─ can start after F-03
+  │     │     │     ├── F-04 (Entity Ops) .... ✅
   │     │     │     │
-  │     │     │     ├── F-05 (Inspector Transform)
+  │     │     │     ├── F-05 (Inspector Transform) ... ✅
   │     │     │     │     │
-  │     │     │     │     └── F-06 (Inspector Components)
+  │     │     │     │     └── F-06 (Inspector Components) ... ✅
   │     │     │     │
-  │     │     │     └── F-07 (Viewport Panel)
+  │     │     │     └── F-07 (Viewport Panel) .......... ✅
   │     │     │           │
-  │     │     │           ├── F-08 (Camera Controls)
+  │     │     │           ├── F-08 (Camera Controls) ◻──
   │     │     │           │     │
-  │     │     │           │     └── F-09 (Translate Gizmo)
+  │     │     │           │     └── F-09 (Translate Gizmo) ◻──
   │     │     │           │
-  │     │     │           └── F-13 (World::clone) ←─ engine work, independent
+  │     │     │           └── F-13 (World::clone) ◻──
   │     │     │                 │
-  │     │     │                 └── F-14 (Play/Stop + Game Tab)
+  │     │     │                 └── F-14 (Play/Stop + Game Tab) ◻──
   │     │     │                       │
-  │     │     │                       ├── F-15 (Read-Only Runtime)
+  │     │     │                       ├── F-15 (Read-Only Runtime) ◻──
   │     │     │                       │     │
-  │     │     │                       │     └── F-16 (Pause)
+  │     │     │                       │     └── F-16 (Pause) ◻──
   │     │     │                       │
-  │     │     │                       └── F-18 (Detached Tabs)
+  │     │     │                       └── F-18 (Detached Tabs) ◻──
   │     │     │
-  │     │     └── F-10 (Console) ←─ independent, no panel dependencies
+  │     │     └── F-10 (Console) ◻── independent, no panel deps
   │     │
-  │     └── F-11 (Project Panel) ←─ can start after F-01
+  │     └── F-11 (Project Panel) ◻──
   │           │
-  │           └── F-17 (Prefab Tab) ←─ needs most features
+  │           └── F-17 (Prefab Tab) ◻──
   │
-  └── F-12 (Assets Panel) ←─ can start after F-06 (needs Inspector drag-drop)
+  └── F-12 (Assets Panel) ◻──
 ```
 
 **Parallelization opportunities:**
 
 | Track A (Core editor loop) | Track B (Utility panels) | Track C (Engine work) |
 |---|---|---|
-| F-00 Editor World | F-10 Console Panel | F-13 World::clone() |
-| F-01 Load/Save | F-11 Project Panel | |
-| F-02 Entity Tree | F-12 Assets Panel | |
-| F-03 Selection | | |
-| F-04 Entity Ops | | |
-| F-05 Inspector Transform | | |
-| F-06 Inspector Components | | |
-| F-07 Viewport Panel | | |
-| F-08 Camera Controls | | |
-| F-09 Translate Gizmo | | |
-| F-14 Play/Stop | | |
-| F-15 Runtime Inspection | | |
-| F-16 Pause | | |
-| F-17 Prefab Tab | | |
-| F-18 Detached Tabs | | |
+| ~~F-00 Editor World~~ ✅ | F-10 Console Panel ◻️ | F-13 World::clone() ◻️ |
+| ~~F-01 Load/Save~~ ✅ | F-11 Project Panel ◻️ | |
+| ~~F-02 Entity Tree~~ ✅ | F-12 Assets Panel ◻️ | |
+| ~~F-03 Selection~~ ✅ | | |
+| ~~F-04 Entity Ops~~ ✅ | | |
+| ~~F-05 Inspector Transform~~ ✅ | | |
+| ~~F-06 Inspector Components~~ ✅ | | |
+| ~~F-07 Viewport Panel~~ ✅ | | |
+| F-08 Camera Controls ◻️ | | |
+| F-09 Translate Gizmo ◻️ | | |
+| F-14 Play/Stop ◻️ | | |
+| F-15 Runtime Inspection ◻️ | | |
+| F-16 Pause ◻️ | | |
+| F-17 Prefab Tab ◻️ | | |
+| F-18 Detached Tabs ◻️ | | |
 
 ---
 
@@ -448,12 +448,14 @@ F-00 (Editor World)
 If you want the fastest path to a tangible result:
 
 ```
-F-00 → F-01 → F-02 → F-03 → F-05 → F-07 → F-08
+✅ F-00 → ✅ F-01 → ✅ F-02 → ✅ F-03 → ✅ F-05 → ✅ F-07 → ◻️ F-08
 ```
-This gives you: Editor with a World → Load scene from disk → See entity tree → Click to select → See Transform in Inspector → See 3D viewport → Fly around. That's a complete feedback loop in ~8-12 days of work.
+✅ Complete: Editor with a World → Load scene from disk → See entity tree → Click to select → See Transform in Inspector → See 3D viewport. That's a complete feedback loop.
 
-Then: F-04 (entity ops) + F-06 (component editor) + F-09 (gizmo) = full scene editing.
-Then: F-10/11/12 (utility panels) in parallel with F-13/14 (play mode).
+What's next:
+- **F-08** (Camera Controls) — fly/look/pan in viewport ← most impactful next
+- **F-04** (entity ops) + **F-06** (component editor) + **F-09** (gizmo) = full scene editing
+- **F-10/11/12** (utility panels) in parallel with **F-13/14** (play mode)
 
 ---
 
