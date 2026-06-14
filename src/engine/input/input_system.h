@@ -51,6 +51,13 @@ public:
     [[nodiscard]] virtual auto is_mouse_pressed(MouseButton button) const noexcept -> bool = 0;
     [[nodiscard]] virtual auto is_mouse_released(MouseButton button) const noexcept -> bool = 0;
 
+    /// Set the OS cursor position to the given window client coordinates (top-left origin).
+    /// SDL3 backend: calls SDL_WarpMouseInWindow(). Headless: no-op.
+    /// Used to restore the cursor position after a relative-mouse-mode drag ends.
+    /// @param x  Window client X coordinate (screen pixels, top-left origin).
+    /// @param y  Window client Y coordinate (screen pixels, top-left origin).
+    virtual auto set_mouse_position(int x, int y) -> void = 0;
+
     InputSystem(const InputSystem&) = delete;
     auto operator=(const InputSystem&) -> InputSystem& = delete;
     InputSystem(InputSystem&&) = delete;

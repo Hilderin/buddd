@@ -42,4 +42,8 @@ auto InputSystemHeadless::is_mouse_released(MouseButton) const noexcept -> bool 
     return false;
 }
 
+auto InputSystemHeadless::set_mouse_position(int /*x*/, int /*y*/) -> void {
+    // No-op: headless mode has no cursor.
+}
+
 } // namespace buddd::engine

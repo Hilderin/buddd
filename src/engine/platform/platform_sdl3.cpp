@@ -173,6 +173,8 @@ auto PlatformSDL3::create_window(const WindowConfig& config) -> Result<std::uniq
             "SDL_CreateWindow failed: " + std::string(SDL_GetError()));
     }
 
+    input_system_.set_sdl_window(sdl_window);
+
     if (!SDL_SetWindowMinimumSize(sdl_window, 320, 240)) {
         BUDDD_LOG_WARN("SDL_SetWindowMinimumSize failed: {}", SDL_GetError());
     }

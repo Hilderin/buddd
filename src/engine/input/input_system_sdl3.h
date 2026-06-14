@@ -13,6 +13,10 @@ class InputSystemSDL3 final : public InputSystem {
 public:
     ~InputSystemSDL3() override = default;
 
+    /// Store the SDL_Window pointer for use by set_mouse_position().
+    /// Called by PlatformSDL3::create_window() after window creation.
+    void set_sdl_window(SDL_Window* window);
+
     // ── InputSystem overrides ──
     auto begin_frame() -> void override;
 
@@ -28,6 +32,8 @@ public:
     [[nodiscard]] auto is_mouse_pressed(MouseButton button) const noexcept -> bool override;
     [[nodiscard]] auto is_mouse_released(MouseButton button) const noexcept -> bool override;
 
+    auto set_mouse_position(int x, int y) -> void override;
+
     InputSystemSDL3(const InputSystemSDL3&) = delete;
     auto operator=(const InputSystemSDL3&) -> InputSystemSDL3& = delete;
     InputSystemSDL3(InputSystemSDL3&&) = delete;
@@ -42,6 +48,8 @@ private:
     /// Processes keyboard, mouse-motion, mouse-button, and mouse-wheel events.
     /// Not part of the abstract InputSystem interface.
     void on_sdl_event(const SDL_Event& event);
+
+    SDL_Window* sdl_window_{nullptr};
 
     // ── State (double-buffered) ──
     static constexpr size_t kKeyCount = static_cast<size_t>(KeyCode::_Count);

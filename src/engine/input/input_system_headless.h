@@ -22,6 +22,8 @@ public:
     [[nodiscard]] auto is_mouse_pressed(MouseButton) const noexcept -> bool override;
     [[nodiscard]] auto is_mouse_released(MouseButton) const noexcept -> bool override;
 
+    auto set_mouse_position(int x, int y) -> void override;
+
     InputSystemHeadless(const InputSystemHeadless&) = delete;
     auto operator=(const InputSystemHeadless&) -> InputSystemHeadless& = delete;
     InputSystemHeadless(InputSystemHeadless&&) = delete;

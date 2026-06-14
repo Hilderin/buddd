@@ -92,6 +92,16 @@ auto InputSystemSDL3::is_mouse_released(MouseButton button) const noexcept -> bo
     return !current_mouse_buttons_[idx] && previous_mouse_buttons_[idx];
 }
 
+auto InputSystemSDL3::set_mouse_position(int x, int y) -> void {
+    if (sdl_window_) {
+        SDL_WarpMouseInWindow(sdl_window_, static_cast<float>(x), static_cast<float>(y));
+    }
+}
+
+void InputSystemSDL3::set_sdl_window(SDL_Window* window) {
+    sdl_window_ = window;
+}
+
 // ── SDL event processing ──
 
 void InputSystemSDL3::on_sdl_event(const SDL_Event& event) {

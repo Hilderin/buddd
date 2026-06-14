@@ -18,8 +18,21 @@
 #include <string>
 #include <typeindex>
 
+#include "engine_service.h"
+#include "input/input_system.h"
+#include "platform/platform.h"
+#include "window/window.h"
+
 namespace buddd::editor {
 namespace {
+
+/// Per-handle state for indefinite drag-to-scrub using relative mouse mode.
+struct DragState {
+    float initial_value;      ///< Value when the drag started.
+    float drag_accumulator;   ///< Accumulated raw mouse delta since drag start.
+    float start_x;            ///< ImGui window X coordinate at drag start.
+    float start_y;            ///< ImGui window Y coordinate at drag start.
+};
 
 /// Draw a composite axis input widget.
 ///
@@ -44,8 +57,6 @@ namespace {
 auto draw_axis_widget(const char* id, float* value, ImVec4 color,
                       float drag_speed, const EditorContext& ctx,
                       const char* tooltip = nullptr) -> bool {
-    (void)ctx;  // reserved for future use
-
     ImGui::PushID(id);
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -80,17 +91,32 @@ auto draw_axis_widget(const char* id, float* value, ImVec4 color,
         ImGui::SetTooltip("%s", tooltip);
     }
 
-    // Drag handling
-    static std::unordered_map<const void*, float> initial_values;
+    // Indefinite drag-to-scrub using relative mouse mode
+    static std::unordered_map<const void*, DragState> drag_states;
     bool drag_changed = false;
 
     if (ImGui::IsItemActive()) {
         if (ImGui::IsItemActivated()) {
-            initial_values[static_cast<const void*>(value)] = *value;
+            // Save initial state and enable relative mouse mode
+            DragState ds;
+            ds.initial_value = *value;
+            ds.drag_accumulator = 0.0f;
+            ImVec2 mouse_pos = ImGui::GetMousePos();
+            ds.start_x = mouse_pos.x;
+            ds.start_y = mouse_pos.y;
+            drag_states[static_cast<const void*>(value)] = ds;
+
+            ctx.engine.window.set_mouse_capture(true);
+
+            BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
+                "drag start: handle={} initial_value={}", id, ds.initial_value);
         }
-        float pixel_delta = ImGui::GetMouseDragDelta().x;
-        float new_val = initial_values[static_cast<const void*>(value)]
-                        + pixel_delta * drag_speed * 0.01f;
+
+        auto& ds = drag_states[static_cast<const void*>(value)];
+        auto& input = ctx.engine.services.platform().input_system();
+        ds.drag_accumulator += input.mouse_delta().first;
+        float new_val = ds.initial_value + ds.drag_accumulator * drag_speed * 0.01f;
+
         if (new_val != *value) {
             *value = new_val;
             drag_changed = true;
@@ -98,7 +124,23 @@ auto draw_axis_widget(const char* id, float* value, ImVec4 color,
     }
 
     if (ImGui::IsItemDeactivated()) {
-        initial_values.erase(static_cast<const void*>(value));
+        auto it = drag_states.find(static_cast<const void*>(value));
+        if (it != drag_states.end()) {
+            const auto& ds = it->second;
+
+            ctx.engine.window.set_mouse_capture(false);
+
+            auto& input = ctx.engine.services.platform().input_system();
+            input.set_mouse_position(static_cast<int>(ds.start_x),
+                                     static_cast<int>(ds.start_y));
+
+            BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
+                "drag end: handle={} final_value={}", id, *value);
+            BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
+                "warp mouse to ({}, {})", ds.start_x, ds.start_y);
+
+            drag_states.erase(it);
+        }
     }
 
     ImGui::PopID();
@@ -169,22 +211,52 @@ auto register_builtin_inspector_editors() -> void {
 
             ImGui::InvisibleButton("##handle", ImVec2(20.0f, widget_height));
 
-            // Drag-to-scrub
-            static std::unordered_map<const void*, float> initial_values;
+            // Indefinite drag-to-scrub using relative mouse mode
+            static std::unordered_map<const void*, DragState> drag_states;
             if (ImGui::IsItemActive()) {
                 if (ImGui::IsItemActivated()) {
-                    initial_values[static_cast<const void*>(&value)] = value;
+                    DragState ds;
+                    ds.initial_value = value;
+                    ds.drag_accumulator = 0.0f;
+                    ImVec2 mouse_pos = ImGui::GetMousePos();
+                    ds.start_x = mouse_pos.x;
+                    ds.start_y = mouse_pos.y;
+                    drag_states[static_cast<const void*>(&value)] = ds;
+
+                    ctx.engine.window.set_mouse_capture(true);
+
+                    BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
+                        "drag start: handle={} initial_value={}", label.c_str(), ds.initial_value);
                 }
-                float pixel_delta = ImGui::GetMouseDragDelta().x;
-                float new_val = initial_values[static_cast<const void*>(&value)]
-                                + pixel_delta * speed * 0.01f;
+
+                auto& ds = drag_states[static_cast<const void*>(&value)];
+                auto& input = ctx.engine.services.platform().input_system();
+                ds.drag_accumulator += input.mouse_delta().first;
+                float new_val = ds.initial_value + ds.drag_accumulator * speed * 0.01f;
+
                 if (new_val != value) {
                     value = new_val;
                     changed = true;
                 }
             }
             if (ImGui::IsItemDeactivated()) {
-                initial_values.erase(static_cast<const void*>(&value));
+                auto it = drag_states.find(static_cast<const void*>(&value));
+                if (it != drag_states.end()) {
+                    const auto& ds = it->second;
+
+                    ctx.engine.window.set_mouse_capture(false);
+
+                    auto& input = ctx.engine.services.platform().input_system();
+                    input.set_mouse_position(static_cast<int>(ds.start_x),
+                                             static_cast<int>(ds.start_y));
+
+                    BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
+                        "drag end: handle={} final_value={}", label.c_str(), value);
+                    BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
+                        "warp mouse to ({}, {})", ds.start_x, ds.start_y);
+
+                    drag_states.erase(it);
+                }
             }
 
             ImGui::PopID();
