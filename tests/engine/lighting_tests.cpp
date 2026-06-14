@@ -18,6 +18,7 @@
 #include "engine_service.h"
 #include "platform/platform.h"
 #include "window/window.h"
+#include "math/color.h"
 #include "math/math.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -125,20 +126,20 @@ TEST_CASE("Vertex struct layout", "[lighting]") {
 // AC-002: DirectionalLightComponent construction and accessors
 // ============================================================================
 TEST_CASE("DirectionalLightComponent construction and accessors", "[lighting]") {
-    DirectionalLightComponent lc(math::Vec3{0.2f, 0.4f, 0.6f}, 2.5f);
+    DirectionalLightComponent lc(math::Color{0.2f, 0.4f, 0.6f}, 2.5f);
 
     // Const accessors
-    REQUIRE(lc.color().x == Approx(0.2f).margin(TOL));
-    REQUIRE(lc.color().y == Approx(0.4f).margin(TOL));
-    REQUIRE(lc.color().z == Approx(0.6f).margin(TOL));
+    REQUIRE(lc.color().r == Approx(0.2f).margin(TOL));
+    REQUIRE(lc.color().g == Approx(0.4f).margin(TOL));
+    REQUIRE(lc.color().b == Approx(0.6f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(2.5f).margin(TOL));
 
     // Mutate
-    lc.color() = math::Vec3{1.0f, 0.0f, 0.0f};
+    lc.color() = math::Color{1.0f, 0.0f, 0.0f};
     lc.intensity() = 0.5f;
-    REQUIRE(lc.color().x == Approx(1.0f).margin(TOL));
-    REQUIRE(lc.color().y == Approx(0.0f).margin(TOL));
-    REQUIRE(lc.color().z == Approx(0.0f).margin(TOL));
+    REQUIRE(lc.color().r == Approx(1.0f).margin(TOL));
+    REQUIRE(lc.color().g == Approx(0.0f).margin(TOL));
+    REQUIRE(lc.color().b == Approx(0.0f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(0.5f).margin(TOL));
 }
 
@@ -146,11 +147,11 @@ TEST_CASE("DirectionalLightComponent construction and accessors", "[lighting]") 
 // AC-003: PointLightComponent construction and accessors
 // ============================================================================
 TEST_CASE("PointLightComponent construction and accessors", "[lighting]") {
-    PointLightComponent lc(math::Vec3{0.1f, 0.2f, 0.3f}, 1.5f, 20.0f);
+    PointLightComponent lc(math::Color{0.1f, 0.2f, 0.3f}, 1.5f, 20.0f);
 
-    REQUIRE(lc.color().x == Approx(0.1f).margin(TOL));
-    REQUIRE(lc.color().y == Approx(0.2f).margin(TOL));
-    REQUIRE(lc.color().z == Approx(0.3f).margin(TOL));
+    REQUIRE(lc.color().r == Approx(0.1f).margin(TOL));
+    REQUIRE(lc.color().g == Approx(0.2f).margin(TOL));
+    REQUIRE(lc.color().b == Approx(0.3f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(1.5f).margin(TOL));
     REQUIRE(lc.range() == Approx(20.0f).margin(TOL));
 
@@ -167,9 +168,9 @@ TEST_CASE("PointLightComponent construction and accessors", "[lighting]") {
 // AC-004: SpotLightComponent construction and accessors
 // ============================================================================
 TEST_CASE("SpotLightComponent construction and accessors", "[lighting]") {
-    SpotLightComponent lc(math::Vec3{0.5f, 0.5f, 0.5f}, 2.0f, 15.0f, 0.5f, 1.0f);
+    SpotLightComponent lc(math::Color{0.5f, 0.5f, 0.5f}, 2.0f, 15.0f, 0.5f, 1.0f);
 
-    REQUIRE(lc.color().x == Approx(0.5f).margin(TOL));
+    REQUIRE(lc.color().r == Approx(0.5f).margin(TOL));
     REQUIRE(lc.intensity() == Approx(2.0f).margin(TOL));
     REQUIRE(lc.range() == Approx(15.0f).margin(TOL));
     REQUIRE(lc.inner_angle() == Approx(0.5f).margin(TOL));
@@ -196,7 +197,7 @@ TEST_CASE("Light component on_attach no-op", "[lighting]") {
     // DirectionalLightComponent
     auto e1 = world.add_entity();
     auto& dlc = e1.add_component<DirectionalLightComponent>();
-    REQUIRE(dlc.color().x == Approx(1.0f).margin(TOL));
+    REQUIRE(dlc.color().r == Approx(1.0f).margin(TOL));
 
     // PointLightComponent
     auto e2 = world.add_entity();
@@ -378,15 +379,11 @@ TEST_CASE("RenderSystem collects directional lights", "[lighting]") {
 
     // 3 directional lights at different rotations
     auto dl1 = world.add_entity();
-    dl1.add_component<DirectionalLightComponent>(math::Vec3{1,0,0}, 1.0f);
-    dl1.transform().rotation = math::Quat::from_euler(0, 0, 0);
-
     auto dl2 = world.add_entity();
-    dl2.add_component<DirectionalLightComponent>(math::Vec3{0,1,0}, 1.0f);
-    dl2.transform().rotation = math::Quat::from_euler(0, math::radians(45.0f), 0);
-
     auto dl3 = world.add_entity();
-    dl3.add_component<DirectionalLightComponent>(math::Vec3{0,0,1}, 1.0f);
+    dl1.add_component<DirectionalLightComponent>(math::Color{1,0,0}, 1.0f);
+    dl2.add_component<DirectionalLightComponent>(math::Color{0,1,0}, 1.0f);
+    dl3.add_component<DirectionalLightComponent>(math::Color{0,0,1}, 1.0f);
     dl3.transform().rotation = math::Quat::from_euler(math::radians(30.0f), 0, 0);
 
     // Create a PhongMaterial (lit) mesh
@@ -427,7 +424,7 @@ TEST_CASE("RenderSystem collects point lights", "[lighting]") {
 
     // Point light at (5, 3, 1)
     auto pl = world.add_entity();
-    pl.add_component<PointLightComponent>(math::Vec3{1,1,1}, 1.0f, 10.0f);
+    pl.add_component<PointLightComponent>(math::Color{1,1,1}, 1.0f, 10.0f);
     pl.transform().position = math::Vec3{5.0f, 3.0f, 1.0f};
 
     auto phong_mat = std::make_shared<PhongMaterial>(device);
@@ -462,7 +459,7 @@ TEST_CASE("RenderSystem collects spot lights", "[lighting]") {
     // Spot light at (0, 2, 0) looking down (-Y)
     auto sl = world.add_entity();
     sl.add_component<SpotLightComponent>(
-        math::Vec3{1,1,1}, 1.0f, 10.0f,
+        math::Color{1,1,1}, 1.0f, 10.0f,
         math::radians(20.0f), math::radians(45.0f));
     sl.transform().position = math::Vec3{0.0f, 2.0f, 0.0f};
     sl.transform().rotation = math::Quat::from_euler(math::radians(-90.0f), 0.0f, 0.0f);
@@ -555,7 +552,7 @@ TEST_CASE("Light color * intensity premultiplied", "[lighting]") {
     // Directional light with color (0.5, 0.5, 0.5), intensity 2.0
     auto dl = world.add_entity();
     dl.add_component<DirectionalLightComponent>(
-        math::Vec3{0.5f, 0.5f, 0.5f}, 2.0f);
+        math::Color{0.5f, 0.5f, 0.5f}, 2.0f);
 
     auto phong_mat = std::make_shared<PhongMaterial>(device);
     make_mesh_entity(world, device, phong_mat);
@@ -1042,7 +1039,7 @@ TEST_CASE("Spot light cone uniforms", "[lighting]") {
     float outer_rad = math::radians(60.0f);
     auto sl = world.add_entity();
     sl.add_component<SpotLightComponent>(
-        math::Vec3{1,1,1}, 1.0f, 10.0f, inner_rad, outer_rad);
+        math::Color{1,1,1}, 1.0f, 10.0f, inner_rad, outer_rad);
     sl.transform().position = math::Vec3(0.0f, 0.0f, 0.0f);
     // Identity rotation → direction = (0, 0, -1)
 

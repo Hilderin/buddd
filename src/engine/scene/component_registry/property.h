@@ -2,6 +2,7 @@
 
 #include "error.h"
 
+#include <algorithm>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -30,10 +31,20 @@ struct PropertyFlags {
     // Enum choices (UI display names for int32_t properties)
     std::vector<std::string> enum_choices;
 
+    // String tags for extensible per-property metadata (e.g., "rgb" for color picker).
+    std::vector<std::string> tags_;
+
     auto min(float v) noexcept -> PropertyFlags& { min_value = v; return *this; }
     auto max(float v) noexcept -> PropertyFlags& { max_value = v; return *this; }
     auto step(float v) noexcept -> PropertyFlags& { step_value = v; return *this; }
     auto choices(std::vector<std::string> c) noexcept -> PropertyFlags& { enum_choices = std::move(c); return *this; }
+    auto tag(std::string t) noexcept -> PropertyFlags& {
+        tags_.push_back(std::move(t));
+        return *this;
+    }
+    auto has_tag(const std::string& t) const noexcept -> bool {
+        return std::find(tags_.begin(), tags_.end(), t) != tags_.end();
+    }
 };
 
 /// Functor that checks whether a property's current value equals its registered default.

@@ -19,9 +19,10 @@
 9. [Iteration #9: Specs Move to `.specs/` — Historical Snapshots Organized by Sprint](#iteration-9-specs-move-to-specs--historical-snapshots-organized-by-sprint)
 10. [Iteration #10: Remove the Constitution — Governance Simplification](#iteration-10-remove-the-constitution--governance-simplification)
 11. [Iteration #11: Definition of Done for Code Implementer](#iteration-11-definition-of-done-for-code-implementer)
-12. [Cross-Cutting Observations](#cross-cutting-observations)
-13. [Ongoing Concerns](#ongoing-concerns)
-14. [Improvement Hypotheses](#improvement-hypotheses)
+12. [Iteration #12: Workflow Simplification — Remove Spec Critic, Code Review, Governance](#iteration-12-workflow-simplification--remove-spec-critic-code-review-governance)
+13. [Cross-Cutting Observations](#cross-cutting-observations)
+14. [Ongoing Concerns](#ongoing-concerns)
+15. [Improvement Hypotheses](#improvement-hypotheses)
 
 ---
 
@@ -272,6 +273,22 @@ Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-s
 - Better results observed in the coder, it runned tests in debug and release. We saw that some tests failed n release prior to the definition of done addion.
 - I still need to remind the LLM the create integration tests.
 
+
+---
+
+## Iteration #12: Workflow Simplification — Remove Spec Critic, Code Review, Governance
+
+**Hypothesis:** Removing spec-critic, code-reviewer, and governance-reviewer from the automated workflow — while keeping spec validation in human hands — will significantly reduce end-to-end loop time (currently ~30+ min per feature). The quality impact is unknown; these gates may have been catching real issues, or they may have been redundant with human review and the remaining critic steps.
+
+**Method:**
+- Removed spec-critic, code-reviewer, and governance-reviewer from the required workflow diagram in `orchestrator.md`
+- Added a new "human spec validation" gate between spec-author and implementation-contract-author: after the spec is drafted, the human explicitly approves or requests changes before any contract work begins
+- Kept the existing human validation gate before code-implementer
+- Kept implementation-contract-critic as the only automated critic in the loop
+- Agent definitions and files were not deleted — only the orchestrator's workflow was adjusted
+
+**Observations:**
+- in progress
 
 ---
 

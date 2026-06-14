@@ -510,7 +510,7 @@ TEST_CASE("POINT_LIGHT_COMPONENT_PROPERTIES", "[component-registry]") {
     REQUIRE(info->property_count() == 3);
 
     REQUIRE(info->property_name(0) == "color");
-    REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Vec3)));
+    REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Color)));
 
     REQUIRE(info->property_name(1) == "intensity");
     REQUIRE(info->property_type_index(1) == std::type_index(typeid(float)));
@@ -532,7 +532,7 @@ TEST_CASE("DIRECTIONAL_LIGHT_COMPONENT_PROPERTIES", "[component-registry]") {
     REQUIRE(info->property_count() == 2);
 
     REQUIRE(info->property_name(0) == "color");
-    REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Vec3)));
+    REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Color)));
 
     REQUIRE(info->property_name(1) == "intensity");
     REQUIRE(info->property_type_index(1) == std::type_index(typeid(float)));
@@ -549,7 +549,7 @@ TEST_CASE("SPOT_LIGHT_COMPONENT_PROPERTIES", "[component-registry]") {
     REQUIRE(info->property_count() == 5);
 
     REQUIRE(info->property_name(0) == "color");
-    REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Vec3)));
+    REQUIRE(info->property_type_index(0) == std::type_index(typeid(math::Color)));
 
     REQUIRE(info->property_name(1) == "intensity");
     REQUIRE(info->property_type_index(1) == std::type_index(typeid(float)));
@@ -716,7 +716,7 @@ TEST_CASE("ROUND_TRIP_POINT_LIGHT", "[component-registry]") {
     auto comp1 = registry.create("point_light");
     REQUIRE(comp1.has_value());
     auto& pl1 = static_cast<PointLightComponent&>(*comp1.value());
-    pl1.color() = math::Vec3{0.5f, 0.6f, 0.7f};
+    pl1.color() = math::Color{0.5f, 0.6f, 0.7f};
     pl1.intensity() = 2.5f;
     pl1.range() = 20.0f;
 
@@ -731,9 +731,9 @@ TEST_CASE("ROUND_TRIP_POINT_LIGHT", "[component-registry]") {
     REQUIRE(result.has_value());
 
     auto& pl2 = static_cast<PointLightComponent&>(*comp2.value());
-    REQUIRE(pl2.color().x == Approx(pl1.color().x).margin(1e-5f));
-    REQUIRE(pl2.color().y == Approx(pl1.color().y).margin(1e-5f));
-    REQUIRE(pl2.color().z == Approx(pl1.color().z).margin(1e-5f));
+    REQUIRE(pl2.color().r == Approx(pl1.color().r).margin(1e-5f));
+    REQUIRE(pl2.color().g == Approx(pl1.color().g).margin(1e-5f));
+    REQUIRE(pl2.color().b == Approx(pl1.color().b).margin(1e-5f));
     REQUIRE(pl2.intensity() == Approx(pl1.intensity()).margin(1e-5f));
     REQUIRE(pl2.range() == Approx(pl1.range()).margin(1e-5f));
 }
@@ -749,7 +749,7 @@ TEST_CASE("ROUND_TRIP_DIRECTIONAL_LIGHT", "[component-registry]") {
     auto comp1 = registry.create("directional_light");
     REQUIRE(comp1.has_value());
     auto& dl1 = static_cast<DirectionalLightComponent&>(*comp1.value());
-    dl1.color() = math::Vec3{0.2f, 0.3f, 0.4f};
+    dl1.color() = math::Color{0.2f, 0.3f, 0.4f};
     dl1.intensity() = 3.0f;
 
     TestEngine test_engine;
@@ -763,9 +763,9 @@ TEST_CASE("ROUND_TRIP_DIRECTIONAL_LIGHT", "[component-registry]") {
     REQUIRE(result.has_value());
 
     auto& dl2 = static_cast<DirectionalLightComponent&>(*comp2.value());
-    REQUIRE(dl2.color().x == Approx(dl1.color().x).margin(1e-5f));
-    REQUIRE(dl2.color().y == Approx(dl1.color().y).margin(1e-5f));
-    REQUIRE(dl2.color().z == Approx(dl1.color().z).margin(1e-5f));
+    REQUIRE(dl2.color().r == Approx(dl1.color().r).margin(1e-5f));
+    REQUIRE(dl2.color().g == Approx(dl1.color().g).margin(1e-5f));
+    REQUIRE(dl2.color().b == Approx(dl1.color().b).margin(1e-5f));
     REQUIRE(dl2.intensity() == Approx(dl1.intensity()).margin(1e-5f));
 }
 
@@ -780,7 +780,7 @@ TEST_CASE("ROUND_TRIP_SPOT_LIGHT", "[component-registry]") {
     auto comp1 = registry.create("spot_light");
     REQUIRE(comp1.has_value());
     auto& sl1 = static_cast<SpotLightComponent&>(*comp1.value());
-    sl1.color() = math::Vec3{0.1f, 0.2f, 0.3f};
+    sl1.color() = math::Color{0.1f, 0.2f, 0.3f};
     sl1.intensity() = 4.0f;
     sl1.range() = 30.0f;
     sl1.inner_angle() = 0.3f;
@@ -797,9 +797,9 @@ TEST_CASE("ROUND_TRIP_SPOT_LIGHT", "[component-registry]") {
     REQUIRE(result.has_value());
 
     auto& sl2 = static_cast<SpotLightComponent&>(*comp2.value());
-    REQUIRE(sl2.color().x == Approx(sl1.color().x).margin(1e-5f));
-    REQUIRE(sl2.color().y == Approx(sl1.color().y).margin(1e-5f));
-    REQUIRE(sl2.color().z == Approx(sl1.color().z).margin(1e-5f));
+    REQUIRE(sl2.color().r == Approx(sl1.color().r).margin(1e-5f));
+    REQUIRE(sl2.color().g == Approx(sl1.color().g).margin(1e-5f));
+    REQUIRE(sl2.color().b == Approx(sl1.color().b).margin(1e-5f));
     REQUIRE(sl2.intensity() == Approx(sl1.intensity()).margin(1e-5f));
     REQUIRE(sl2.range() == Approx(sl1.range()).margin(1e-5f));
     REQUIRE(sl2.inner_angle() == Approx(sl1.inner_angle()).margin(1e-5f));

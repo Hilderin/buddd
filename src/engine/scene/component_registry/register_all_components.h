@@ -4,7 +4,7 @@ namespace buddd::engine {
 
 class ComponentRegistry;
 
-/// Pre-register the eight built-in types in TypeRegistry.
+/// Pre-register the nine built-in types in TypeRegistry.
 /// Must be called once during engine startup, before register_all_components().
 void register_builtin_types();
 

@@ -52,9 +52,9 @@ auto RenderSystem::render_scene() -> void {
         dir.normalize();
         auto& ld = light_data[light_count];
         ld.position_or_dir = {dir.x, dir.y, dir.z, 0.0f};
-        ld.color = {lc.color().x * lc.intensity(),
-                     lc.color().y * lc.intensity(),
-                     lc.color().z * lc.intensity(), 1.0f};
+        ld.color = {lc.color().r * lc.intensity(),
+                     lc.color().g * lc.intensity(),
+                     lc.color().b * lc.intensity(), 1.0f};
         ld.range = 0.0f;
         ld.spot_direction = {0.0f, 0.0f, 0.0f, 0.0f};
         ld.inner_cone_cos = 1.0f;
@@ -70,9 +70,9 @@ auto RenderSystem::render_scene() -> void {
         auto pos_v4 = world_mat * math::Vec4{0.0f, 0.0f, 0.0f, 1.0f};
         auto& ld = light_data[light_count];
         ld.position_or_dir = {pos_v4.x, pos_v4.y, pos_v4.z, 1.0f};
-        ld.color = {lc.color().x * lc.intensity(),
-                     lc.color().y * lc.intensity(),
-                     lc.color().z * lc.intensity(), 1.0f};
+        ld.color = {lc.color().r * lc.intensity(),
+                     lc.color().g * lc.intensity(),
+                     lc.color().b * lc.intensity(), 1.0f};
         ld.range = lc.range();
         ld.spot_direction = {0.0f, 0.0f, 0.0f, 0.0f};
         ld.inner_cone_cos = 1.0f;
@@ -92,9 +92,9 @@ auto RenderSystem::render_scene() -> void {
         dir.normalize();
         auto& ld = light_data[light_count];
         ld.position_or_dir = {pos_v4.x, pos_v4.y, pos_v4.z, 2.0f};
-        ld.color = {lc.color().x * lc.intensity(),
-                     lc.color().y * lc.intensity(),
-                     lc.color().z * lc.intensity(), 1.0f};
+        ld.color = {lc.color().r * lc.intensity(),
+                     lc.color().g * lc.intensity(),
+                     lc.color().b * lc.intensity(), 1.0f};
         ld.range = lc.range();
         ld.spot_direction = {dir.x, dir.y, dir.z, 0.0f};
         ld.inner_cone_cos = std::cos(lc.inner_angle());

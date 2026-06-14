@@ -105,7 +105,7 @@ auto PbrMaterial::set_data(const PbrMaterialData& data) -> void {
     impl_->data = data;
 
     // Set uniform factors
-    (void)impl_->inner->set_uniform("u_base_color_factor", data.base_color_factor);
+    (void)impl_->inner->set_uniform("u_base_color_factor", data.base_color_factor.to_vec4());
     (void)impl_->inner->set_uniform("u_metallic_factor", data.metallic_factor);
     (void)impl_->inner->set_uniform("u_roughness_factor", data.roughness_factor);
     (void)impl_->inner->set_uniform("u_emissive_factor", data.emissive_factor);

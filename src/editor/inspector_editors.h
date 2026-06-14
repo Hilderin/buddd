@@ -2,6 +2,7 @@
 
 #include "editor_context.h"
 
+#include <algorithm>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
+#include <vector>
 
 namespace buddd::engine {
 struct SerializationContext;
@@ -28,6 +30,15 @@ struct EditorFlags {
     float min_value = -std::numeric_limits<float>::max();
     float max_value = std::numeric_limits<float>::max();
     float step_value = 0.0f;
+    std::vector<std::string> tags_;
+
+    auto tag(std::string t) noexcept -> EditorFlags& {
+        tags_.push_back(std::move(t));
+        return *this;
+    }
+    auto has_tag(const std::string& t) const noexcept -> bool {
+        return std::find(tags_.begin(), tags_.end(), t) != tags_.end();
+    }
 };
 
 /// Abstract base for a single type editor widget.

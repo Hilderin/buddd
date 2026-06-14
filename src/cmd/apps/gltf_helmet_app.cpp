@@ -50,7 +50,7 @@ auto buddd::cmd::app::GltfHelmetApp::setup(be::EngineContext const& ctx)
     {
         auto light_entity = ctx.world.add_entity();
         light_entity.add_component<be::DirectionalLightComponent>(
-            be::math::Vec3{1.0f, 1.0f, 1.0f},  // white
+            be::math::Color{1.0f, 1.0f, 1.0f},  // white
             1.5f                                 // intensity
         );
         light_entity.transform().rotation =

@@ -230,7 +230,7 @@ The Inspector renders each component property with a type-appropriate editor wid
 | `Vec2` | Composite axis widgets: colored drag-handle (red=X, green=Y) + InputFloat |
 | `Vec3` | Composite axis widgets: colored drag-handle (red=X, green=Y, blue=Z) + InputFloat |
 | `Vec4` | Composite axis widgets: colored drag-handle (red=X, green=Y, blue=Z, gray=W) + InputFloat |
-| `Color` (Vec3/Vec4 interpreted as RGB/RGBA) | Color picker + float fields (not yet implemented) |
+| `Color` | Color picker — uses `PropertyFlags::tag("rgb")` to decide between `ImGui::ColorEdit3` (no alpha) and `ImGui::ColorEdit4` (with alpha) |
 | `Entity reference` | Text field showing entity name (read-only in MVP1) |
 | `Asset reference` | Text field showing asset path + drag-accept target (not yet implemented) |
 | `Quat` | Euler angles in degrees via composite axis widgets (Pitch=red, Yaw=green, Roll=blue), wrapped to [-180, 180] |

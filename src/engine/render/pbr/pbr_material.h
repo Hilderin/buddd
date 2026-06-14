@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math/color.h"
 #include "render/material.h"
 
 #include <memory>
@@ -13,7 +14,7 @@ class RenderDevice;
 class Texture;
 
 struct PbrMaterialData {
-    math::Vec4 base_color_factor{1.0f, 1.0f, 1.0f, 1.0f};
+    math::Color base_color_factor{1.0f, 1.0f, 1.0f, 1.0f};
     float metallic_factor{1.0f};
     float roughness_factor{1.0f};
     math::Vec3 emissive_factor{0.0f, 0.0f, 0.0f};

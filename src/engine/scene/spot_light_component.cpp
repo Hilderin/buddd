@@ -2,16 +2,16 @@
 
 namespace buddd::engine {
 
-SpotLightComponent::SpotLightComponent(math::Vec3 color, float intensity, float range,
+SpotLightComponent::SpotLightComponent(math::Color color, float intensity, float range,
                                        float inner_angle, float outer_angle)
     : color_(color), intensity_(intensity), range_(range),
       inner_angle_(inner_angle), outer_angle_(outer_angle) {}
 
-auto SpotLightComponent::color() noexcept -> math::Vec3& {
+auto SpotLightComponent::color() noexcept -> math::Color& {
     return color_;
 }
 
-auto SpotLightComponent::color() const noexcept -> const math::Vec3& {
+auto SpotLightComponent::color() const noexcept -> const math::Color& {
     return color_;
 }
 

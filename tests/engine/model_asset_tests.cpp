@@ -153,7 +153,7 @@ TEST_CASE("PbrMaterialData fields settable and readable via set_data()/data()",
     auto mat = std::make_shared<PbrMaterial>(device);
 
     PbrMaterialData data;
-    data.base_color_factor = math::Vec4{0.5f, 0.3f, 0.2f, 1.0f};
+    data.base_color_factor = math::Color{0.5f, 0.3f, 0.2f, 1.0f};
     data.metallic_factor = 0.8f;
     data.roughness_factor = 0.3f;
     data.emissive_factor = math::Vec3{0.1f, 0.0f, 0.0f};
@@ -162,10 +162,10 @@ TEST_CASE("PbrMaterialData fields settable and readable via set_data()/data()",
     mat->set_data(data);
 
     const auto& stored = mat->data();
-    REQUIRE(stored.base_color_factor.x == Approx(0.5f));
-    REQUIRE(stored.base_color_factor.y == Approx(0.3f));
-    REQUIRE(stored.base_color_factor.z == Approx(0.2f));
-    REQUIRE(stored.base_color_factor.w == Approx(1.0f));
+    REQUIRE(stored.base_color_factor.r == Approx(0.5f));
+    REQUIRE(stored.base_color_factor.g == Approx(0.3f));
+    REQUIRE(stored.base_color_factor.b == Approx(0.2f));
+    REQUIRE(stored.base_color_factor.a == Approx(1.0f));
     REQUIRE(stored.metallic_factor == Approx(0.8f));
     REQUIRE(stored.roughness_factor == Approx(0.3f));
     REQUIRE(stored.emissive_factor.x == Approx(0.1f));
@@ -384,7 +384,7 @@ TEST_CASE("glTF material without textures", "[model][headless]") {
 
     auto mat = std::make_shared<PbrMaterial>(device);
     PbrMaterialData data;
-    data.base_color_factor = math::Vec4{0.5f, 0.5f, 0.5f, 1.0f};
+    data.base_color_factor = math::Color{0.5f, 0.5f, 0.5f, 1.0f};
     data.metallic_factor = 0.0f;
     data.roughness_factor = 1.0f;
     data.base_color_texture = nullptr;
@@ -396,7 +396,7 @@ TEST_CASE("glTF material without textures", "[model][headless]") {
     mat->set_data(data);
 
     const auto& stored = mat->data();
-    REQUIRE(stored.base_color_factor.x == Approx(0.5f));
+    REQUIRE(stored.base_color_factor.r == Approx(0.5f));
     REQUIRE(stored.metallic_factor == Approx(0.0f));
     REQUIRE(stored.roughness_factor == Approx(1.0f));
     REQUIRE(stored.base_color_texture == nullptr);

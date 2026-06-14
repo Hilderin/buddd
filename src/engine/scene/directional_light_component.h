@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/vec3.h"
+#include "math/color.h"
 #include "scene/component.h"
 
 namespace buddd::engine {
@@ -11,19 +11,19 @@ namespace buddd::engine {
 class DirectionalLightComponent : public Component {
 public:
     DirectionalLightComponent(
-        math::Vec3 color = math::Vec3{1.0f, 1.0f, 1.0f},
+        math::Color color = math::Color{1.0f, 1.0f, 1.0f},
         float intensity = 1.0f
     );
 
-    auto color() noexcept -> math::Vec3&;
-    auto color() const noexcept -> const math::Vec3&;
+    auto color() noexcept -> math::Color&;
+    auto color() const noexcept -> const math::Color&;
     auto intensity() noexcept -> float&;
     auto intensity() const noexcept -> float;
 
     auto on_attach() -> void override {}
 
 private:
-    math::Vec3 color_{1.0f, 1.0f, 1.0f};
+    math::Color color_{1.0f, 1.0f, 1.0f};
     float intensity_ = 1.0f;
 };
 

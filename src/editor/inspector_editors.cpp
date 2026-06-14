@@ -3,6 +3,7 @@
 #include "editor.h"
 #include "log/log.h"
 
+#include "math/color.h"
 #include "math/quat.h"
 #include "math/vec2.h"
 #include "math/vec3.h"
@@ -342,8 +343,47 @@ auto register_builtin_inspector_editors() -> void {
         }
     );
 
+    // math::Color
+    InspectorTypeEditorRegistry::register_editor<buddd::engine::math::Color>(
+        [](const std::string& id, buddd::engine::math::Color& value,
+           const EditorFlags& flags,
+           const EditorContext& ctx) -> bool {
+            float vals[4] = {value.r, value.g, value.b, value.a};
+            ImGui::PushID(id.c_str());
+            bool changed = false;
+
+            if (flags.has_tag("rgb")) {
+                // 3-channel color picker (no alpha)
+                changed = ImGui::ColorEdit3("##color", vals,
+                    ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+                if (changed) {
+                    value.r = vals[0];
+                    value.g = vals[1];
+                    value.b = vals[2];
+                    // alpha unchanged
+                }
+            } else {
+                // 4-channel color picker (with alpha)
+                changed = ImGui::ColorEdit4("##color", vals,
+                    ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+                if (changed) {
+                    value.r = vals[0];
+                    value.g = vals[1];
+                    value.b = vals[2];
+                    value.a = vals[3];
+                }
+            }
+
+            ImGui::PopID();
+            if (changed) {
+                ctx.editor.mark_dirty();
+            }
+            return changed;
+        }
+    );
+
     BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
-        "Registered 8 built-in inspector editors (float, int, bool, string, Vec2, Vec3, Vec4, Quat)");
+        "Registered 9 built-in inspector editors (float, int, bool, string, Vec2, Vec3, Vec4, Quat, Color)");
 }
 
 } // namespace buddd::editor

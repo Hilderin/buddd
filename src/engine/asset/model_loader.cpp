@@ -459,7 +459,7 @@ auto create_pbr_material(RenderDevice& device,
         // Read pbrMetallicRoughness
         const auto& pbr = gltf_mat.pbrMetallicRoughness;
         if (pbr.baseColorFactor.size() >= 4) {
-            data.base_color_factor = math::Vec4{
+            data.base_color_factor = math::Color{
                 static_cast<float>(pbr.baseColorFactor[0]),
                 static_cast<float>(pbr.baseColorFactor[1]),
                 static_cast<float>(pbr.baseColorFactor[2]),
@@ -542,7 +542,7 @@ auto create_pbr_material(RenderDevice& device,
             if (ext.first == "KHR_materials_pbrSpecularGlossiness") {
                 BUDDD_LOG_WARN("material ext not supported: {} (KHR_materials_pbrSpecularGlossiness) \u2014 using default PBR factors", gltf_mat.name);
                 // Reset to default since we can't convert
-                data.base_color_factor = math::Vec4{1.0f, 1.0f, 1.0f, 1.0f};
+                data.base_color_factor = math::Color{1.0f, 1.0f, 1.0f, 1.0f};
                 data.metallic_factor = 0.0f;
                 data.roughness_factor = 1.0f;
             }

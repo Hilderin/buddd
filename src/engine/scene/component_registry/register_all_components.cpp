@@ -14,6 +14,7 @@
 #include "math/vec3_yaml.h"
 #include "math/vec4_yaml.h"
 #include "math/quat_yaml.h"
+#include "math/color_yaml.h"
 
 #include <yaml-cpp/yaml.h>
 
@@ -259,6 +260,58 @@ void register_builtin_types() {
         .validate = [](const math::Quat&, const SerializationContext&) -> Result<void> { return {}; }
     });
 
+    // ── math::Color ──
+    TypeRegistry::register_type<math::Color>({
+        .yaml_encode = [](const math::Color& v, const SerializationContext&) -> YAML::Node {
+            return YAML::convert<math::Color>::encode(v);
+        },
+        .yaml_decode = [](const YAML::Node& n, const SerializationContext&) -> Result<math::Color> {
+            math::Color v;
+            if (!YAML::convert<math::Color>::decode(n, v)) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Color: failed to decode YAML node (expected [r, g, b] or [r, g, b, a])");
+            }
+            return v;
+        },
+        .to_string = [](const math::Color& v, const SerializationContext&) -> std::string {
+            return "(" + std::to_string(v.r) + ", " + std::to_string(v.g) + ", "
+                   + std::to_string(v.b) + ", " + std::to_string(v.a) + ")";
+        },
+        .from_string = [](const std::string& s, const SerializationContext&) -> Result<math::Color> {
+            if (s.size() < 2 || s.front() != '(' || s.back() != ')') {
+                return make_error(Error::Category::InvalidArgument,
+                    "Color: cannot parse '" + s + "' (expected format '(r, g, b, a)')");
+            }
+            auto inner = s.substr(1, s.size() - 2);
+            float r, g, b, a;
+            auto [pr, er] = std::from_chars(inner.data(), inner.data() + inner.size(), r);
+            if (er != std::errc()) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Color: cannot parse '" + s + "' (expected format '(r, g, b, a)')");
+            }
+            while (pr < inner.data() + inner.size() && (*pr == ' ' || *pr == ',')) ++pr;
+            auto [pg, eg] = std::from_chars(pr, inner.data() + inner.size(), g);
+            if (eg != std::errc()) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Color: cannot parse '" + s + "' (expected format '(r, g, b, a)')");
+            }
+            while (pg < inner.data() + inner.size() && (*pg == ' ' || *pg == ',')) ++pg;
+            auto [pb, eb] = std::from_chars(pg, inner.data() + inner.size(), b);
+            if (eb != std::errc()) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Color: cannot parse '" + s + "' (expected format '(r, g, b, a)')");
+            }
+            while (pb < inner.data() + inner.size() && (*pb == ' ' || *pb == ',')) ++pb;
+            auto [pa, ea] = std::from_chars(pb, inner.data() + inner.size(), a);
+            if (ea != std::errc()) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Color: cannot parse '" + s + "' (expected format '(r, g, b, a)')");
+            }
+            return math::Color{r, g, b, a};
+        },
+        .validate = [](const math::Color&, const SerializationContext&) -> Result<void> { return {}; }
+    });
+
     // ── std::shared_ptr<Model> ──
     TypeRegistry::register_type<std::shared_ptr<Model>>({
         .yaml_encode = [](const std::shared_ptr<Model>& model, const SerializationContext& ctx) -> YAML::Node {
@@ -327,9 +380,10 @@ void register_all_components(ComponentRegistry& registry) {
     {
         auto& info = registry.register_component<PointLightComponent>("point_light");
 
-        info.add_property<math::Vec3>("color",
-            [](const PointLightComponent& c) -> math::Vec3 { return c.color(); },
-            [](PointLightComponent& c, const math::Vec3& v) -> Result<void> { c.color() = v; return {}; }
+        info.add_property<math::Color>("color",
+            [](const PointLightComponent& c) -> math::Color { return c.color(); },
+            [](PointLightComponent& c, const math::Color& v) -> Result<void> { c.color() = v; return {}; },
+            PropertyFlags{}.tag("rgb")
         );
 
         info.add_property<float>("intensity",
@@ -349,9 +403,10 @@ void register_all_components(ComponentRegistry& registry) {
     {
         auto& info = registry.register_component<DirectionalLightComponent>("directional_light");
 
-        info.add_property<math::Vec3>("color",
-            [](const DirectionalLightComponent& c) -> math::Vec3 { return c.color(); },
-            [](DirectionalLightComponent& c, const math::Vec3& v) -> Result<void> { c.color() = v; return {}; }
+        info.add_property<math::Color>("color",
+            [](const DirectionalLightComponent& c) -> math::Color { return c.color(); },
+            [](DirectionalLightComponent& c, const math::Color& v) -> Result<void> { c.color() = v; return {}; },
+            PropertyFlags{}.tag("rgb")
         );
 
         info.add_property<float>("intensity",
@@ -365,9 +420,10 @@ void register_all_components(ComponentRegistry& registry) {
     {
         auto& info = registry.register_component<SpotLightComponent>("spot_light");
 
-        info.add_property<math::Vec3>("color",
-            [](const SpotLightComponent& c) -> math::Vec3 { return c.color(); },
-            [](SpotLightComponent& c, const math::Vec3& v) -> Result<void> { c.color() = v; return {}; }
+        info.add_property<math::Color>("color",
+            [](const SpotLightComponent& c) -> math::Color { return c.color(); },
+            [](SpotLightComponent& c, const math::Color& v) -> Result<void> { c.color() = v; return {}; },
+            PropertyFlags{}.tag("rgb")
         );
 
         info.add_property<float>("intensity",

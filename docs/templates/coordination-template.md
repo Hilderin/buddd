@@ -22,19 +22,13 @@
 **Blocking issues**:
 <none, or a checklist of `- [ ]` items>
 
-## spec-critic
+## Human Spec Validation
 
-**Status**: pending | in-progress | completed | rejected | blocked
+**Status**: pending | approved | changes-requested | rejected
 **Summary**:
-<2–5 lines describing review outcome>
-**Artifacts**:
-- `.specs/{{SPRINT}}/<feature>/spec-critic.md`
-**Questions for human**:
-<none, or a bullet list of questions>
-**Warnings**:
-<none, or a bullet list of non-blocking concerns>
-**Blocking issues**:
-<none, or a checklist of `- [ ]` items>
+<note from human validating the spec>
+**Date**: <date and time>
+**Feedback**: <human feedback or conditions>
 
 ## implementation-contract-author
 
@@ -87,20 +81,6 @@
 **Blocking issues**:
 <none, or a checklist of `- [ ]` items>
 
-## code-reviewer
-
-**Status**: pending | in-progress | completed | rejected | blocked
-**Summary**:
-<2–5 lines describing review outcome>
-**Artifacts**:
-- `.specs/{{SPRINT}}/<feature>/code-review.md`
-**Questions for human**:
-<none, or a bullet list of questions>
-**Warnings**:
-<none, or a bullet list of non-blocking concerns>
-**Blocking issues**:
-<none, or a checklist of `- [ ]` items>
-
 ## wiki-agent
 
 **Status**: pending | in-progress | completed | blocked
@@ -117,27 +97,13 @@
 **Blocking issues**:
 <none, or a checklist of `- [ ]` items>
 
-## governance-reviewer
-
-**Status**: pending | in-progress | completed | rejected | blocked
-**Summary**:
-<2–5 lines>
-**Artifacts**:
-- `.specs/{{SPRINT}}/<feature>/governance-review.md`
-**Questions for human**:
-<none, or a bullet list of questions>
-**Warnings**:
-<none, or a bullet list of non-blocking concerns>
-**Blocking issues**:
-<none, or a checklist of `- [ ]` items>
-
 ---
 
 **Constraints:**
 
 - Use exact heading names as listed above (case-sensitive).
 - Use exact field names as listed above (bold markdown `**Field**`).
-- Sub-agent sections must appear in the exact order listed above.
+- Sub-agent sections must appear in the exact order listed above (spec-author → Human Spec Validation → implementation-contract-author → implementation-contract-critic → Human Validation → code-implementer → wiki-agent).
 - The `## Human Validation` section must appear between `## implementation-contract-critic` and `## code-implementer`.
 - The `## wiki-agent` section must include `**Changes made**` instead of `**Decisions needed**`.
 - **`{{SPRINT}}` must be replaced** with the actual sprint folder (e.g. `sprint-2026-06`) when the orchestrator creates coordination.md from this template.

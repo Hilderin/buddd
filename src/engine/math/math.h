@@ -9,6 +9,7 @@
 #include "vec4.h"
 #include "mat4.h"
 #include "quat.h"
+#include "color.h"
 
 namespace buddd::engine::math {
 

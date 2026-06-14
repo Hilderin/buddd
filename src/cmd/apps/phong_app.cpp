@@ -257,7 +257,7 @@ auto buddd::cmd::app::PhongApp::setup(be::EngineContext const& ctx)
     // ── Directional fill light ──
     auto fill = ctx.world.add_entity();
     fill.add_component<be::DirectionalLightComponent>(
-        be::math::Vec3{0.6f, 0.6f, 0.8f}, 0.35f);
+        be::math::Color{0.6f, 0.6f, 0.8f}, 0.35f);
     fill.transform().rotation =
         be::math::Quat::from_euler(be::math::radians(-35.0f),
                                     be::math::radians(50.0f), 0.0f);
@@ -265,23 +265,23 @@ auto buddd::cmd::app::PhongApp::setup(be::EngineContext const& ctx)
     // ── Point light A (warm orange, orbiting) ──
     pointA_entity_ = ctx.world.add_entity();
     pointA_entity_.add_component<be::PointLightComponent>(
-        be::math::Vec3{1.0f, 0.4f, 0.1f}, 1.8f, 12.0f);
+        be::math::Color{1.0f, 0.4f, 0.1f}, 1.8f, 12.0f);
 
     // ── Point light B (cool blue, orbiting, out of phase) ──
     pointB_entity_ = ctx.world.add_entity();
     pointB_entity_.add_component<be::PointLightComponent>(
-        be::math::Vec3{0.1f, 0.3f, 1.0f}, 1.6f, 12.0f);
+        be::math::Color{0.1f, 0.3f, 1.0f}, 1.6f, 12.0f);
 
     // ── Point light C (static purple, above center) ──
     auto pointC_entity = ctx.world.add_entity();
     pointC_entity.add_component<be::PointLightComponent>(
-        be::math::Vec3{0.6f, 0.2f, 0.8f}, 0.7f, 8.0f);
+        be::math::Color{0.6f, 0.2f, 0.8f}, 0.7f, 8.0f);
     pointC_entity.transform().position = be::math::Vec3{0.0f, 3.5f, 0.0f};
 
     // ── Spot light (bright warm, from above aiming at origin) ──
     auto spot_entity = ctx.world.add_entity();
     spot_entity.add_component<be::SpotLightComponent>(
-        be::math::Vec3{1.0f, 0.95f, 0.85f}, 2.5f, 14.0f,
+        be::math::Color{1.0f, 0.95f, 0.85f}, 2.5f, 14.0f,
         be::math::radians(18.0f), be::math::radians(35.0f));
     spot_entity.transform().position = be::math::Vec3{0.0f, 6.0f, -3.0f};
     spot_entity.transform().rotation =

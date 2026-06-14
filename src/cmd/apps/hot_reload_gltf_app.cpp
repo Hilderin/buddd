@@ -68,7 +68,7 @@ auto buddd::cmd::app::HotReloadGltfApp::setup(be::EngineContext const& ctx)
     // Directional light
     {
         auto e = ctx.world.add_entity();
-        e.add_component<be::DirectionalLightComponent>(be::math::Vec3{1,1,1}, 1.5f);
+        e.add_component<be::DirectionalLightComponent>(be::math::Color{1,1,1}, 1.5f);
         e.transform().rotation = be::math::Quat::from_euler(
             be::math::radians(-45.0f), be::math::radians(45.0f), 0.0f);
     }

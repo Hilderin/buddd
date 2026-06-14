@@ -184,12 +184,7 @@ spec-author → creates/updates spec.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the spec-author with the answers.
   ↓
-spec-critic → creates/updates spec-critic.md → updates coordination.md
-  ↓  Ask questions to the human if added on coordination.md
-  ↓    Recall the spec-critic with the answers.
-  ↓  (gate: check coordination.md ## spec-critic)
-  ↓  Status == rejected? → loop to spec-author
-  ↓  Blocking issues unchecked? → loop to spec-author
+**human spec validation gate** — present the spec to the human, get explicit approval via question tool, record decision in coordination.md
   ↓
 implementation-contract-author → creates/updates implementation-contract.md → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
@@ -201,20 +196,13 @@ implementation-contract-critic → creates/updates implementation-contract-criti
   ↓  (gate: check coordination.md ## implementation-contract-critic)
   ↓  Status == rejected? → loop to impl-contract-author (or spec-author for spec-level issues)
   ↓  Blocking issues unchecked? → loop to appropriate agent
-  ↓  [Spec-level loop → spec-critic MUST re-review]
+  ↓  [Spec-level loop → spec-author MUST re-review]
   ↓
 **human validation gate** — present summaries from coordination.md, get explicit approval, record in ## Human Validation
   ↓
 code-implementer → implements code → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the code-implementer with the answers.
-  ↓
-code-reviewer → creates/updates code-review.md → updates coordination.md
-  ↓  Ask questions to the human if added on coordination.md
-  ↓    Recall the code-reviewer with the answers.
-  ↓  (gate: check coordination.md ## code-reviewer)
-  ↓  Status == rejected? → loop to code-implementer
-  ↓  Blocking issues unchecked? → loop to code-implementer
   ↓
 adr-agent (on-demand, if needed) → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
@@ -224,14 +212,7 @@ wiki-agent → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the wiki-agent with the answers.
   ↓
-governance-reviewer → creates/updates governance-review.md → updates coordination.md
-  ↓  Ask questions to the human if added on coordination.md
-  ↓    Recall the governance-reviewer with the answers.
-  ↓  (gate: check coordination.md ## governance-reviewer)
-  ↓  Status == rejected? → loop to appropriate agent
-  ↓  Blocking issues unchecked? → loop to appropriate agent
-  ↓
-when ever code is updated outside the normal workflow, restart the critics and following steps.
+when ever code is updated outside the normal workflow, restart the implementation-contract-critic and following steps.
   ↓
 orchestrator sets ## Orchestrator Status to "completed" → reports to human
   ↓
@@ -313,24 +294,27 @@ Gate (after spec-author reports completion):
 - Read coordination.md `## spec-author` section ONLY.
 - If **Status** is "blocked", resolve the blocker (ask human if needed).
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and then recall the spec-author.
-- If **Status** is "completed", proceed to spec-critic.
+- If **Status** is "completed", proceed to human spec validation.
 - Update `## Orchestrator` → **Current step** to "spec-author-complete".
 
-### 3. Spec critic
+### 3. Human spec validation
 
-Ask `spec-critic` to review and create/update the spec-critic.md. Pass `SPEC_DIR` so the agent knows the target path.
+Present the completed spec to the human for explicit approval before proceeding to implementation contract authoring.
 
-The spec-critic checks against the Definition of Ready (`docs/wiki/engineering/definition-of-ready.md`). Any unsatisfied criterion is a blocking issue.
+Use the `question` tool to show the spec summary and ask for approval.
 
-Gate (after spec-critic reports completion):
-- Read coordination.md `## spec-critic` section ONLY.
-- If **Status** is "rejected" → loop back to spec-author (step 2).
-- If any unchecked `- [ ]` items under **Blocking issues** → loop back to spec-author (step 2).
-- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke spec-critic or previous agent depending on the questions and answers.
-- When looping back: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context from blocking issues, re-invoke spec-author.
-  - **Note:** This is the one exception to the rule that sub-agents self-manage their own status. The orchestrator may temporarily reset a sub-agent's `**Status**` to "in-progress" during loop-backs. This is documented in the coordination.md template constraints.
-- If gate passes, update `## Orchestrator` → **Current step** to "spec-critic-approved".
-- Proceed to implementation-contract-author.
+Record the decision in coordination.md `## Orchestrator` → **Notes**:
+- **Human spec validation**: approved / rejected / changes requested
+- **Date**: <date and time>
+- **Feedback**: any human feedback or conditions
+
+If **approved**, update `## Orchestrator` → **Current step** to "spec-approved" and proceed to implementation contract author.
+
+If **changes requested**, loop back to spec-author (step 2) with the human's feedback.
+
+If **rejected**, terminate workflow and report to human.
+
+Use `date` command to get the current date and time.
 
 ### 4. Implementation contract author
 
@@ -356,7 +340,7 @@ Gate:
 - Read coordination.md `## implementation-contract-critic` section ONLY.
 - If **Status** is "rejected" → loop back to implementation-contract-author (step 4).
 - If any unchecked `- [ ]` items under **Blocking issues**:
-  - If the issue is a spec-level problem requiring spec.md changes → loop to spec-author (step 2). After spec-author fixes, orchestrator MUST invoke spec-critic to re-review the modified spec. If spec-critic accepts (coordination.md `## spec-critic` **Status** is `completed`), then proceed to implementation-contract-author (step 4). If spec-critic rejects, continue looping.
+  - If the issue is a spec-level problem requiring spec.md changes → loop to spec-author (step 2). After spec-author fixes, proceed to human spec validation (step 3). If the human approves the updated spec, continue to implementation-contract-author (step 4). If the human requests changes, continue looping back to spec-author.
   - Otherwise → loop to implementation-contract-author (step 4).
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke implementation-contract-critic or previous agent depending on the questions and answers.
 - When looping: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context.
@@ -400,21 +384,7 @@ Gate (after code-implementer reports completion):
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke code-implementer or previous agent depending on the questions and answers.
 - Update `## Orchestrator` → **Current step**.
 
-### 8. Code review
-
-Ask `code-reviewer` to review and create/update the code-review.md. Pass `SPEC_DIR` so the agent knows the target path.
-
-Gate:
-- Read coordination.md `## code-reviewer` section ONLY.
-- If **Status** is "rejected" → loop back to code-implementer (step 7).
-- If any unchecked `- [ ]` items under **Blocking issues** → loop back to code-implementer (step 7).
-- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke code-reviewer or previous agent depending on the questions and answers.
-- Always rerun code-reviewer after implementation modifications.
-- Be sure to analyze rendering and confirm functional display using `buddd capture` and vision analyze tool.
-- When looping: update `## Orchestrator` with loop note, set code-implementer status to "in-progress" with context.
-- If gate passes, update `## Orchestrator` → **Current step**.
-
-### 9. Governance update
+### 8. Governance update
 
 If the orchestrator decides an ADR is needed, invoke `adr-agent` on-demand by delegating to it.
 The `adr-agent` is an on-demand tool, not a mandatory workflow step.
@@ -425,7 +395,7 @@ After `adr-agent` reports completion:
 - Check **Blocking issues**: if present, resolve.
 - Update `## Orchestrator` → **Current step**.
 
-### 10. Wiki update
+### 9. Wiki update
 
 Ask `wiki-agent` to update the wiki content.
 
@@ -435,20 +405,7 @@ Gate:
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke wiki-agent or previous agent depending on the questions and answers.
 - Update `## Orchestrator` → **Current step**.
 
-### 11. Final governance validation
-
-Ask `governance-reviewer` for cross-document validation.
-
-Gate:
-- Read coordination.md `## governance-reviewer` section ONLY.
-- If **Status** is "rejected" → resolve issues through the appropriate agent.
-- If any unchecked `- [ ]` items under **Blocking issues** → resolve issues through the appropriate agent.
-- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke governance-reviewer or previous agent depending on the questions and answers.
-- Always rerun governance-reviewer after modifications.
-- When looping: update `## Orchestrator` with loop note, set target agent's status to "in-progress" with context.
-- If gate passes, update `## Orchestrator` → **Current step**.
-
-### 12. Done
+### 10. Done
 
 Set `## Orchestrator` → **Status** to "completed".
 
@@ -470,11 +427,8 @@ All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No f
 - Never edit production code yourself.
 - Never allow implementation from a raw user request.
 - Never allow implementation from a spec alone.
-- Never skip the spec critic.
 - Never skip the implementation contract critic.
 - Never skip human validation before implementation.
-- Never skip the code reviewer.
-- Never skip the governance reviewer.
 - Never silently resolve critic or reviewer questions.
 - Never ask the scout for repository dumps in normal mode.
 - Never create or update ADR yourself, ask `adr-agent`.
