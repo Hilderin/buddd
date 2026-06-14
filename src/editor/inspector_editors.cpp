@@ -53,7 +53,7 @@ auto draw_axis_widget(const char* id, float* value, ImVec4 color,
 
     // ── InputFloat (LEFT side) ──
     ImGui::SetNextItemWidth(60.0f);
-    bool input_changed = ImGui::InputFloat("##input", value, 0.0f, 0.0f, "%.4f");
+    bool input_changed = ImGui::InputFloat("##input", value, 0.0f, 0.0f, "%.5g");
 
     // ── Colored drag handle (RIGHT side, flush against input) ──
     ImGui::SameLine(0.0f, 0.0f);
@@ -152,7 +152,7 @@ auto register_builtin_inspector_editors() -> void {
 
             // ── InputFloat (left side) ──
             ImGui::SetNextItemWidth(60.0f);
-            bool changed = ImGui::InputFloat("##val", &value, 0.0f, 0.0f, "%.4f");
+            bool changed = ImGui::InputFloat("##val", &value, 0.0f, 0.0f, "%.5g");
 
             // ── Gray drag handle (right side) ──
             ImGui::SameLine(0.0f, 0.0f);

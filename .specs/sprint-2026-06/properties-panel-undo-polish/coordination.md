@@ -3,8 +3,8 @@
 ## Orchestrator
 
 **Feature**: properties-panel-undo-polish
-**Status**: in-progress
-**Current step**: human-approved
+**Status**: completed
+**Current step**: completed
 **Initial instructions**: Quatre problèmes avec le PropertiesPanel:
 1. Les modifications faites au transform ne sont pas faites via une commande → le Undo ne fonctionne pas
 2. Les float field et les bool field affichent le libellé à droite du field en plus de la colonne de gauche → label en double
@@ -163,23 +163,32 @@ none
 
 ## Manual Test Validation
 
-**Status**: pending
+**Status**: passed
 **Instructions**:
-none
+9 manual tests covering: undo/redo, single-click editing, drag handle, axis layout, no duplicate labels, drag merging, sequential edits, dirty marker, edge cases.
 **Human feedback**:
-none
-**Date**: pending
-**Notes**: none
+User confirmed "Ok, tout fonctionne bien" after iterative fixes (cross-type merge guard, execute-after-merge, per-property transform granularity, float precision).
+**Date**: 2026-06-14
+**Notes**: Manual verification performed incrementally during bug-fix iterations.
 
 ## wiki-agent
 
-**Status**: pending
+**Status**: completed
 **Summary**:
-pending
+Updated `docs/wiki/editor/editor-panels.md` to reflect all F-07 changes: added SetTransformCommand and undo merging to status banner, Inspector Panel description, and v1 foundation section. Updated Property Editors table for float composite widget, right-side axis handles, and hidden labels. Added SPEC-F-07 to Related specs. Updated Last reviewed date.
 **Artifacts**:
 - `docs/wiki/editor/editor-panels.md` (modified)
 **Changes made**:
-none
+- Status banner: added F-07 additions block (SetTransformCommand, peek_undo/try_update_new_value, float composite widget, axis handle right-side, hidden labels)
+- Inspector Panel: updated to mention SetTransformCommand undo, drag merge, flipped axis handle layout
+- Component sections: added F-07 merge logic and hidden label notes
+- Property Editors intro: added F-07 details
+- Property Editors table: updated float (InputFloat + gray handle, "%.4f"), right-side handles for Vec2/3/4/Quat, hidden labels for bool/int/string
+- SetComponentPropertyCommand section: added merge info
+- v1 foundation: added F-07 additions bullet
+- Related specs: added SPEC-F-07
+- Last reviewed: added F-07 entry
+- Entity Operations: updated Translate row to mention SetTransformCommand undo
 **Questions for human**:
 none
 **Warnings**:
