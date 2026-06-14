@@ -64,6 +64,7 @@ Each section in the template constrains implementation in a specific way. Fill e
 
 ## Quality rules
 
+- **Test file naming** — test files must NOT contain feature/issue numbers (e.g. `f07_`, `F07-`, `issue-42-`). Use descriptive names matching the module under test: `tests/editor/<panel_name>_tests.cpp`, `tests/engine/<feature>_tests.cpp`, etc.
 - **Eliminate ambiguity** — every requirement must be verifiable by reading code or running tests. If the Code Agent could interpret a requirement in two ways, rephrase it.
 - **Prefer explicit file lists** — list individual files rather than glob patterns. If a glob is unavoidable, explain why.
 - **Constrain, don't design** — specify what must happen and in what order, but not how to implement internal logic unless the architecture requires it.

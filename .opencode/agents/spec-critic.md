@@ -28,6 +28,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 
 ## Check for
 
+- Test file references containing feature/issue numbers (e.g. `f07_`, `F07-`, `issue-42-`). If the spec mentions test file paths, file names must use descriptive names matching the module under test — flag as a warning.
 - Ambiguous behavior
 - Untestable acceptance criteria
 - Missing edge cases

@@ -131,6 +131,10 @@ auto extract_variable_names(const std::string& source, bool is_output) -> std::v
 RenderDeviceHeadless::RenderDeviceHeadless(Window& window)
     : window_(window) {}
 
+auto RenderDeviceHeadless::clear() -> void {
+    // No-op in headless mode — no GPU framebuffer to clear.
+}
+
 auto RenderDeviceHeadless::begin_frame() -> void {
     ++frame_begin_count_;
 }

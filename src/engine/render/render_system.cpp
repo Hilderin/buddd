@@ -39,6 +39,10 @@ auto RenderSystem::render_scene() -> void {
     auto vp = cam_comp.view_projection_matrix();
     auto camera_pos = cam_comp.entity().transform().position;
 
+    render_impl(vp, camera_pos);
+}
+
+auto RenderSystem::render_impl(math::Mat4 const& vp, math::Vec3 const& camera_pos) -> void {
     // --- 1. Collect lights ---
     std::array<detail::LightData, detail::k_max_lights> light_data{};
     int light_count = 0;
@@ -110,6 +114,8 @@ auto RenderSystem::render_scene() -> void {
 
     // --- 2. Iterate MeshRenderers ---
     world_->each<MeshRenderer>([&](Entity entity, MeshRenderer& mr) -> bool {
+        // Skip entities with no model assigned (e.g., freshly added MeshRenderer)
+        if (!mr.model_ptr()) return true;
         auto world_mat = entity.world_matrix();
         auto mvp = vp * world_mat;
         auto& mats = mr.model().materials();
@@ -161,6 +167,14 @@ auto RenderSystem::render_scene() -> void {
 auto RenderSystem::render_scene(FrameBuffer& target) -> void {
     target.bind();
     render_scene();      // delegates to the parameterless overload
+    target.unbind();
+}
+
+auto RenderSystem::render_scene_with_camera(FrameBuffer& target, math::Mat4 const& vp,
+                                            math::Vec3 const& camera_pos) -> void {
+    target.bind();
+    device_->clear();
+    render_impl(vp, camera_pos);
     target.unbind();
 }
 

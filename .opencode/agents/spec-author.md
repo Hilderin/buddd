@@ -64,6 +64,7 @@ The spec follows the template at `docs/templates/spec-template.md`.
 
 ## Quality rules
 
+- **Test file naming in spec** — when the spec references test file paths (e.g. in `Interface Changes`), the file name must NOT contain feature/issue numbers (e.g. `f07_`, `F07-`, `issue-42-`). Use descriptive names matching the module under test: `tests/editor/<panel_name>_tests.cpp`, `tests/engine/<feature>_tests.cpp`, etc.
 - **No implementation decisions** — do not choose frameworks, databases, services, libraries, or internal architecture unless the human explicitly asked for it.
 - **Testability first** — every acceptance criterion and requirement must be independently testable. If you cannot describe a test for it, rephrase it.
 - **Think like a tester** — ask yourself "How would I verify this?" for every requirement.

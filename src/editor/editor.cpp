@@ -8,6 +8,7 @@
 #include "panels/console_panel.h"
 #include "panels/project_panel.h"
 #include "panels/assets_panel.h"
+#include "panels/viewport_panel.h"
 #include "engine_context.h"
 #include "engine_service.h"
 #include "error.h"
@@ -188,6 +189,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     add_panel(std::make_unique<ConsolePanel>());
     add_panel(std::make_unique<ProjectPanel>());
     add_panel(std::make_unique<AssetsPanel>());
+    add_panel(std::make_unique<ViewportPanel>(ctx.device, world()));
 
     // ── Register shortcuts ──
     shortcuts_.bind(be::KeyCode::Q, {.ctrl = true}, [this](be::EngineContext const& ctx) {
@@ -392,28 +394,45 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
             ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->Size);
 
-            // Split: right 25% for Properties
+            // North-star layout:
+            //
+            // ┌────────┬─────────────────┬───────────┐
+            // │ Scene  │   Viewport      │ Properties│
+            // │ ← 25%  │   ← center →    │ ← 25%    │
+            // ├────────┴─────────────────┴───────────┤
+            // │ Console│Project│Assets (bottom tabs)  │
+            // └──────────────────────────────────────┘
+
             ImGuiID dock_right;
             ImGuiID dock_main = dockspace_id;
+
+            // 1. Split right 25% for Properties
             ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, 0.25f, &dock_right, &dock_main);
 
-            // Split bottom 25% (under center + right)
+            // 2. Split left 25% from the remaining center for Scene
+            ImGuiID dock_left;
+            ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Left, 0.25f, &dock_left, &dock_main);
+
+            // 3. Split bottom 25% from the center area
             ImGuiID dock_bottom;
             ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Down, 0.25f, &dock_bottom, &dock_main);
 
-            // Split bottom area: left half for Console+Project (tabs), right half for Assets
+            // 4. Split bottom area: left half for Console+Project, right half for Assets
             ImGuiID dock_bottom_left;
             ImGuiID dock_bottom_right;
             ImGui::DockBuilderSplitNode(dock_bottom, ImGuiDir_Left, 0.5f, &dock_bottom_left, &dock_bottom_right);
 
             // Dock windows
-            ImGui::DockBuilderDockWindow("Scene", dock_main);
+            ImGui::DockBuilderDockWindow("Scene", dock_left);
+            ImGui::DockBuilderDockWindow("Viewport", dock_main);
             ImGui::DockBuilderDockWindow("Properties", dock_right);
             ImGui::DockBuilderDockWindow("Console", dock_bottom_left);
             ImGui::DockBuilderDockWindow("Project", dock_bottom_left);
             ImGui::DockBuilderDockWindow("Assets", dock_bottom_right);
 
             ImGui::DockBuilderFinish(dockspace_id);
+
+            BUDDD_LOG_DEBUG("Editor: applied default viewport layout (Scene|Viewport|Properties)");
         }
     }
 

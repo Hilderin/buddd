@@ -41,6 +41,8 @@ Create and modify every file listed in the contract's `## Files allowed to chang
 
 Create and modify every test file needed to satisfy the contract's `## Required tests` section. Follow the same test patterns found in existing test files (Catch2 with `TEST_CASE`, `REQUIRE`/`REQUIRE_FALSE`, `Catch::Approx` with `1e-5f` tolerance, the tag conventions `[math][vec2]`, `[headless][platform]`, etc.). Place test files in `tests/`.
 
+**Test file naming:** File names must NOT contain feature/issue numbers (e.g. `f07_`, `F07-`, `issue-42-`). Use descriptive names matching the module under test — e.g. editor panel tests go in `tests/editor/<panel_name>_tests.cpp`, engine tests in `tests/engine/<feature>_tests.cpp`. Existing examples: `tests/editor/scene_panel_tests.cpp`, `tests/engine/scene_loader_tests.cpp`.
+
 - Write tests for every test case listed in the contract's `## Required tests` table — each `TEST_CASE` must match the specified name and tags exactly.
 - Write tests for all `## Edge cases`.
 - Do not weaken or remove existing tests.

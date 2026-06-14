@@ -126,6 +126,11 @@ auto RenderDeviceOpenGL::begin_frame() -> void {
     engine_imgui::new_frame();
 }
 
+auto RenderDeviceOpenGL::clear() -> void {
+    glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
 auto RenderDeviceOpenGL::render_ui() -> void {
     engine_imgui::render();
 }

@@ -21,6 +21,7 @@ public:
 
     auto begin_frame() -> void override;
     auto end_frame() -> void override;
+    auto clear() -> void override;
     auto size() const noexcept -> std::pair<int, int> override;
 
     // -- Resource factories --

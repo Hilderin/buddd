@@ -28,6 +28,7 @@ Use the template at `docs/templates/review-report-template.md` as the starting s
 
 ## Check for
 
+- Test file names containing feature/issue numbers (e.g. `f07_`, `F07-`, `issue-42-`) — must be flagged as a blocking issue. Test file names must use descriptive names matching the module under test (e.g. `tests/editor/viewport_panel_tests.cpp`, not `tests/f07_viewport_panel_tests.cpp`).
 - Allowed files too broad
 - Missing forbidden files
 - Missing tests

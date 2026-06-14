@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + F-06 — inspector-component-properties + Editor Dialog Abstraction + right-click selection + F-07 — properties-panel-undo-polish + F-06b — inspector-add-remove-components, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + F-06 (component properties) + Editor Dialog Abstraction + F-07 + F-06b) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + F-06 — inspector-component-properties + Editor Dialog Abstraction + right-click selection + F-07 — properties-panel-undo-polish + F-06b — inspector-add-remove-components + F-07 — viewport-panel-scene-rendering, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + F-06 (component properties) + Editor Dialog Abstraction + F-07 + F-06b + F-07 viewport-panel) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -21,7 +21,7 @@
 > > - **F-06 additions**: The Transform section was upgraded to a 2-column `ImGui::Table` layout (property name | value) with no column headers. Vec2/Vec3/Vec4/Quat editors now use composite axis input widgets: a colored drag-handle (colored rectangle with white text, click+drag to scrub value) on the left and an `ImGui::InputFloat` (single-click text entry, `"%.2f"` format) on the right. Axis colors: X/Pitch=red (`#FF4444`), Y/Yaw=green (`#44FF44`), Z/Roll=blue (`#4444FF`), W=gray. Property-name labels are no longer rendered by Vec/Quat editors — the caller (e.g., `draw_transform_section()`) renders them in table column 0. The editor API parameter `label` was renamed to `id` to clarify it is used only for ImGui PushID scoping, not visual display. Rotation preserves Pitch/Yaw/Roll labels with the same axis colors. Scale enforces `min_value=0.001`. See [F-06 spec](/.specs/sprint-2026-06/properties-panel-ux-polish/spec.md).
 > > > - **F-07 additions**: New `SetTransformCommand` in `src/editor/commands/set_transform_command.h` stores all 3 transform properties (Position, Rotation, Scale) as native `Vec3`/`Quat` — every transform edit now pushes an undoable command. `Command::try_update_new_value()` virtual method added for drag-undo merging, with `CommandStack::peek_undo()`. `SetComponentPropertyCommand` and `SetTransformCommand` both implement merge logic: continuous drag on a property merges into the last command, producing one undo step per gesture. Float editor replaced with composite widget (`ImGui::InputFloat` + gray drag handle on right, `"%.5g"` format). `draw_axis_widget()` layout flipped: InputFloat on left, colored drag handle on right. Float/int/bool/string editors use hidden `"##val"` labels (no duplicate labels in component property tables). See [F-07 spec](/.specs/sprint-2026-06/properties-panel-undo-polish/spec.md).
 > > >
-> > > The north-star design below (tabs, viewport, inspector, toolbar, Play mode, prefabs) is **planned for future sprints** and is not yet implemented.
+> > > **F-07 (Viewport Panel)**: The viewport panel and the 3-column north-star layout (Scene left 25%, Viewport center, Properties right 25%) are now implemented — see the Viewport Panel section below. The remaining north-star features (tabs, toolbar, Play mode, prefabs) are **planned for future sprints** and are not yet implemented.
 
 ## Future vision (north-star)
 
@@ -287,28 +287,26 @@ Each non-Transform component section header has a small **ⓧ remove button** (`
 
 **Auto-expand**: After adding a component, `pending_auto_expand_type_` is set to the added type name. In the next `draw_component_sections()` pass, the matching section receives `ImGuiTreeNodeFlags_DefaultOpen` and the flag is consumed (cleared).
 
-#### Viewport Panel (3D View)
+#### Viewport Panel (3D View) — **Implemented (F-07)**
 
 - **Appears in:** Scene tab, Prefab tab
-- **Purpose:** Render the scene in 3D with an editor camera for navigation and entity placement
-- **Content:** 3D rendered view, ground-plane grid overlay, debug axes on selected entity, translate gizmo (MVP1)
+- **Purpose:** Render the editor's 3D scene in an ImGui panel using a persistent editor camera, independent of scene cameras.
+- **Implementation:**
+  - **FBO-backed rendering**: Each frame, the panel renders the editor's World into a `FrameBuffer` via `RenderSystem::render_scene_with_camera()` (see [RenderSystem API](#render-system-api)). The FBO color texture is displayed via `ImGui::Image()`. See [data-flow.md](/docs/wiki/architecture/data-flow.md#offscreen-rendering--framebuffer-usage-spec-2026-06-rdfbo) for the full data flow.
+  - **Editor camera**: A private `ViewportCamera` struct with position `(3, 3, 3)` looking at `(0, 0, 0)`, Y-up, 60° FOV, 0.1 near, 100 far plane. The camera is **not** a `CameraComponent` entity — it is purely editor-level state.
+  - **Auto-resize**: The FBO is resized each frame to match the panel's content area via `ImGui::GetContentRegionAvail()`. Zero/negative dimensions are guarded (collapsed/minimized panel — no resize or render).
+  - **Real-time updates**: The viewport reflects entity changes (create, move, delete) in the next frame, since the panel renders `editor.world()` on every frame.
+  - **Own RenderSystem**: The panel owns a dedicated `RenderSystem` bound to `editor.world()` — separate from the main loop's `RenderSystem` which renders `ctx.world`.
+  - **World change detection**: When `Editor::new_scene()` replaces the editor World, the panel detects the pointer change and recreates its `RenderSystem` on the next frame.
+  - **Error handling**: FBO creation/resize failures are logged; the panel displays an error text overlay and skips rendering.
+  - **Source files**: `src/editor/panels/viewport_panel.h` / `viewport_panel.cpp`
+  - **Spec**: [SPEC-F-07](/.specs/sprint-2026-06/viewport-panel-scene-rendering/spec.md)
 - **Default position/size:** Center dock, fills remaining space
-- **No gizmo during Play mode**
+- **Deferred features (post-F-07):** Ground-plane grid overlay, debug axes on selected entity, translate gizmo, editor camera controls (fly/look/pan/dolly), click-to-select entities in viewport, F-key focus, play-mode viewport behavior, multi-viewport support. See the [F-07 spec](/.specs/sprint-2026-06/viewport-panel-scene-rendering/spec.md#non-goals) for the full list of non-goals.
 
-##### Editor Camera Controls
+##### Editor Camera Controls — **Deferred**
 
-When the viewport has focus, the editor camera responds to the following inputs:
-
-| Input | Action |
-|---|---|
-| Right-click + drag | Look around (yaw/pitch) |
-| Right-click + W/S/A/D | Fly forward/back/strafe |
-| Right-click + Q/E | Move down/up |
-| Scroll wheel | Dolly forward/back |
-| F key (with entity selected) | Focus camera on entity (instant snap) |
-| Middle-click + drag | Pan camera |
-
-The F key focus is an **instant snap** — the camera teleports immediately to frame the selected entity's bounding box (no animation).
+The camera controls (right-click look, WASD fly, scroll dolly, F-focus, middle-click pan) are **not yet implemented** and deferred to a follow-up feature. The camera is currently static at position (3, 3, 3) looking at the origin.
 
 #### Game Viewport
 
@@ -522,7 +520,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 
 - The `Editor` class orchestrates all subsystems. It owns a `CommandStack` (128-entry bounded undo/redo), a `ShortcutRegistry` (keyboard shortcut bindings), and vectors of `EditorMenu`/`EditorPanel` subclasses.
 - Panels and menus are registered via `Editor::add_menu()` / `Editor::add_panel()` in `Editor::setup()`. No runtime plugin discovery.
-- The editor uses **ImGui `DockBuilder`** for the default panel layout on first launch (Scene center, Properties right, Console bottom, Project/Assets bottom-left/bottom-right).
+- The editor uses **ImGui `DockBuilder`** for the default panel layout on first launch (Scene left 25%, Viewport center, Properties right 25%, Console/Project/Assets bottom tabs). This is the north-star layout implemented in F-07.
 - Docking layout is persisted via `buddd_editor.ini` in the current working directory (`ImGui::GetIO().IniFilename`).
 - Panels have a **100×100 minimum size constraint** via `ImGui::SetNextWindowSizeConstraints()`.
 - The editor has a **two-phase lifecycle**: `Editor::update()` (shortcuts, command dispatch, state updates) runs before `render_scene()`; `Editor::draw_ui()` (7-phase UI rendering) runs after `render_scene()` in `EditorApp::on_render()`.
@@ -582,3 +580,4 @@ This is now the standard context-passing mechanism for all editor panels and men
 2026-06-14 — Updated for right-click selection behavior: right-click on non-selected entity selects it before context menu, right-click on already-selected entity is no-op (never deselect on right-click).
 2026-06-14 — Updated for auto-rename-on-create: auto-select after create, inline rename mode, grouped undo step, Escape discards entity.
 2026-06-14 — Updated for F-07 (Properties Panel Undo Polish): SetTransformCommand, peek_undo/try_update_new_value merge logic, float composite widget (InputFloat + gray handle), axis handle on right side, hidden labels for float/int/bool/string editors, "%.5g" float format.
+2026-06-14 — Updated for F-07 (Viewport Panel Scene Rendering): ViewportPanel implementation, FBO-backed rendering, editor camera at (3,3,3), auto-resize, real-time updates, north-star default dock layout (Scene left 25% / Viewport center / Properties right 25%), RenderSystem::render_scene_with_camera().

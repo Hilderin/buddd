@@ -204,7 +204,7 @@ The render submodule depends on the `scene/` submodule: `MeshRenderer` inherits 
 | `primitives.cpp` | Implementation of primitive helpers: inline vertex/index data definitions, delegates to `Model::create_indexed()` for buffer creation. |
 | `mesh_renderer.h` | Public header: `MeshRenderer` ECS component — inherits `Component`, holds a `std::shared_ptr<Model>`. Provides `model()` accessor. Used by `RenderSystem` to discover drawable entities via `World::each<MeshRenderer>()`. |
 | `mesh_renderer.cpp` | MeshRenderer implementation: constructor stores the shared Model pointer. |
-| `render_system.h` | Public header: `RenderSystem` engine-level class — bridges `RenderDevice` and `World`. Constructor takes `RenderDevice&` and `World&`. Single `render()` method: calls `begin_frame()`/`end_frame()`, queries `active_camera()` for view-projection, iterates `World::each<MeshRenderer>()` to issue draw calls. |
+| `render_system.h` | Public header: `RenderSystem` engine-level class — bridges `RenderDevice` and `World`. Constructor takes `RenderDevice&` and `World&`. Methods: `render()` (full frame begin/end), `render_scene()` (renders within existing frame), `render_scene(FrameBuffer& target)` (renders into an FBO), and `render_scene_with_camera(FrameBuffer&, Mat4 const& vp, Vec3 const& camera_pos)` (renders with explicit camera, bypassing CameraComponent lookup — added in F-07 for ViewportPanel). |
 | `render_system.cpp` | RenderSystem implementation: `render()` orchestrates one frame — begin/end frame lifecycle, camera lookup, MVP computation per MeshRenderer entity, uniform setting, and draw dispatch. **Extended for Phong lighting**: before MeshRenderer iteration, collects all `DirectionalLightComponent`, `PointLightComponent`, and `SpotLightComponent` entities into a `LightData` array (max 8). For each MeshRenderer, checks `has_uniform("u_model")` sentinel: if true, sets all lighting uniforms (u_model, u_normal_mat, u_camera_pos, flat array light uniforms, material defaults). If false (unlit material), only sets u_mvp (backward compat). Logs warnings via `BUDDD_LOG_WARN` for missing camera or uniform failures (per-entity skip). |
 
 ### Phong submodule (`render/phong/`)
@@ -353,8 +353,10 @@ The editor library provides the interactive editor for `buddd edit`. It links `b
 Panels have a minimum size constraint of 100×100 via `ImGui::SetNextWindowSizeConstraints()`. The `PropertiesPanel` (F-05) now has a full `.cpp` implementation with entity name editing and Transform section — see [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md). Other panels remain placeholder headers for future features.
 
 | File | Class | Id | Title |
-|---|---|---|---|
+|---|---|---|---|---|
 | `scene_panel.h` | `ScenePanel` | `"scene"` | `"Scene"` |
+| `viewport_panel.h` | `ViewportPanel` | `"viewport"` | `"Viewport"` |
+| `viewport_panel.cpp` | ViewportPanel implementation — FBO-backed 3D scene rendering with editor camera, auto-resize, and `render_scene_with_camera()`. Owns a dedicated `RenderSystem` bound to `editor.world()`. **F-07 (viewport-panel-scene-rendering)**. See [F-07 spec](/.specs/sprint-2026-06/viewport-panel-scene-rendering/spec.md). |
 | `properties_panel.h` | `PropertiesPanel` | `"properties"` | `"Properties"` |
 | `properties_panel.cpp` | PropertiesPanel implementation — `draw_ui()`, `draw_no_selection_state()`, `draw_entity_name()`, `draw_transform_section()`. **F-06 (component properties)**: Added `draw_component_sections()` helper — iterates entity components, builds a per-frame `type_index` → `ComponentInfoBase*` map (SceneSaver pattern), renders collapsible sections with per-property editors via `InspectorTypeEditorRegistry::draw_any()`. See [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md) and [F-06 component properties spec](/.specs/sprint-2026-06/inspector-component-properties/spec.md). |
 | `console_panel.h` | `ConsolePanel` | `"console"` | `"Console"` |

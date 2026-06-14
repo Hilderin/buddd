@@ -265,11 +265,13 @@ FBO lifecycle:
     FrameBuffer::resize(w, h):
         ── Destroys old attachments, creates new at (w, h), re-checks completeness
 
-Viewport usage pattern (future editor feature F-07):
-    // Per-frame, for each viewport panel:
-    fbo->resize(panel_width, panel_height);   // if panel resized
-    render_system.render_scene(*fbo);          // render editor scene into FBO
-    ImGui::Image(fbo->color_texture(), size);  // display in ImGui panel
+Viewport usage pattern (implemented in F-07 — ViewportPanel):
+    // Per-frame, in ViewportPanel::draw_ui():
+    fbo->resize(panel_width, panel_height);       // if panel resized
+    auto vp = camera.view_projection(aspect);     // editor camera VP matrix
+    render_system.render_scene_with_camera(       // render editor scene into FBO
+        *fbo, vp, camera.position);               // with explicit camera (bypasses CameraComponent lookup)
+    ImGui::Image(fbo->color_texture(), size);      // display in ImGui panel
 ```
 
 Key design points:

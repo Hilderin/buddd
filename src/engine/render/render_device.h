@@ -36,6 +36,11 @@ public:
 
     virtual auto begin_frame() -> void = 0;
     virtual auto end_frame() -> void = 0;
+
+    /// Clears the currently bound framebuffer (color + depth buffers)
+    /// using the engine's default clear color.
+    /// Behaviour is undefined if no framebuffer is bound.
+    virtual auto clear() -> void = 0;
     virtual auto size() const noexcept -> std::pair<int, int> = 0;
 
     virtual auto frame_begin_count() const noexcept -> int { return 0; }

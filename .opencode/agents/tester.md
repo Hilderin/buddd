@@ -108,6 +108,7 @@ If any test cannot be automated (requires physical hardware, subjective visual j
 - Use Catch2 with `TEST_CASE`, `REQUIRE`/`REQUIRE_FALSE`, `Catch::Approx` with `1e-5f` tolerance.
 - Follow existing tag conventions (`[math][color]`, `[headless][platform]`, `[lighting]`, etc.).
 - Place test files in `tests/`. File names use `_tests.cpp` suffix.
+- **Test file naming:** File names must NOT contain feature/issue numbers (e.g. `f07_`, `F07-`, `issue-42-`). Use descriptive names matching the module under test — e.g. `tests/editor/viewport_panel_tests.cpp`, not `tests/f07_viewport_panel_tests.cpp`. Editor tests go in `tests/editor/`, engine tests in `tests/engine/`.
 - Use `static_assert` for compile-time checks where possible.
 - Ensure tests compile in both display and headless configurations.
 - Do not weaken, remove, or silently change existing tests.
