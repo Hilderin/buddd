@@ -39,8 +39,7 @@ A separate `Selection` value class is needed so that Commands (F-04+) can snapsh
 | NG-07 | **No entity-destroyed auto-clear** — if an entity is destroyed while selected, the selection is not automatically cleared. Calling code (Commands) manages this explicitly via snapshot/restore. |
 | NG-08 | **No drag-to-select** — rubber-band / marquee selection is not supported. |
 | NG-09 | **No double-click behaviour** — double-clicking an entity does nothing special. |
-| NG-10 | **No right-click behaviour for selection** — right-click does not change selection (context menu deferred). |
-| NG-11 | **No changes to World or Entity classes** — engine APIs are consumed as-is. |
+| NG-10 | **No changes to World or Entity classes** — engine APIs are consumed as-is. |
 
 ## Actors
 
@@ -497,7 +496,6 @@ These updates are the responsibility of the implementation phase and will be tra
 - Entity destroyed → auto-remove from selection — deferred to F-04.
 - Drag-to-select / rubber-band selection.
 - Double-click selection behaviour.
-- Right-click selection behaviour (context menu deferred).
 - Selection persistence across editor sessions.
 - Selection serialization in scene files.
 - Any changes to World, Entity, or engine APIs.

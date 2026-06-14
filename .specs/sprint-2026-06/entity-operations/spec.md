@@ -385,7 +385,7 @@ As an editor user, I want only applicable context menu items to be available, so
 | AC-29 | All three command types support redo. | Unit test: execute → undo → redo, verify state matches post-execution. |
 | AC-30 | `Editor::update()` calls `world().flush_destroyed()` each frame. | Inspect `editor.cpp` — verify `flush_destroyed()` is called in `update()`. |
 | AC-31 | Selection is cleared immediately on delete (before `flush_destroyed()`). | Unit test: after `Entity::destroy()` (before flush), verify `selection().empty()`. |
-| AC-32 | Context menu does not change selection — right-click alone does not select. | Manual: right-click a non-selected entity, verify selection unchanged. |
+| AC-32 | Right-click on a non-selected entity selects it (Replace) before the context menu opens. Right-click on an already-selected entity does not change the selection. | Manual: select "Camera", right-click "Player" (not selected), verify "Player" is selected and context menu appears. Right-click "Player" again (now selected), verify selection unchanged. |
 | AC-33 | All existing tests still pass. | Run `buddd_tests`. |
 | AC-34 | Zero new warnings from `src/editor/` and `tests/`. | Build with `cmake --build --preset debug`. |
 

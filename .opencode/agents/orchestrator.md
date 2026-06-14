@@ -480,5 +480,6 @@ All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No f
 - Never create or update ADR yourself, ask `adr-agent`.
 - Never create or update wiki yourself, ask `wiki-agent`.
 - Never read full artifact files (spec.md, spec-critic.md, implementation-contract.md, etc.) for status or blocking-issue information — read only coordination.md sections.
+- Never revert, undo, or otherwise discard changes in the repository without explicit human authorization. Any file in the working tree — including source code, configuration, documentation, or generated files — may contain manual changes made by the human. If you believe a file needs to be reverted, you must first ask the human using the `question` tool, explain why you think a revert is needed, and wait for explicit approval before taking any action.
 
 If you do not know the answer to a blocking question, ask the human using the `question` tool.

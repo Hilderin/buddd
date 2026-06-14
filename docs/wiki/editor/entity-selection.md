@@ -1,6 +1,6 @@
 # Entity Selection
 
-> **Current status (F-03 — entity-selection-multi-select, June 2026):** Entity selection with full multi-select support is implemented. The `Selection` value class, `EditorSelection` manager, and Scene Panel click handling are all functional. No downstream consumers yet (Inspector and Viewport updates deferred to F-05/F-07).
+> **Current status (F-03 — entity-selection-multi-select + right-click selection, June 2026):** Entity selection with full multi-select support is implemented, including right-click selection (plain → Replace, Ctrl → Toggle-add, Shift → Range) with the "never deselect on right-click" invariant. The `Selection` value class, `EditorSelection` manager, and Scene Panel click handling are all functional. No downstream consumers yet (Inspector and Viewport updates deferred to F-05/F-07).
 
 The editor provides a unified selection system for entities. Selection is managed through two classes in `src/editor/editor_selection.h`:
 
@@ -32,6 +32,24 @@ In the Scene Panel (Hierarchy), the following interactions are supported:
 **Shift+click anchor:** The anchor is set on every plain (Replace) click. It is the starting point for the next Shift+click range. The anchor is cleared when selection is explicitly cleared, and is never modified by Toggle or Range operations.
 
 **Range order:** Entities between anchor and clicked are selected regardless of direction — clicking an entity above the anchor works the same as clicking one below. The range follows depth-first tree traversal order (the visual order in the panel).
+
+### Right-click Selection
+
+Right-click on an entity also applies selection changes **before** opening the context menu. The behavior mirrors left-click modifiers but with an invariant: right-click never deselects.
+
+| Input | Entity NOT in selection | Entity already in selection |
+|---|---|---|
+| **Plain right-click** | **Replace**: clear selection, select this entity. Anchor set. | **No-op**: selection unchanged. Anchor unchanged. |
+| **Ctrl+right-click** | **Toggle-add**: add entity to selection. Anchor unchanged. | **No-op**: selection unchanged. Anchor unchanged. |
+| **Shift+right-click** | **Range**: select all entities from anchor to clicked (depth-first order, inclusive). If no anchor, degrade to Replace. Anchor unchanged (or set if degraded). | **No-op**: selection unchanged. Anchor unchanged. |
+| **Empty-area right-click** | **No selection change**: context menu opens with "Create Empty" only. | N/A |
+
+**Never deselect on right-click** — the following are explicitly forbidden:
+- Removing an entity from the selection (Ctrl+right-click on a selected entity does nothing — it does NOT toggle it out).
+- Clearing the selection (plain right-click on empty area does not clear selection).
+- Changing the selection when the right-clicked entity is already selected.
+
+The right-click selection logic runs in `ScenePanel::draw_ui()` before the context menu popup is opened, ensuring that the "Delete" and "Rename" menu items always operate on the entity the user right-clicked.
 
 ---
 
@@ -171,11 +189,19 @@ This approach is preferred over path-based resolution (walking the hierarchy by 
 ## Selection Lifecycle
 
 | Event | Selection effect | Source |
-|---|---|---|
+|---|---|---|---|
 | Plain click entity | Set to clicked entity | `ScenePanel::draw_ui()` |
 | Ctrl+click entity | Toggle entity | `ScenePanel::draw_ui()` |
 | Shift+click entity | Range (anchor → clicked) | `ScenePanel::draw_ui()` |
 | Click empty area | Cleared | `ScenePanel::draw_ui()` |
+| Plain right-click entity (not in selection) | Replace (set to clicked entity) | `ScenePanel::draw_ui()` |
+| Plain right-click entity (already in selection) | No-op | `ScenePanel::draw_ui()` |
+| Ctrl+right-click entity (not in selection) | Toggle-add only | `ScenePanel::draw_ui()` |
+| Ctrl+right-click entity (already in selection) | No-op | `ScenePanel::draw_ui()` |
+| Shift+right-click entity (not in selection, anchor exists) | Range (anchor → clicked) | `ScenePanel::draw_ui()` |
+| Shift+right-click entity (not in selection, no anchor) | Replace (degrade to clicked) | `ScenePanel::draw_ui()` |
+| Shift+right-click entity (already in selection) | No-op | `ScenePanel::draw_ui()` |
+| Right-click empty area | No-op (selection unchanged) | `ScenePanel::draw_ui()` |
 | `Ctrl+A` | All entities selected | `Editor::update()` (shortcut) |
 | `new_scene()` | Cleared | `Editor::new_scene()` |
 | `open_scene(path)` | Cleared | `Editor::open_scene()` |
@@ -267,3 +293,5 @@ Callbacks fire on **every mutation** regardless of whether the selection set act
 ## Last reviewed
 
 2026-06-12 — Initial version for F-03 (Entity Selection with Multi-Select). Updated for F-04: snapshot/restore now used by all three entity operation Commands.
+
+2026-06-14 — Added right-click selection subsection and updated lifecycle table for right-click behavior.

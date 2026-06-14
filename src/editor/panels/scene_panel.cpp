@@ -79,7 +79,19 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
                 if (confirmed) {
                     confirm_rename(ctx);
                 } else if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-                    cancel_rename();
+                    if (auto_rename_entity_id_.has_value() && renaming_entity_.has_value()
+                        && *auto_rename_entity_id_ == *renaming_entity_) {
+                        // Auto-rename Escape: cancel rename, defer undo of creation
+                        auto cancelled_id = entity.id();
+                        cancel_rename();
+                        pending_undo_creation_ = true;
+                        pending_create_command_ = nullptr;
+                        auto_rename_entity_id_.reset();
+                        BUDDD_LOG_TAGGED_DEBUG("Editor:ScenePanel",
+                            "Auto-rename cancelled via Escape: entity {} discarded", cancelled_id.index);
+                    } else {
+                        cancel_rename();
+                    }
                 } else if (ImGui::IsItemDeactivatedAfterEdit()) {
                     // Focus loss while editing: confirm (same as Enter)
                     confirm_rename(ctx);
@@ -100,6 +112,7 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
                     if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
                         BUDDD_LOG_TAGGED_DEBUG("Editor:ScenePanel", "Right-click on entity {}", name);
+
                         context_menu_entity_ = entity.id();
                         open_context_menu = true;
                     }
@@ -109,7 +122,12 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                     // If rename is active on a different entity, cancel it
                     if (renaming_entity_.has_value() && *renaming_entity_ != entity.id()) {
-                        cancel_rename();
+                        if (auto_rename_entity_id_.has_value() && *auto_rename_entity_id_ == *renaming_entity_) {
+                            // Abandon auto-rename: confirm it (stores name in pending command)
+                            confirm_rename(ctx);
+                        } else {
+                            cancel_rename();
+                        }
                     }
                     if (ImGui::GetIO().KeyShift) {
                         // Shift+click: range selection
@@ -170,6 +188,10 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
         bool on_entity = (context_menu_entity_ != buddd::engine::EntityId::none());
 
         if (ImGui::MenuItem("Create Empty")) {
+            // If rename is active on another entity, confirm it first
+            if (renaming_entity_.has_value()) {
+                confirm_rename(ctx);
+            }
             if (on_entity) {
                 execute_create_entity(ctx, context_menu_entity_);
             } else {
@@ -193,7 +215,14 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
     // ── Empty-area left-click: clear selection and cancel rename ──
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) {
         if (!ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
-            cancel_rename();
+            if (renaming_entity_.has_value()) {
+                confirm_rename(ctx);
+            }
+            // If no rename was active (renaming_entity_ was empty), also clear auto-rename state
+            if (auto_rename_entity_id_.has_value()) {
+                auto_rename_entity_id_.reset();
+                pending_create_command_ = nullptr;
+            }
             ctx.editor.selection().clear();
         }
     }
@@ -207,11 +236,22 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
     // ── F2 key (gated by focus, exactly one selected) ──
     if (ImGui::IsWindowFocused() && ctx.editor.selection().size() == 1) {
         if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
+            // Abandon any pending auto-rename
+            if (auto_rename_entity_id_.has_value()) {
+                auto_rename_entity_id_.reset();
+                pending_create_command_ = nullptr;
+            }
             if (renaming_entity_.has_value()) {
                 confirm_rename(ctx);
             }
             start_rename(ctx, ctx.editor.selection().first().value());
         }
+    }
+
+    // ── Deferred undo for Escape-during-auto-rename ──
+    if (pending_undo_creation_) {
+        pending_undo_creation_ = false;
+        static_cast<void>(ctx.editor.command_stack().undo(ctx));
     }
 
 }
@@ -223,7 +263,22 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
 auto ScenePanel::execute_create_entity(EditorContext const& ctx,
                                        std::optional<buddd::engine::EntityId> parent) -> void {
     auto cmd = std::make_unique<CreateEntityCommand>(parent);
+    pending_create_command_ = cmd.get();
     ctx.editor.command_stack().execute(std::move(cmd), ctx);
+
+    auto created_id = pending_create_command_->created_entity_id();
+    if (created_id != buddd::engine::EntityId::none()) {
+        // Auto-select the new entity (Replace)
+        ctx.editor.selection().select(created_id, SelectionModifier::Replace);
+        // Start inline rename
+        start_rename(ctx, created_id);
+        auto_rename_entity_id_ = created_id;
+        BUDDD_LOG_TAGGED_DEBUG("Editor:ScenePanel",
+            "Auto-rename started for entity {} post-creation", created_id.index);
+    } else {
+        // Creation failed — clear pending command pointer
+        pending_create_command_ = nullptr;
+    }
 }
 
 auto ScenePanel::execute_delete_entity(EditorContext const& ctx) -> void {
@@ -342,6 +397,32 @@ auto ScenePanel::confirm_rename(EditorContext const& ctx) -> void {
     auto id = *renaming_entity_;
     renaming_entity_.reset();
 
+    // ── Auto-rename (post-creation) path ──
+    if (auto_rename_entity_id_.has_value() && *auto_rename_entity_id_ == id) {
+        std::string new_name(rename_buffer_);
+        rename_buffer_[0] = '\0';
+
+        if (!new_name.empty()) {
+            auto entity = ctx.editor.world().entity(id);
+            if (entity.id() != buddd::engine::EntityId::none()) {
+                entity.set_name(new_name);
+            }
+        }
+
+        if (!new_name.empty() && pending_create_command_ != nullptr) {
+            pending_create_command_->set_post_creation_name(std::move(new_name));
+            BUDDD_LOG_TAGGED_DEBUG("Editor:ScenePanel",
+                "Auto-rename confirmed: entity {} named \"{}\"", id.index, pending_create_command_->created_entity_id().index);
+        } else if (!new_name.empty()) {
+            BUDDD_LOG_TAGGED_DEBUG("Editor:ScenePanel",
+                "Auto-rename confirmed: entity {} named \"{}\" (no pending cmd)", id.index, new_name);
+        }
+        pending_create_command_ = nullptr;
+        auto_rename_entity_id_.reset();
+        return;
+    }
+
+    // ── Regular rename path (unchanged from F-04) ──
     std::string current_name;
     auto& world = ctx.editor.world();
     auto find_entity = [&](auto& self, buddd::engine::Entity e) -> bool {

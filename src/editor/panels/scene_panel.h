@@ -13,6 +13,8 @@
 
 namespace buddd::editor {
 
+class CreateEntityCommand;
+
 /// Panel that renders the entity hierarchy tree and supports entity operations
 /// (Create Empty, Delete, Rename) via right-click context menu and keyboard shortcuts.
 class ScenePanel final : public EditorPanel {
@@ -25,6 +27,11 @@ private:
     // ── Inline rename state ──
     std::optional<buddd::engine::EntityId> renaming_entity_;
     char rename_buffer_[256] = {};
+
+    // ── Post-creation auto-rename state ──
+    CreateEntityCommand* pending_create_command_ = nullptr;
+    std::optional<buddd::engine::EntityId> auto_rename_entity_id_;
+    bool pending_undo_creation_ = false;
 
     // ── Context menu state ──
     buddd::engine::EntityId context_menu_entity_ = buddd::engine::EntityId::none();

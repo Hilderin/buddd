@@ -185,6 +185,129 @@ TEST_CASE("CreateEntity: selection unchanged after create", "[editor][commands][
 }
 
 // ═════════════════════════════════════════════════════════════════════
+// CreateEntityCommand — post_creation_name + auto-rename tests
+// ═════════════════════════════════════════════════════════════════════
+
+TEST_CASE("CreateEntity::created_entity_id returns valid ID after execute", "[editor][commands][create][auto_rename]") {
+    EntityTestCtx ctx;
+
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    auto* raw = cmd.get();
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+
+    REQUIRE(raw->created_entity_id() != be::EntityId::none());
+}
+
+TEST_CASE("CreateEntity::set_post_creation_name creates entity with name", "[editor][commands][create][auto_rename]") {
+    EntityTestCtx ctx;
+
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    cmd->set_post_creation_name("Player");
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+
+    // The entity should exist in the world with the given name
+    REQUIRE(ctx.world().root_entity_count() == 1);
+    auto root = ctx.world().get_root_entity(0);
+    REQUIRE(root.id() != be::EntityId::none());
+    REQUIRE(root.name() == "Player");
+}
+
+TEST_CASE("CreateEntity::set_post_creation_name undo destroys entity", "[editor][commands][create][auto_rename][undo_redo]") {
+    EntityTestCtx ctx;
+    auto& world = ctx.world();
+
+    size_t before = world.entity_count();
+
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    cmd->set_post_creation_name("Player");
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+    REQUIRE(world.entity_count() == before + 1);
+
+    // Undo — entity is pending_destroy
+    static_cast<void>(ctx.command_stack().undo(ctx.editor_ctx));
+    REQUIRE(world.entity_count() == before + 1);  // still alive in slot, pending_destroy
+
+    // After flush, entity should be gone
+    world.flush_destroyed();
+    REQUIRE(world.entity_count() == before);
+}
+
+TEST_CASE("CreateEntity::set_post_creation_name redo recreates entity with name", "[editor][commands][create][auto_rename][undo_redo]") {
+    EntityTestCtx ctx;
+    auto& world = ctx.world();
+
+    size_t before = world.entity_count();
+
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    cmd->set_post_creation_name("Player");
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+    REQUIRE(world.entity_count() == before + 1);
+
+    // Undo + flush
+    static_cast<void>(ctx.command_stack().undo(ctx.editor_ctx));
+    world.flush_destroyed();
+    REQUIRE(world.entity_count() == before);
+
+    // Redo — entity should be recreated with name
+    static_cast<void>(ctx.command_stack().redo(ctx.editor_ctx));
+    REQUIRE(world.entity_count() == before + 1);
+    auto root = world.get_root_entity(0);
+    REQUIRE(root.name() == "Player");
+}
+
+TEST_CASE("CreateEntity::no post_creation_name creates unnamed entity", "[editor][commands][create][auto_rename]") {
+    EntityTestCtx ctx;
+
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    // Do NOT call set_post_creation_name — post_creation_name_ stays std::nullopt
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+
+    REQUIRE(ctx.world().root_entity_count() == 1);
+    auto root = ctx.world().get_root_entity(0);
+    REQUIRE(root.name().empty());
+}
+
+TEST_CASE("CreateEntity::set_post_creation_name empty string leaves entity unnamed", "[editor][commands][create][auto_rename]") {
+    EntityTestCtx ctx;
+
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    cmd->set_post_creation_name("");
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+
+    REQUIRE(ctx.world().root_entity_count() == 1);
+    auto root = ctx.world().get_root_entity(0);
+    REQUIRE(root.name().empty());
+}
+
+TEST_CASE("CreateEntity::created_entity_id returns none before execute", "[editor][commands][create][auto_rename]") {
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    REQUIRE(cmd->created_entity_id() == be::EntityId::none());
+}
+
+TEST_CASE("CreateEntity::auto-select after execute", "[editor][commands][create][auto_rename]") {
+    EntityTestCtx ctx;
+
+    // Start with a selected entity
+    auto existing = ctx.add_root_entity("Existing");
+    ctx.selection().select(existing.id(), ed::SelectionModifier::Replace);
+    REQUIRE(ctx.selection().size() == 1);
+    REQUIRE(ctx.selection().contains(existing.id()));
+
+    // Command saves pre-execution selection but does NOT modify it
+    auto cmd = std::make_unique<ed::CreateEntityCommand>();
+    auto* raw = cmd.get();
+    ctx.command_stack().execute(std::move(cmd), ctx.editor_ctx);
+
+    auto created_id = raw->created_entity_id();
+    REQUIRE(created_id != be::EntityId::none());
+
+    // The command itself does NOT modify selection (auto-select is ScenePanel's job)
+    // Selection should still contain the original entity
+    REQUIRE(ctx.selection().contains(existing.id()));
+    REQUIRE(ctx.selection().size() == 1);
+}
+
+// ═════════════════════════════════════════════════════════════════════
 // DeleteEntityCommand tests
 // ═════════════════════════════════════════════════════════════════════
 

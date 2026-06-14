@@ -82,6 +82,11 @@ public:
         // Store created entity ID for undo
         created_entity_id_ = new_entity.id();
 
+        // Apply post-creation name if set (for auto-rename-on-create)
+        if (post_creation_name_.has_value() && new_entity.id() != buddd::engine::EntityId::none()) {
+            new_entity.set_name(*post_creation_name_);
+        }
+
         BUDDD_LOG_TAGGED_DEBUG("Editor", "CreateEntity: entity {} created under {}",
             created_entity_id_.index,
             parent_id != buddd::engine::EntityId::none()
@@ -132,10 +137,19 @@ public:
         return "Create Entity";
     }
 
+    [[nodiscard]] auto created_entity_id() const -> buddd::engine::EntityId {
+        return created_entity_id_;
+    }
+
+    auto set_post_creation_name(std::string name) -> void {
+        post_creation_name_ = std::move(name);
+    }
+
 private:
     std::optional<buddd::engine::EntityId> explicit_parent_;
     buddd::engine::EntityId stored_parent_id_ = buddd::engine::EntityId::none();
     buddd::engine::EntityId created_entity_id_ = buddd::engine::EntityId::none();
+    std::optional<std::string> post_creation_name_;
     Selection pre_execution_selection_;
 };
 

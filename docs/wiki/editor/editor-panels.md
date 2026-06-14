@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + Editor Dialog Abstraction, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + Editor Dialog Abstraction) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + Editor Dialog Abstraction + right-click selection, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + Editor Dialog Abstraction) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -204,7 +204,7 @@ Present in Scene, Prefab, and Game tabs.
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and manage the entity hierarchy as a tree
 - **Content (F-02 + F-03 + F-04 implemented):** Tree view of all entities with parent/child indentation. Root entities rendered as top-level `TreeNodeEx` nodes, children indented under parents. Empty state shows "No entities". Leaf/non-leaf distinction via `ImGuiTreeNodeFlags_Leaf`. Per-entity `PushID`/`PopID` prevents ImGui ID collisions. Entities with empty names display as "(unnamed)". **Entity CRUD (F-04)**: Create Empty via context menu (entity right-click or empty-area right-click). Delete via Delete key or context menu (confirmation dialog when children exist). Rename via F2 or context menu (inline `ImGui::InputText` with Enter confirm, Escape cancel, empty name rejection). All operations support undo/redo via Command pattern. See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
-  - **Selection (F-03):** Left-click selects an entity (Replace modifier — clears previous, selects clicked). Ctrl+click toggles entity in/out of selection (add/remove). Shift+click selects a range in depth-first tree order (anchor to clicked entity, inclusive). Ctrl+A selects all entities in the World. Clicking empty space clears the selection and anchor. Selected entities display with `ImGuiTreeNodeFlags_Selected` highlighting. The `EditorSelection` manager is owned by `Editor` and accessible via `ctx.editor.selection()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
+  - **Selection (F-03 + right-click selection):** Left-click selects an entity (Replace modifier — clears previous, selects clicked). Ctrl+click toggles entity in/out of selection (add/remove). Shift+click selects a range in depth-first tree order (anchor to clicked entity, inclusive). Ctrl+A selects all entities in the World. Clicking empty space clears the selection and anchor. **Right-click** on a non-selected entity selects it before opening the context menu (plain → Replace, Ctrl → Toggle-add, Shift → Range). Right-click on an already-selected entity does not change the selection (never deselect on right-click). Empty-area right-click does not change the selection. Selected entities display with `ImGuiTreeNodeFlags_Selected` highlighting. The `EditorSelection` manager is owned by `Editor` and accessible via `ctx.editor.selection()`. See [F-03 spec](/.specs/sprint-2026-06/entity-selection/spec.md).
 - **Default position/size:** Left dock, ~250px width
 
 #### Inspector Panel
@@ -330,9 +330,9 @@ When ▶ Play is pressed:
 
 | Operation | Trigger | Behavior |
 |---|---|---|---|
-| **Select entity** | Left-click entity row in hierarchy | Inspector updates, viewport highlights entity + shows gizmo |
+| **Select entity** | Left-click entity row in hierarchy; right-click on non-selected entity also selects it before context menu | Inspector updates, viewport highlights entity + shows gizmo |
 | **Deselect** | Click empty area in hierarchy | Selection clears, Inspector shows "No entity selected", gizmo hidden |
-| **Create empty entity** | Right-click entity → "Create Empty" OR right-click empty area → "Create Empty" | Creates entity with empty name (displays as "(unnamed)"). If selection anchor exists → last child. Otherwise → root level. Not auto-selected. Undo/redo via `CreateEntityCommand`. |
+| **Create empty entity** | Right-click entity → "Create Empty" OR right-click empty area → "Create Empty" | Creates entity with empty name (displays as "(unnamed)"). If selection anchor exists → last child. Otherwise → root level. Auto-selected and enters inline rename mode (InputText with keyboard focus). Escape during rename discards the entity entirely (undoes creation). Create + rename is a single grouped undo step via `CreateEntityCommand.post_creation_name`. |
 | **Delete entity** | Right-click entity → "Delete" OR Delete key (Scene Panel focused) | Removes entity. If any selected entity has children → confirmation dialog. Selection cleared after deletion. Undo restores entity identity, name, and hierarchy (component state not preserved in v1). Undo/redo via `DeleteEntityCommand`. |
 | **Rename entity** | Select + F2 OR right-click entity → "Rename" (exactly one selected) | Inline `ImGui::InputText` replaces tree node label. Enter confirms, Escape cancels, focus loss confirms. Empty name rejected (no command pushed). Same name → no-op. Undo/redo via `RenameEntityCommand`. |
 | **Undo delete** | Edit > Undo (Ctrl+Z) | Restores deleted entities with hierarchy preserved, selection restored via snapshot. Disabled during Play. |
@@ -359,6 +359,7 @@ When ▶ Play is pressed:
 | EC-08 | Scene file deleted externally | Save writes new file. Load of missing file shows error dialog. |
 | EC-09 | Scene file permissions changed | Save returns error ("Cannot write file"). Error dialog, scene stays dirty. |
 | EC-10 | OS close (Alt+F4) before saving | Equivalent to Quit. Prompt save if dirty. |
+| EC-15 | Escape during auto-rename (create entity) | Entity is discarded entirely — the creation is undone via deferred `CommandStack::undo()`. Same as if the entity was never created. |
 | EC-11 | Closing last Prefab tab | No effect on Scene tab. Prefab tab closes normally (with save prompt if dirty). |
 | EC-12 | Component type with no registered properties | Inspector shows empty component section with name only. No crash. |
 | EC-13 | Loading a scene with unknown component types | SceneLoader skips unknown types (warning logged). Other components load normally. |
@@ -508,6 +509,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 - [SPEC-F-02 — Scene Panel Entity Tree](/.specs/sprint-2026-06/scene-panel-entity-tree/spec.md) — `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation
 - [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (future vision)
 - [SPEC-F-04 — Entity Operations](/.specs/sprint-2026-06/entity-operations/spec.md) — Create Empty, Delete, Rename, context menu, keyboard shortcuts, Command signature change, flush_destroyed lifecycle
+- [SPEC-auto-rename-on-create](/.specs/sprint-2026-06/auto-rename-on-create/spec.md) — Auto-rename on create: auto-select, inline rename mode, grouped undo, Escape discards entity
 - [SPEC-Editor-Scaffolding](/.specs/sprint-2026-06/editor-scaffolding/spec.md) — Editor scaffolding and architecture setup
 - [SPEC-F-06 — Properties Panel UX Polish](/.specs/sprint-2026-06/properties-panel-ux-polish/spec.md) — Table layout, composite axis widgets, axis colors, label→id rename
 - [Editor Dialog Abstraction spec](/.specs/sprint-2026-06/editor-dialog-abstraction/spec.md) — Reusable Dialog base class, CustomDialog, DialogButton, ID-based dedup, Phase 4 dialog rendering
@@ -524,3 +526,6 @@ This is now the standard context-passing mechanism for all editor panels and men
 ## Last reviewed
 
 2026-06-13 — Updated for Editor Dialog Abstraction: reusable Dialog abstraction, `editor_dialog.h` (Dialog, CustomDialog, DialogButton), Phase 4 dialog rendering, About popup migrated to CustomDialog. Updated for F-01 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension. Updated for F-02: `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation. Updated for F-04: entity operations (Create, Delete, Rename), context menu, keyboard shortcuts, Command signature change, `flush_destroyed()` lifecycle. Updated for F-06: composite axis widgets, table layout, axis colors, label→id rename, Scale min_value.
+
+2026-06-14 — Updated for right-click selection behavior: right-click on non-selected entity selects it before context menu, right-click on already-selected entity is no-op (never deselect on right-click).
+2026-06-14 — Updated for auto-rename-on-create: auto-select after create, inline rename mode, grouped undo step, Escape discards entity.
