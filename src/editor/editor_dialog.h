@@ -12,7 +12,7 @@ namespace buddd::editor {
 struct DialogButton {
     std::string label;
     std::string label_id;        // ImGui ID suffix for the button (unique within the dialog)
-    std::function<void()> callback;
+    std::function<bool()> callback;
     std::optional<ImGuiKey> shortcut = std::nullopt;  // stored, not auto-bound
 };
 
@@ -82,8 +82,9 @@ inline auto CustomDialog::draw_content() -> void {
         if (i > 0) ImGui::SameLine();
         ImGui::PushID(buttons_[i].label_id.c_str());
         if (ImGui::Button(buttons_[i].label.c_str())) {
-            if (buttons_[i].callback) buttons_[i].callback();
-            request_close();
+            if (buttons_[i].callback && buttons_[i].callback()) {
+                request_close();
+            }
         }
         ImGui::PopID();
     }

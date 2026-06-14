@@ -214,8 +214,6 @@ auto ScenePanel::draw_ui(EditorContext const& ctx) -> void {
         }
     }
 
-    // ── Delete confirmation modal ──
-    draw_delete_confirmation_modal(ctx);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -259,31 +257,55 @@ auto ScenePanel::execute_delete_entity(EditorContext const& ctx) -> void {
     }
 
     if (with_children > 0) {
-        pending_deletion_ids_ = std::move(ids);
-        pending_deletion_with_children_ = with_children;
-        if (pending_deletion_ids_.size() == 1) {
-            auto& w = ctx.editor.world();
-            auto find_name = [&](auto& self, buddd::engine::Entity e) -> bool {
-                if (e.id() == pending_deletion_ids_[0]) {
-                    pending_deletion_first_name_ = e.name();
-                    return true;
-                }
+        // Build the dynamic confirmation message text
+        std::string message;
+        if (ids.size() == 1) {
+            // Find the first entity's name for the singular form
+            auto find_name = [&](auto& self, buddd::engine::Entity e) -> std::string {
+                if (e.id() == ids[0]) return e.name();
                 for (size_t i = 0; i < e.child_count(); ++i) {
-                    if (self(self, e.get_child(i))) return true;
+                    auto name = self(self, e.get_child(i));
+                    if (!name.empty()) return name;
                 }
-                return false;
+                return "";
             };
-            for (size_t i = 0; i < w.root_entity_count(); ++i) {
-                auto root = w.get_root_entity(i);
-                if (root.id() == pending_deletion_ids_[0]) {
-                    pending_deletion_first_name_ = root.name();
-                    break;
-                }
-                if (find_name(find_name, root)) break;
+            std::string first_name;
+            for (size_t i = 0; i < world.root_entity_count(); ++i) {
+                auto root = world.get_root_entity(i);
+                if (root.id() == ids[0]) { first_name = root.name(); break; }
+                first_name = find_name(find_name, root);
+                if (!first_name.empty()) break;
             }
+            if (first_name.empty()) first_name = "(unnamed)";
+            message = "Delete " + first_name + " and its " + std::to_string(with_children) + " children?";
+        } else {
+            message = "Delete " + std::to_string(ids.size()) + " entities? ("
+                    + std::to_string(with_children) + " have children that will also be deleted.)";
         }
-        show_delete_confirmation_ = true;
+
+        BUDDD_LOG_TAGGED_DEBUG("Editor:ScenePanel", "Delete confirmation: {} entities ({} with children)", ids.size(), with_children);
+
+        ctx.editor.open_dialog(std::make_unique<CustomDialog>(
+            "confirm-delete",
+            "Confirm Delete",
+            [message]() { ImGui::Text("%s", message.c_str()); },
+            std::vector<DialogButton>{
+                {"Delete", "del_btn", [editor = &ctx.editor, ids = std::move(ids)]() {
+                    // Defer command execution to the next draw_ui() frame,
+                    // where a fresh, valid EditorContext is available.
+                    editor->defer([ids = std::move(ids)](EditorContext const& fresh_ctx) {
+                        auto cmd = std::make_unique<DeleteEntityCommand>(std::move(ids));
+                        fresh_ctx.editor.command_stack().execute(std::move(cmd), fresh_ctx);
+                    });
+                    return true;  // Close dialog after callback.
+                }},
+                {"Cancel", "cancel_btn", []() {
+                    return true;  // Close dialog, no action needed.
+                }}
+            }
+        ));
     } else {
+        // No entities with children — execute deletion immediately
         auto cmd = std::make_unique<DeleteEntityCommand>(std::move(ids));
         ctx.editor.command_stack().execute(std::move(cmd), ctx);
     }
@@ -355,42 +377,6 @@ auto ScenePanel::confirm_rename(EditorContext const& ctx) -> void {
 auto ScenePanel::cancel_rename() -> void {
     renaming_entity_.reset();
     rename_buffer_[0] = '\0';
-}
-
-auto ScenePanel::draw_delete_confirmation_modal(EditorContext const& ctx) -> void {
-    if (!show_delete_confirmation_) return;
-
-    ImGui::OpenPopup("Confirm Delete");
-    if (ImGui::BeginPopupModal("Confirm Delete", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (pending_deletion_ids_.size() == 1) {
-            ImGui::Text("Delete %s and its %zu children?",
-                pending_deletion_first_name_.c_str(),
-                pending_deletion_with_children_);
-        } else {
-            ImGui::Text("Delete %zu entities? (%zu have children that will also be deleted.)",
-                pending_deletion_ids_.size(),
-                pending_deletion_with_children_);
-        }
-
-        bool deleted = false;
-        if (ImGui::Button("Delete")) {
-            auto cmd = std::make_unique<DeleteEntityCommand>(std::move(pending_deletion_ids_));
-            ctx.editor.command_stack().execute(std::move(cmd), ctx);
-            deleted = true;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel") || deleted) {
-            show_delete_confirmation_ = false;
-            pending_deletion_ids_.clear();
-            pending_deletion_with_children_ = 0;
-            if (deleted) {
-                ImGui::CloseCurrentPopup();
-                ImGui::EndPopup();
-                return;
-            }
-        }
-        ImGui::EndPopup();
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

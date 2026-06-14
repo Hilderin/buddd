@@ -13,7 +13,6 @@
 
 #include <memory>
 #include <optional>
-#include <unordered_set>
 #include <vector>
 
 #include "editor_dialog.h"
@@ -21,9 +20,6 @@
 namespace buddd::engine { struct EngineContext; class EngineService; class Window; }
 
 namespace buddd::editor {
-
-/// Result of the save-prompt modal (Save / Don't Save / Cancel).
-enum class SavePromptResult { Save, Discard, Cancel };
 
 /// Pending operation that triggered a save-prompt (New, Open, Quit).
 enum class PendingOp { None, NewScene, OpenScene, Quit };
@@ -116,16 +112,25 @@ public:
     /// Open a dialog. Returns false if a dialog with the same id() is already open.
     auto open_dialog(std::unique_ptr<Dialog> dialog) -> bool;
 
+    // ── Convenience dialog helpers ──
+    auto open_message_dialog(const std::string& title, const std::string& message) -> void;
+    auto open_error_dialog(const std::string& title, const std::string& message) -> void;
+    auto open_confirm_dialog(const std::string& title, const std::string& message,
+        std::function<bool()> on_ok = []() { return true; }) -> void;
+    auto open_ok_cancel_dialog(const std::string& title, const std::string& message,
+        std::function<bool()> on_ok = []() { return true; },
+        std::function<bool()> on_cancel = []() { return true; }) -> void;
+
+    /// Defer an action to be executed at the start of the next draw_ui() frame
+    /// with a fresh, valid EditorContext.
+    auto defer(std::function<void(EditorContext const&)> action) -> void {
+        deferred_actions_.push_back(std::move(action));
+    }
+
 private:
 
     // ── Scene management helpers ──
     auto update_window_title() -> void;
-    /// Shows the save-prompt modal. Returns std::nullopt if the popup is not
-    /// yet open / not visible this frame (caller should wait and retry).
-    /// Returns SavePromptResult when the user makes a choice.
-    auto draw_save_prompt_modal() -> std::optional<SavePromptResult>;
-    auto show_error_modal(const std::string& title, const std::string& message) -> void;
-    auto draw_error_modals() -> void;
     auto draw_pending_op_modal(buddd::engine::EngineContext const& ctx) -> void;
     auto execute_pending_op(buddd::engine::EngineContext const& ctx) -> void;
 
@@ -148,7 +153,7 @@ private:
 
     // ── Dialog state ──
     std::vector<std::unique_ptr<Dialog>> dialogs_;
-    std::unordered_set<std::string> opened_dialog_ids_;
+    std::vector<std::function<void(EditorContext const&)>> deferred_actions_;
 
     // ── Scene management state ──
     bool dirty_ = false;
@@ -156,19 +161,6 @@ private:
 
     // ── Pending operation (multi-frame save-prompt) ──
     PendingOp pending_op_ = PendingOp::None;
-    std::optional<std::string> pending_file_path_;
-
-    // ── Exit-after-save flag (set by Platform dialog callbacks, checked in draw_ui) ──
-    bool request_exit_next_frame_ = false;
-
-    // ── Save prompt state ──
-    bool save_prompt_requested_ = false;  // set when user triggers an action on dirty scene
-    bool save_prompt_seen_ = false;       // set when the popup was successfully shown at least once
-
-    // ── Error modal state ──
-    std::string error_modal_title_;
-    std::string error_modal_message_;
-    bool show_error_modal_ = false;
 
     // Editor's own World (separate from ctx.world)
     std::unique_ptr<buddd::engine::World> world_;

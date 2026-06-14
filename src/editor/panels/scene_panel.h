@@ -29,12 +29,6 @@ private:
     // ── Context menu state ──
     buddd::engine::EntityId context_menu_entity_ = buddd::engine::EntityId::none();
 
-    // ── Delete confirmation state ──
-    bool show_delete_confirmation_ = false;
-    std::vector<buddd::engine::EntityId> pending_deletion_ids_;
-    size_t pending_deletion_with_children_ = 0;
-    std::string pending_deletion_first_name_;
-
     // ── Command helpers ──
     auto execute_create_entity(EditorContext const& ctx,
                                std::optional<buddd::engine::EntityId> parent = std::nullopt) -> void;
@@ -42,7 +36,6 @@ private:
     auto start_rename(EditorContext const& ctx, buddd::engine::EntityId id) -> void;
     auto confirm_rename(EditorContext const& ctx) -> void;
     auto cancel_rename() -> void;
-    auto draw_delete_confirmation_modal(EditorContext const& ctx) -> void;
 
     /// Collect EntityIds in depth-first tree order between anchor and clicked (inclusive).
     auto collect_range(buddd::engine::World& world,

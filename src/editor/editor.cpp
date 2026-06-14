@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -123,7 +124,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
             },
             std::vector<DialogButton>{
                 {"Close", "close_btn", []() {
-                    // No-op: the framework auto-closes after any button click.
+                    return true;
                 }}
             }
         ));
@@ -143,7 +144,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
                 [this](std::optional<std::string> path) {
                     if (!path) return;
                     if (auto result = open_scene(*path); !result) {
-                        show_error_modal("Load Error", result.error().message);
+                        open_error_dialog("Load Error", result.error().message);
                     }
                 },
                 "YAML Scene", "yaml");
@@ -156,7 +157,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
                 [this](std::optional<std::string> path) {
                     if (!path) return;
                     if (auto r = save_scene_as(*path); !r) {
-                        show_error_modal("Save Error", r.error().message);
+                        open_error_dialog("Save Error", r.error().message);
                     }
                 },
                 "YAML Scene", "yaml", dialog_default_path().c_str());
@@ -167,7 +168,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
             [this](std::optional<std::string> path) {
                 if (!path) return;
                 if (auto r = save_scene_as(*path); !r) {
-                    show_error_modal("Save Error", r.error().message);
+                    open_error_dialog("Save Error", r.error().message);
                 }
             },
             "YAML Scene", "yaml", dialog_default_path().c_str());
@@ -211,7 +212,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
                 [this](std::optional<std::string> path) {
                     if (!path) return;
                     if (auto result = open_scene(*path); !result) {
-                        show_error_modal("Load Error", result.error().message);
+                        open_error_dialog("Load Error", result.error().message);
                     }
                 },
                 "YAML Scene", "yaml");
@@ -224,7 +225,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
                 [this](std::optional<std::string> path) {
                     if (!path) return;
                     if (auto r = save_scene_as(*path); !r) {
-                        show_error_modal("Save Error", r.error().message);
+                        open_error_dialog("Save Error", r.error().message);
                     }
                 },
                 "YAML Scene", "yaml", dialog_default_path().c_str());
@@ -235,7 +236,7 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
             [this](std::optional<std::string> path) {
                 if (!path) return;
                 if (auto r = save_scene_as(*path); !r) {
-                    show_error_modal("Save Error", r.error().message);
+                    open_error_dialog("Save Error", r.error().message);
                 }
             },
             "YAML Scene", "yaml", dialog_default_path().c_str());
@@ -352,7 +353,6 @@ auto Editor::open_dialog(std::unique_ptr<Dialog> dialog) -> bool {
         }
     }
     BUDDD_LOG_DEBUG("Dialog opened: {}", incoming_id);
-    opened_dialog_ids_.insert(incoming_id);
     dialogs_.push_back(std::move(dialog));
     return true;
 }
@@ -363,6 +363,10 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     }
 
     auto editor_ctx = EditorContext{*this, ctx};
+
+    // ── Flush deferred actions with the fresh context ──
+    for (auto& action : deferred_actions_) action(editor_ctx);
+    deferred_actions_.clear();
 
     // ═══════════════════════════════════════════════
     // Phase 1: Overlays (menus) — drawn before dockspace
@@ -427,13 +431,10 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     // Phase 4: Dialog rendering
     // ═══════════════════════════════════════════════
     for (auto& dialog : dialogs_) {
-        // OpenPopup each frame (matching the pattern used by error modals and delete confirmation)
-        ImGui::OpenPopup(dialog->title().c_str());
+        auto popup_id = dialog->title() + "###" + dialog->id();
+        ImGui::OpenPopup(popup_id.c_str());
 
-        // Also remove from tracking set if present (legacy, but harmless)
-        opened_dialog_ids_.erase(dialog->id());
-
-        if (ImGui::BeginPopupModal(dialog->title().c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(popup_id.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             dialog->draw_content();
             ImGui::EndPopup();
         }
@@ -459,18 +460,6 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     // ═══════════════════════════════════════════════
     draw_pending_op_modal(ctx);
 
-    // ═══════════════════════════════════════════════
-    // Phase 6: Exit-on-next-frame flag (set by async dialog callbacks)
-    // ═══════════════════════════════════════════════
-    if (request_exit_next_frame_) {
-        request_exit_next_frame_ = false;
-        ctx.request_exit();
-    }
-
-    // ═══════════════════════════════════════════════
-    // Phase 7: Error modals
-    // ═══════════════════════════════════════════════
-    draw_error_modals();
 }
 
 auto Editor::shutdown() -> void {
@@ -668,84 +657,8 @@ auto Editor::save_scene_as(const std::string& path) -> be::Result<void> {
     }
 }
 
-// ── Error modals ──
 
-auto Editor::show_error_modal(const std::string& title, const std::string& message) -> void {
-    error_modal_title_ = title;
-    error_modal_message_ = message;
-    show_error_modal_ = true;
-}
 
-auto Editor::draw_error_modals() -> void {
-    if (!show_error_modal_) return;
-
-    ImGui::OpenPopup(error_modal_title_.c_str());
-    if (ImGui::BeginPopupModal(error_modal_title_.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("%s", error_modal_message_.c_str());
-        if (ImGui::Button("OK")) {
-            ImGui::CloseCurrentPopup();
-            show_error_modal_ = false;
-        }
-        ImGui::EndPopup();
-    } else {
-        // Dismissed by Escape or click-outside
-        show_error_modal_ = false;
-    }
-}
-
-// ── Save-prompt modal ──
-
-auto Editor::draw_save_prompt_modal() -> std::optional<SavePromptResult> {
-    // OpenPopup only once per request (on the frame where save_prompt_requested_ is set)
-    if (save_prompt_requested_) {
-        ImGui::OpenPopup("Save Changes");
-        save_prompt_requested_ = false;
-    }
-
-    if (!ImGui::BeginPopupModal("Save Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (save_prompt_seen_) {
-            // Popup was visible on a previous frame but is now closed
-            // (Escape / click-outside) → treat as cancellation.
-            save_prompt_seen_ = false;
-            return SavePromptResult::Cancel;
-        }
-        // Popup not yet visible this frame (first frame after OpenPopup) — wait.
-        return std::nullopt;
-    }
-
-    // Popup is visible this frame
-    save_prompt_seen_ = true;
-
-    // ── Draw buttons ──
-    std::string scene_name = "Untitled";
-    if (current_file_path_.has_value()) {
-        scene_name = std::filesystem::path(*current_file_path_).filename().string();
-    }
-    ImGui::Text("Save changes to %s?", scene_name.c_str());
-
-    if (ImGui::Button("Save")) {
-        ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
-        return SavePromptResult::Save;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Don't Save")) {
-        ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
-        return SavePromptResult::Discard;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Cancel")) {
-        ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
-        return SavePromptResult::Cancel;
-    }
-
-    // If popup was dismissed by Escape/click-outside, BeginPopupModal returned
-    // false above (handled). If we're here the popup is still open — no decision yet.
-    ImGui::EndPopup();
-    return std::nullopt;
-}
 
 // ── Pending op state machine ──
 
@@ -758,91 +671,134 @@ auto Editor::draw_pending_op_modal(be::EngineContext const& ctx) -> void {
         return;
     }
 
-    // Request the save prompt once — don't re-open if the user dismissed it
-    if (!save_prompt_requested_ && !save_prompt_seen_) {
-        save_prompt_requested_ = true;
+    // Build scene name for the prompt text.
+    std::string scene_name = "Untitled";
+    if (current_file_path_.has_value()) {
+        scene_name = std::filesystem::path(*current_file_path_).filename().string();
     }
 
-    auto result = draw_save_prompt_modal();
-    if (!result.has_value()) {
-        return;
-    }
+    // Capture the pending_op value for the callbacks (by value, since the
+    // callbacks may fire on a different frame's draw_ui() call).
+    auto captured_op = pending_op_;
+    auto op_name = [captured_op]() -> std::string_view {
+        switch (captured_op) {
+            case PendingOp::NewScene:  return "NewScene";
+            case PendingOp::OpenScene: return "OpenScene";
+            case PendingOp::Quit:      return "Quit";
+            default:                   return "";
+        }
+    };
 
-    switch (*result) {
-        case SavePromptResult::Save: {
-            auto save_result = save_scene();
-            if (save_result.has_value()) {
-                // Save succeeded — proceed with pending operation
-                if (pending_op_ == PendingOp::OpenScene) {
+    BUDDD_LOG_DEBUG("Save prompt: {} (dirty)", op_name());
+
+    // Try to open the save-prompt dialog. If it's already open,
+    // open_dialog() returns false (dedup by "save-changes" ID).
+    open_dialog(std::make_unique<CustomDialog>(
+        "save-changes",
+        "Save Changes",
+        [scene_name]() {
+            ImGui::Text("Save changes to %s?", scene_name.c_str());
+        },
+        std::vector<DialogButton>{
+            // ── Save button ──
+            {"Save", "save_btn", [this, captured_op]() {
+                auto save_result = save_scene();
+                if (save_result.has_value()) {
+                    // Scene has a file path and save succeeded.
+                    // Chain the pending operation.
+                    BUDDD_LOG_INFO("Save prompt: Save (pending={})",
+                        captured_op == PendingOp::NewScene ? "NewScene" :
+                        captured_op == PendingOp::OpenScene ? "OpenScene" : "Quit");
+                    if (captured_op == PendingOp::OpenScene) {
+                        engine_->platform().show_open_file_dialog(
+                            [this](std::optional<std::string> path) {
+                                if (!path) return;
+                                if (auto r = open_scene(*path); !r)
+                                    open_error_dialog("Load Error", r.error().message);
+                            },
+                            "YAML Scene", "yaml");
+                    } else if (captured_op == PendingOp::NewScene) {
+                        new_scene();
+                    } else if (captured_op == PendingOp::Quit) {
+                        defer([](EditorContext const& fresh_ctx) {
+                            fresh_ctx.engine.request_exit();
+                        });
+                    }
+                    pending_op_ = PendingOp::None;
+                } else if (!current_file_path_.has_value()) {
+                    // Untitled: redirect to Save As, then complete pending op.
+                    auto original_op = captured_op;
+                    pending_op_ = PendingOp::None;
+                    engine_->platform().show_save_file_dialog(
+                        [this, original_op](std::optional<std::string> save_path) {
+                            if (!save_path) return;  // cancelled — stay on current scene.
+                            if (auto r = save_scene_as(*save_path); !r) {
+                                open_error_dialog("Save Error", r.error().message);
+                                return;
+                            }
+                            // Save succeeded — complete the original operation.
+                            if (original_op == PendingOp::OpenScene) {
+                                engine_->platform().show_open_file_dialog(
+                                    [this](std::optional<std::string> path) {
+                                        if (!path) return;
+                                        if (auto r = open_scene(*path); !r)
+                                            open_error_dialog("Load Error", r.error().message);
+                                    },
+                                    "YAML Scene", "yaml");
+                            } else if (original_op == PendingOp::NewScene) {
+                                new_scene();
+                            } else if (original_op == PendingOp::Quit) {
+                                defer([](EditorContext const& fresh_ctx) {
+                                    fresh_ctx.engine.request_exit();
+                                });
+                            }
+                        },
+                        "YAML Scene", "yaml", dialog_default_path().c_str());
+                } else {
+                    // Path exists but save failed.
+                    open_error_dialog("Save Error", save_result.error().message);
+                    pending_op_ = PendingOp::None;
+                }
+                return true;  // Close dialog after Save attempt.
+            }},
+            // ── Don't Save button ──
+            {"Don't Save", "discard_btn", [this, captured_op]() {
+                BUDDD_LOG_INFO("Save prompt: Discard (pending={})",
+                    captured_op == PendingOp::NewScene ? "NewScene" :
+                    captured_op == PendingOp::OpenScene ? "OpenScene" : "Quit");
+                if (captured_op == PendingOp::OpenScene) {
                     engine_->platform().show_open_file_dialog(
                         [this](std::optional<std::string> path) {
                             if (!path) return;
-                            if (auto r = open_scene(*path); !r) {
-                                show_error_modal("Load Error", r.error().message);
-                            }
+                            if (auto r = open_scene(*path); !r)
+                                open_error_dialog("Load Error", r.error().message);
                         },
                         "YAML Scene", "yaml");
-                } else {
-                    execute_pending_op(ctx);
+                } else if (captured_op == PendingOp::NewScene) {
+                    new_scene();
+                } else if (captured_op == PendingOp::Quit) {
+                    defer([](EditorContext const& fresh_ctx) {
+                        fresh_ctx.engine.request_exit();
+                    });
                 }
                 pending_op_ = PendingOp::None;
-            } else if (!current_file_path_.has_value()) {
-                // Untitled: redirect to Save As dialog, then complete pending op
-                auto original_op = pending_op_;
+                return true;  // Close dialog after Discard.
+            }},
+            // ── Cancel button ──
+            {"Cancel", "cancel_btn", [this]() {
+                BUDDD_LOG_INFO("Save prompt cancelled: pending_op cleared");
                 pending_op_ = PendingOp::None;
-                engine_->platform().show_save_file_dialog(
-                    [this, original_op](std::optional<std::string> save_path) {
-                        if (!save_path) return; // cancelled — stay on current scene
-                        auto r = save_scene_as(*save_path);
-                        if (!r) {
-                            show_error_modal("Save Error", r.error().message);
-                            return;
-                        }
-                        // Save succeeded — complete the original operation
-                        if (original_op == PendingOp::OpenScene) {
-                            engine_->platform().show_open_file_dialog(
-                                [this](std::optional<std::string> path) {
-                                    if (!path) return;
-                                    if (auto r = open_scene(*path); !r)
-                                        show_error_modal("Load Error", r.error().message);
-                                },
-                                "YAML Scene", "yaml");
-                        } else if (original_op == PendingOp::NewScene) {
-                            new_scene();
-                        } else if (original_op == PendingOp::Quit) {
-                            request_exit_next_frame_ = true;
-                        }
-                    },
-                    "YAML Scene", "yaml", dialog_default_path().c_str());
-            } else {
-                show_error_modal("Save Error", save_result.error().message);
-                pending_op_ = PendingOp::None;
-            }
-            break;
-        }
-        case SavePromptResult::Discard: {
-            if (pending_op_ == PendingOp::OpenScene) {
-                engine_->platform().show_open_file_dialog(
-                    [this](std::optional<std::string> path) {
-                        if (!path) return;
-                        if (auto r = open_scene(*path); !r) {
-                            show_error_modal("Load Error", r.error().message);
-                        }
-                    },
-                    "YAML Scene", "yaml");
-            } else {
-                execute_pending_op(ctx);
-            }
+                return true;  // Close dialog after Cancel.
+            }}
+        },
+        // on_close fires on Escape/click-outside dismissal (NOT on button clicks).
+        // Without this, Escape dismisses the dialog but leaves pending_op_ set,
+        // causing draw_pending_op_modal() to reopen the dialog next frame.
+        [this]() {
+            BUDDD_LOG_INFO("Save prompt cancelled: pending_op cleared");
             pending_op_ = PendingOp::None;
-            break;
         }
-        case SavePromptResult::Cancel: {
-            pending_op_ = PendingOp::None;
-            BUDDD_LOG_INFO("Save prompt cancelled");
-            break;
-        }
-        default: break;
-    }
+    ));
 }
 
 auto Editor::execute_pending_op(be::EngineContext const& ctx) -> void {
@@ -851,12 +807,9 @@ auto Editor::execute_pending_op(be::EngineContext const& ctx) -> void {
             new_scene();
             break;
         case PendingOp::OpenScene:
-            if (pending_file_path_.has_value()) {
-                auto result = open_scene(pending_file_path_.value());
-                if (!result) {
-                    show_error_modal("Load Error", result.error().message);
-                }
-            }
+            // No-op: the file dialog is opened by save-prompt button callbacks,
+            // not by execute_pending_op(). pending_file_path_ was always nullopt
+            // (dead code) and has been removed.
             break;
         case PendingOp::Quit:
             ctx.request_exit();
@@ -866,7 +819,45 @@ auto Editor::execute_pending_op(be::EngineContext const& ctx) -> void {
     }
 }
 
-// (handle_dirty_before_op removed — dead code)
-// (draw_file_dialog removed — replaced by Platform dialog calls)
+// ── Convenience dialog helpers ──
+
+auto Editor::open_message_dialog(const std::string& title, const std::string& message) -> void {
+    static uint64_t counter = 0;
+    auto id = "msgbox_" + std::to_string(std::time(nullptr)) + "_" + std::to_string(counter++);
+    open_dialog(std::make_unique<CustomDialog>(
+        std::move(id), title,
+        [message]() { ImGui::Text("%s", message.c_str()); },
+        std::vector<DialogButton>{{"OK", "ok_btn", []() { return true; }}}
+    ));
+}
+
+auto Editor::open_error_dialog(const std::string& title, const std::string& message) -> void {
+    open_message_dialog(title, message);
+}
+
+auto Editor::open_confirm_dialog(const std::string& title, const std::string& message,
+    std::function<bool()> on_ok) -> void {
+    static uint64_t counter = 0;
+    auto id = "confirm_" + std::to_string(std::time(nullptr)) + "_" + std::to_string(counter++);
+    open_dialog(std::make_unique<CustomDialog>(
+        std::move(id), title,
+        [message]() { ImGui::Text("%s", message.c_str()); },
+        std::vector<DialogButton>{{"OK", "ok_btn", std::move(on_ok)}}
+    ));
+}
+
+auto Editor::open_ok_cancel_dialog(const std::string& title, const std::string& message,
+    std::function<bool()> on_ok, std::function<bool()> on_cancel) -> void {
+    static uint64_t counter = 0;
+    auto id = "okcancel_" + std::to_string(std::time(nullptr)) + "_" + std::to_string(counter++);
+    open_dialog(std::make_unique<CustomDialog>(
+        std::move(id), title,
+        [message]() { ImGui::Text("%s", message.c_str()); },
+        std::vector<DialogButton>{
+            {"OK", "ok_btn", std::move(on_ok)},
+            {"Cancel", "cancel_btn", std::move(on_cancel)}
+        }
+    ));
+}
 
 } // namespace buddd::editor
