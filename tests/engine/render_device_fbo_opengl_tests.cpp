@@ -1,3 +1,5 @@
+#include <catch2/catch_test_macros.hpp>
+
 #ifdef BUDDD_HAS_DISPLAY
 
 #include <SDL3/SDL.h>     // For SDL_SetHint
@@ -23,8 +25,6 @@
 #include "scene/entity.h"
 #include "math/math.h"
 #include "math/mat4.h"
-
-#include <catch2/catch_test_macros.hpp>
 
 #include <cstddef>
 #include <memory>
