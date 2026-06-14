@@ -388,14 +388,12 @@ Do not implement directly.
 Do not allow implementation from a raw user request.
 Do not allow implementation from a spec alone.
 
-The code-implementer must ensure the project builds and all unit tests pass. Detailed testing, coverage verification, E2E/visual checks, and regression detection are handled by the tester agent in the next step.
+The code-implementer must ensure the project builds and all unit tests pass. The code-implementer reports completion only when build and unit tests are green. Do not verify build or tests yourself — the tester agent handles all testing in the next step.
 
 Gate (after code-implementer reports completion):
 - Read coordination.md `## code-implementer` section ONLY.
 - Check **Status**, **Questions for human**, **Blocking issues**.
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke code-implementer or previous agent depending on the questions and answers.
-- Verify the build compiles (`cmake --build --preset debug`) and unit tests pass (`ctest --preset debug --output-on-failure`).
-- If build or tests fail → loop back to code-implementer.
 - Update `## Orchestrator` → **Current step**.
 
 ### 8. Tester

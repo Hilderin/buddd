@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + Editor Dialog Abstraction + right-click selection, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + Editor Dialog Abstraction) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + F-06 — inspector-component-properties + Editor Dialog Abstraction + right-click selection, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + F-06 (component properties) + Editor Dialog Abstraction) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -212,12 +212,13 @@ Present in Scene, Prefab, and Game tabs.
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and edit the selected entity's components and properties
 - **Content (F-05 + F-06 implemented):** Entity name field (editable, uses `RenameEntityCommand`), Transform section with Position/Rotation/Scale rows in a 2-column `ImGui::Table` layout (property name | value) with no column headers. Property-name labels ("Position", "Rotation", "Scale") are rendered in column 0 by the panel. In column 1, the editors use composite axis input widgets: a colored drag-handle (colored rectangle with white text, click+drag to scrub) on the left and an `ImGui::InputFloat` (single-click text entry, `"%.2f"` format) on the right. Axis colors: X/Pitch=red, Y/Yaw=green, Z/Roll=blue. Rotation preserves Pitch/Yaw/Roll labels with the same axis colors, values in degrees wrapped to [-180, 180] via `Quat::to_euler()`/`from_euler()` round-trip. Scale enforces `min_value=0.001`. The `id` parameter passed to editors is used only for ImGui PushID scoping (not displayed). All editors use `InspectorTypeEditorRegistry` with `EditorContext` for dirty marking. No-selection state shows centered "No entity selected". Multi-select shows `primary()` entity only.
+- **Component sections (F-06 component properties):** Below the Transform section, each component attached to the selected entity renders as a collapsible section via `ImGui::CollapsingHeader` (default closed, `ImGuiTreeNodeFlags_None`). Sections appear in the order returned by `Entity::component_at()`. Each component section contains a 2-column `ImGui::Table` (property name | value) matching the Transform layout. Properties are read via `ComponentInfoBase::property_serialize()`, decoded to `std::any` via `TypeRegistry::yaml_decode()`, edited via `InspectorTypeEditorRegistry::draw_any()`, and on change, re-encoded via `TypeRegistry::yaml_encode()` and committed via `SetComponentPropertyCommand`. Component sections with zero properties show centered "No editable properties" in disabled text style. Transform is not part of the component iteration — it is always rendered first and always expanded.
 - **Default position/size:** Right dock, ~300px width
 - **Read-only mode during Play:** Not yet implemented (deferred to F-15). Grayed-out fields, lock icon banner, hidden Add/Remove buttons are planned but not wired.
 
 ##### Inspector Property Editors
 
-> **F-05 + F-06 implementation**: The `InspectorTypeEditorRegistry` (in `src/editor/inspector_editors.h/.cpp`) provides reusable ImGui editor widgets for the 9 built-in types listed below, with a fallback text-input path for unregistered types (uses `TypeRegistry::to_string()`/`from_string()`). The Transform section (Position, Rotation, Scale) uses these editors via `InspectorTypeEditorRegistry::draw<Vec3>()` and `InspectorTypeEditorRegistry::draw<Quat>()`. As of F-06, Vec2/Vec3/Vec4/Quat editors use composite axis input widgets (colored drag-handle + InputFloat) and no longer render a property-name label — the `id` parameter is used only for ImGui PushID scoping. Component property editors (for future use) will consume the same registry.
+> **F-05 + F-06 implementation**: The `InspectorTypeEditorRegistry` (in `src/editor/inspector_editors.h/.cpp`) provides reusable ImGui editor widgets for the 9 built-in types listed below, with a fallback text-input path for unregistered types (uses `TypeRegistry::to_string()`/`from_string()`). The Transform section (Position, Rotation, Scale) uses these editors via `InspectorTypeEditorRegistry::draw<Vec3>()` and `InspectorTypeEditorRegistry::draw<Quat>()`. As of F-06 (UX Polish), Vec2/Vec3/Vec4/Quat editors use composite axis input widgets (colored drag-handle + InputFloat) and no longer render a property-name label — the `id` parameter is used only for ImGui PushID scoping. As of F-06 (Component Properties), component sections use `InspectorTypeEditorRegistry::draw_any()` for runtime type-erased dispatch.
 
 The Inspector renders each component property with a type-appropriate editor widget based on its registered type in the `ComponentRegistry` and `TypeRegistry`:
 
@@ -234,6 +235,19 @@ The Inspector renders each component property with a type-appropriate editor wid
 | `Entity reference` | Text field showing entity name (read-only in MVP1) |
 | `Asset reference` | Text field showing asset path + drag-accept target (not yet implemented) |
 | `Quat` | Euler angles in degrees via composite axis widgets (Pitch=red, Yaw=green, Roll=blue), wrapped to [-180, 180] |
+
+**Runtime type dispatch via `draw_any()`** — `InspectorTypeEditorRegistry::draw_any(label, any&, type_index, flags, ctx)` looks up the registered editor by `type_index` and delegates to `InspectorTypeEditor::draw_any()`. The `TypedInspectorEditor<T>` override extracts the typed value from `std::any` via `std::any_cast<T>()` and calls the editor's draw function. If no editor is registered, a read-only fallback is displayed. See [F-06 component properties spec](/.specs/sprint-2026-06/inspector-component-properties/spec.md).
+
+**PropertyFlags → EditorFlags mapping** — When rendering component properties, `PropertyFlags` fields are mapped directly to `EditorFlags`:
+
+| PropertyFlags field | EditorFlags field |
+|---|---|
+| `min_value` | `min_value` |
+| `max_value` | `max_value` |
+| `step_value` | `step_value` |
+| `tags_` | `tags_` (for `"rgb"` tag detection on Color properties) |
+
+**SetComponentPropertyCommand** — Each component property edit creates a `SetComponentPropertyCommand` (in `src/editor/commands/set_component_property_command.h`) storing `entity_id`, `component_type_name`, `property_name`, and old/new YAML values. The command's `execute()` writes the new value via `ComponentInfoBase::property_deserialize()` and marks the scene dirty; `undo()` writes the old value back. An execute-time redundancy check compares the current value against the stored `new_value_` — if they match, the command is a no-op (avoids redundant undo entries).
 
 The **Add Component** button at the bottom of the Inspector opens a searchable dropdown listing all registered component types — typing filters the list, clicking adds the component to the entity. Each component section has a **Remove component** button (ⓧ) on its header.
 

@@ -15,3 +15,12 @@ target_include_directories(buddd_editor
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+# yaml-cpp include path (fetched in src/engine/CMakeLists.txt).
+# Required for editor code that transitively pulls in engine headers
+# (e.g., component_info.h) which include <yaml-cpp/yaml.h>.
+if(EXISTS "${CMAKE_BINARY_DIR}/_deps/yaml-cpp-src/include")
+    target_include_directories(buddd_editor PRIVATE
+        ${CMAKE_BINARY_DIR}/_deps/yaml-cpp-src/include
+    )
+endif()

@@ -37,6 +37,18 @@ public:
     [[nodiscard]] virtual auto property_name(size_t index) const -> std::string_view = 0;
     [[nodiscard]] virtual auto property_type_index(size_t index) const -> const std::type_index& = 0;
     [[nodiscard]] virtual auto property_flags(size_t index) const -> const PropertyFlags& = 0;
+
+    /// Serialize a single property by index from the component to a YAML node.
+    [[nodiscard]] virtual auto property_serialize(
+        const Component& comp, size_t index,
+        const SerializationContext& ctx) const -> YAML::Node = 0;
+
+    /// Deserialize a single property by index from a YAML node into the component.
+    /// Returns error if index is out of bounds or deserialization fails.
+    [[nodiscard]] virtual auto property_deserialize(
+        Component& comp, size_t index,
+        const YAML::Node& node,
+        const SerializationContext& ctx) const -> Result<void> = 0;
 };
 
 // ── Typed template (for registration) ──
@@ -107,6 +119,26 @@ public:
     [[nodiscard]] auto property_name(size_t index) const -> std::string_view override { return properties_[index].name(); }
     [[nodiscard]] auto property_type_index(size_t index) const -> const std::type_index& override { return properties_[index].type_index(); }
     [[nodiscard]] auto property_flags(size_t index) const -> const PropertyFlags& override { return properties_[index].flags(); }
+
+    auto property_serialize(const Component& comp, size_t index,
+                            const SerializationContext& ctx) const -> YAML::Node override {
+        const auto& typed = static_cast<const T&>(comp);
+        if (index >= raw_getters_.size()) {
+            return YAML::Node();  // null node — caller must check
+        }
+        return raw_getters_[index](typed, ctx);
+    }
+
+    auto property_deserialize(Component& comp, size_t index,
+                              const YAML::Node& node,
+                              const SerializationContext& ctx) const -> Result<void> override {
+        if (index >= properties_.size()) {
+            return make_error(Error::Category::InvalidArgument,
+                "Property index " + std::to_string(index) + " out of bounds for component '" + type_name_ + "'");
+        }
+        auto& typed = static_cast<T&>(comp);
+        return properties_[index].deserialize(typed, node, ctx);
+    }
 
     /// (A) Convention-based — NOT implemented in v1.
     template<typename PropType>
@@ -231,6 +263,10 @@ public:
             };
         }
 
+        // Copy yaml_getter BEFORE it's moved into the Property (need raw access
+        // for property_serialize which bypasses the default-skip in Property::serialize()).
+        raw_getters_.push_back(yaml_getter);
+
         properties_.push_back(Property{
             std::string(name),
             std::type_index(typeid(PropType)),
@@ -244,6 +280,9 @@ public:
 private:
     std::string type_name_;
     std::vector<Property> properties_;
+    // Parallel vector of raw getters (no default-skipping) for use by
+    // property_serialize, which needs the current value even at default.
+    std::vector<Property::GetterFn> raw_getters_;
 };
 
 } // namespace buddd::engine

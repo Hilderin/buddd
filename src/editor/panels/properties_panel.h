@@ -30,6 +30,7 @@ private:
     // ── Helper methods ──
     auto draw_entity_name(EditorContext const& ctx, buddd::engine::EntityId entity_id) -> void;
     auto draw_transform_section(EditorContext const& ctx, buddd::engine::EntityId entity_id) -> void;
+    auto draw_component_sections(EditorContext const& ctx, buddd::engine::EntityId entity_id) -> void;
     auto draw_no_selection_state() -> void;
 };
 

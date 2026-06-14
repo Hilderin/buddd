@@ -67,9 +67,30 @@ public:
     template<typename T>
     static auto is_registered() -> bool;
 
+    /// Type-erased YAML encode: given a type_index and a std::any containing
+    /// a value of that type, encode to YAML using the registered callbacks.
+    /// Returns error if the type is not registered or if the std::any doesn't match.
+    [[nodiscard]] static auto yaml_encode(
+        std::type_index type, const std::any& value,
+        const SerializationContext& ctx) -> Result<YAML::Node>;
+
+    /// Type-erased YAML decode: given a type_index and a YAML node,
+    /// decode to a std::any containing a value of that type.
+    /// Returns error if the type is not registered or decode fails.
+    [[nodiscard]] static auto yaml_decode(
+        std::type_index type, const YAML::Node& node,
+        const SerializationContext& ctx) -> Result<std::any>;
+
 private:
     struct TypeEntry {
         std::any info;  // holds TypeInfo<T>
+
+        // Type-erased dispatch: encode a std::any to a YAML node.
+        // The function is populated during register_type<T>().
+        std::function<Result<YAML::Node>(const std::any&, const SerializationContext&)> yaml_encode_any;
+
+        // Type-erased dispatch: decode a YAML node to a std::any.
+        std::function<Result<std::any>(const YAML::Node&, const SerializationContext&)> yaml_decode_any;
     };
 
     static auto entry_map() -> std::unordered_map<std::type_index, TypeEntry>&;
@@ -90,6 +111,29 @@ auto TypeRegistry::register_type(TypeInfo<T> info) -> void {
             "Overwriting existing registration for type '{}'", typeid(T).name());
     }
     it->second.info = std::move(info);
+
+    // Populate type-erased dispatch functions
+    it->second.yaml_encode_any = [](const std::any& value, const SerializationContext& ctx) -> Result<YAML::Node> {
+        auto* typed = std::any_cast<T>(&value);
+        if (!typed) {
+            return make_error(Error::Category::InvalidArgument,
+                "Type mismatch in yaml_encode: expected " + std::string(typeid(T).name()));
+        }
+        auto* info = get<T>();
+        if (!info) {
+            return make_error(Error::Category::InvalidArgument,
+                "Type not registered: " + std::string(typeid(T).name()));
+        }
+        return info->yaml_encode(*typed, ctx);
+    };
+
+    it->second.yaml_decode_any = [](const YAML::Node& node, const SerializationContext& ctx) -> Result<std::any> {
+        auto decoded = yaml_decode<T>(node, ctx);
+        if (!decoded) {
+            return make_error(decoded.error());
+        }
+        return std::any(std::move(*decoded));
+    };
 }
 
 template<typename T>

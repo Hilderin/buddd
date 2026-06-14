@@ -128,7 +128,10 @@ auto draw_fallback_readonly(const std::string& label, std::type_index type,
     BUDDD_LOG_TAGGED_DEBUG("Editor:Inspector",
         "No editor registered for type '%s' — rendering read-only fallback",
         type.name());
-    ImGui::TextDisabled("(no editor for type %s)", type.name());
+    // Guard against missing ImGui context (headless mode)
+    if (ImGui::GetCurrentContext()) {
+        ImGui::TextDisabled("(no editor for type %s)", type.name());
+    }
 }
 
 // ── register_builtin_inspector_editors ──
