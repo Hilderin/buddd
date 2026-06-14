@@ -3,8 +3,8 @@
 ## Orchestrator
 
 **Feature**: auto-rename-on-create
-**Status**: in-progress
-**Current step**: governance-reviewer
+**Status**: completed
+**Current step**: completed
 **Initial instructions**: When creating a new entity in the Scene Panel via "Create Empty", automatically enter rename mode so the user can type a name immediately without pressing F2.
 **Notes**:
 - Human confirmed: auto-select the new entity (replace selection)
@@ -141,9 +141,20 @@ none
 
 ## governance-reviewer
 
-**Status**: in-progress
+**Status**: completed
 **Summary**:
-Performing final cross-document governance validation.
+All cross-document validations pass. Spec matches implementation contract, implementation matches spec, and all workflow gates were completed in order (spec-author → spec-critic → contract-author → contract-critic → human → implementer → code-reviewer → wiki-agent → governance-reviewer). Three minor deviations from contract were flagged by code-review and carried forward (forward declaration instead of #include, log bug, pointer stability implicit). Unauthorized spec modifications (entity-operations AC-32, entity-selection NG-10) from scope creep were not fully reverted but the human waived re-review, accepting the state. No ADR contradictions. Wiki accurately reflects the new behavior. Build passes with zero warnings, all 705 tests pass.
+**Artifacts**:
+- `.specs/sprint-2026-06/auto-rename-on-create/governance-review.md`
+**Questions for human**:
+- Should the orphaned `.specs/sprint-2026-06/scene-panel-right-click/` directory (added as scope-creep side effect) be removed?
+**Warnings**:
+- Scope-creep artifacts left in repo: `.specs/sprint-2026-06/scene-panel-right-click/` directory contains an unapproved feature spec
+- Unauthorized spec modifications to F-04 (AC-32) and entity-selection (NG-10) were not reverted — human accepted via waiving re-review
+- Forward declaration instead of #include in scene_panel.h — functionally equivalent but deviates from contract
+- Auto-rename confirmed log outputs entity ID twice instead of name string
+**Blocking issues**:
+none
 
 ---
 
