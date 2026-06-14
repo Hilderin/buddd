@@ -52,6 +52,13 @@ public:
 
     auto create_texture(const Image& image) -> Result<std::unique_ptr<Texture>> override;
 
+    auto create_render_texture(uint32_t width, uint32_t height)
+        -> Result<std::unique_ptr<Texture>> override;
+    auto create_frame_buffer(uint32_t width, uint32_t height)
+        -> Result<std::unique_ptr<FrameBuffer>> override;
+    auto read_pixels(FrameBuffer& fbo)
+        -> Result<ImageBuffer> override;
+
     // -- Drawing --
     auto draw(
         PrimitiveTopology topology,

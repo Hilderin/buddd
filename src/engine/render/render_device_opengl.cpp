@@ -5,6 +5,7 @@
 #include "vertex_buffer_opengl.h"
 #include "index_buffer_opengl.h"
 #include "texture_opengl.h"
+#include "frame_buffer_opengl.h"
 
 #include "image/image.h"
 #include "render/glsl_util.h"
@@ -379,6 +380,92 @@ auto RenderDeviceOpenGL::create_texture(const Image& image) -> Result<std::uniqu
     BUDDD_LOG_INFO("Texture created (OpenGL, {}x{}, {} channels)", image.width(), image.height(), ch);
 
     return std::unique_ptr<Texture>(new TextureOpenGL(tex, image.width(), image.height(), ch));
+}
+
+// ============================================================================
+// Render texture / FBO / read_pixels(FBO)
+// ============================================================================
+
+auto RenderDeviceOpenGL::create_render_texture(uint32_t width, uint32_t height)
+    -> Result<std::unique_ptr<Texture>>
+{
+    // Validate dimensions
+    if (width == 0 || height == 0) {
+        return make_error(Error::Category::InvalidArgument,
+            "Render texture dimensions must be positive");
+    }
+
+    GLuint tex;
+    glCreateTextures(GL_TEXTURE_2D, 1, &tex);
+    glTextureStorage2D(tex, 1, GL_RGBA8, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+
+    // Check for GL error after storage allocation
+    GLenum gl_error = glGetError();
+    if (gl_error != GL_NO_ERROR) {
+        glDeleteTextures(1, &tex);
+        return make_error(Error::Category::TextureCreationFailed,
+            "Render texture creation failed with error code 0x"
+            + to_hex_string(gl_error));
+    }
+
+    glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTextureParameteri(tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    BUDDD_LOG_INFO("Render texture created (OpenGL, {}x{})", width, height);
+
+    return std::unique_ptr<Texture>(
+        new TextureOpenGL(tex, static_cast<int>(width), static_cast<int>(height), 4));
+}
+
+auto RenderDeviceOpenGL::create_frame_buffer(uint32_t width, uint32_t height)
+    -> Result<std::unique_ptr<FrameBuffer>>
+{
+    return FrameBufferOpenGL::create(width, height);
+}
+
+auto RenderDeviceOpenGL::read_pixels(FrameBuffer& fbo)
+    -> Result<ImageBuffer>
+{
+    auto& gl_fbo = static_cast<FrameBufferOpenGL&>(fbo);
+    auto w = fbo.width();
+    auto h = fbo.height();
+
+    ImageBuffer buffer;
+    buffer.width = static_cast<int>(w);
+    buffer.height = static_cast<int>(h);
+    buffer.channels = 4;
+    buffer.data.resize(static_cast<size_t>(w) * static_cast<size_t>(h) * 4);
+
+    // Save current FBO binding
+    GLint prev_fbo = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+
+    // Bind the target FBO
+    glBindFramebuffer(GL_FRAMEBUFFER, gl_fbo.handle());
+
+    // Read from color attachment 0
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+
+    // Clear previous GL error
+    glGetError();
+
+    glReadPixels(0, 0, static_cast<GLint>(w), static_cast<GLint>(h),
+                 GL_RGBA, GL_UNSIGNED_BYTE, buffer.data.data());
+
+    GLenum gl_error = glGetError();
+    if (gl_error != GL_NO_ERROR) {
+        glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prev_fbo));
+        return make_error(Error::Category::ReadbackFailed,
+            "glReadPixels failed with error code " + to_hex_string(gl_error));
+    }
+
+    // Restore previous FBO binding
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prev_fbo));
+
+    return buffer;
 }
 
 // ============================================================================

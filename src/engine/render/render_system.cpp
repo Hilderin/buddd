@@ -2,6 +2,7 @@
 
 #include "error.h"            // to_string()
 #include "render/render_device.h"
+#include "render/frame_buffer.h"
 #include "scene/world.h"
 #include "scene/camera_component.h"
 #include "render/mesh_renderer.h"
@@ -155,6 +156,12 @@ auto RenderSystem::render_scene() -> void {
         mr.model().draw(*device_);
         return true;
     });
+}
+
+auto RenderSystem::render_scene(FrameBuffer& target) -> void {
+    target.bind();
+    render_scene();      // delegates to the parameterless overload
+    target.unbind();
 }
 
 } // namespace buddd::engine

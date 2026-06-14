@@ -239,6 +239,48 @@ The frame loop lives in `run_app()` in `src/cmd/app.cpp`. `run_app()` creates a 
     - Updatable components receive the full EngineContext with all 7 fields.
 ```
 
+### Offscreen rendering / FrameBuffer usage (SPEC-2026-06-RDFBO)
+
+The `FrameBuffer` abstraction enables offscreen rendering to a texture, required for editor viewport panels:
+
+```
+Typical FBO usage pattern:
+    1. auto fbo = device.create_frame_buffer(viewport_w, viewport_h)
+    2. render_system.render_scene(*fbo)  // binds FBO → renders → unbinds
+    3. // fbo->color_texture() is now ready for ImGui::Image() display
+
+FBO lifecycle:
+    create_frame_buffer(w, h)
+        │
+        ├── Creates RGBA8 color texture (GL_LINEAR, GL_CLAMP_TO_EDGE)
+        ├── Creates D24 depth renderbuffer
+        ├── Checks framebuffer completeness (glCheckNamedFramebufferStatus)
+        └── Returns unique_ptr<FrameBuffer>
+
+    render_scene(FrameBuffer& target):
+        target.bind()       ──  saves previous FBO + viewport
+        render_scene()      ──  delegates to parameterless overload
+        target.unbind()     ──  restores previous viewport + FBO
+
+    FrameBuffer::resize(w, h):
+        ── Destroys old attachments, creates new at (w, h), re-checks completeness
+
+Viewport usage pattern (future editor feature F-07):
+    // Per-frame, for each viewport panel:
+    fbo->resize(panel_width, panel_height);   // if panel resized
+    render_system.render_scene(*fbo);          // render editor scene into FBO
+    ImGui::Image(fbo->color_texture(), size);  // display in ImGui panel
+```
+
+Key design points:
+
+- **Separate overload**: `render_scene(FrameBuffer&)` is a separate overload (not a default parameter), matching the `read_pixels(FrameBuffer&)` pattern (backward compatible — existing parameterless callers unchanged).
+- **Viewport save/restore**: `FrameBuffer::bind()` saves both the previous FBO binding (`GL_FRAMEBUFFER_BINDING`) and viewport dimensions (`GL_VIEWPORT`); `unbind()` restores both — ensuring zero side effects on the caller's rendering state.
+- **Headless safety**: Headless `FrameBuffer` (`FrameBufferHeadless`) is a pure no-op: bind/unbind/resize do nothing, `read_pixels(FrameBuffer&)` returns an `Unsupported` error.
+- **Explicit bind/unbind pattern**: The engine does not have a `begin_frame(FrameBuffer*)` override — the caller explicitly binds the FBO before rendering and unbinds after.
+- **Depth/stencil**: The FBO uses a D24 renderbuffer for depth. No stencil attachment (out of scope for MVP). No depth texture (renderbuffer is sufficient for viewport occlusion).
+- **Error handling**: Zero dimensions return `InvalidArgument`. Incomplete FBO (driver/hardware error) returns `ResourceCreationFailed`. All factory methods return `Result<T>` per ADR-001.
+
 ### Texture data flow
 
 Textures flow from loaded PNG files through the image subsystem to the render pipeline:

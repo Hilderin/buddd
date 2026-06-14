@@ -163,7 +163,7 @@ src/engine/
     ├── texture.h                   # Abstract Texture class (width, height, channels)
     ├── vertex_buffer.h             # Abstract VertexBuffer class
     ├── index_buffer.h              # IndexType enum, abstract IndexBuffer class
-    ├── render_device.h             # Abstract RenderDevice class (factories + draw + create_texture)
+    ├── render_device.h             # Abstract RenderDevice class (factories + draw + create_texture + FBO: create_frame_buffer, create_render_texture, read_pixels(FrameBuffer&))
     ├── render_device.cpp           # RenderDevice::create() factory
     ├── render_device_opengl.h/cpp  # OpenGL 4.5 backend (+ factory/draw overrides + create_texture via DSA; uses glsl_util for uniform discovery)
     ├── render_device_headless.h/cpp# Headless backend (+ factory/draw overrides + in-memory create_texture; uses glsl_util for uniform discovery)
@@ -181,11 +181,14 @@ src/engine/
     ├── vertex_buffer_headless.h/cpp# Headless vertex buffer backend (VertexBufferHeadless)
     ├── index_buffer_opengl.h/cpp   # OpenGL index buffer backend (IndexBufferOpenGL)
     ├── index_buffer_headless.h/cpp # Headless index buffer backend (IndexBufferHeadless)
+    ├── frame_buffer.h              # FrameBuffer — abstract offscreen framebuffer (color + depth attachments, bind/unbind/resize)
+    ├── frame_buffer_opengl.h/cpp   # OpenGL FBO backend (DSA creation, viewport save/restore, depth/stencil renderbuffer)
+    ├── frame_buffer_headless.h/cpp # Headless no-op FBO backend
     ├── model.h                     # Model — concrete utility class bundling VertexBuffer + optional IndexBuffer + shared_ptr<Material>
     ├── model.cpp                   # Model implementation (factory methods, draw dispatch)
     ├── mesh_renderer.h             # MeshRenderer — ECS component (inherits Component) holding shared_ptr<Model>
     ├── mesh_renderer.cpp           # MeshRenderer implementation
-    ├── render_system.h             # RenderSystem — bridges RenderDevice + World, orchestrates frame rendering
+    ├── render_system.h             # RenderSystem — bridges RenderDevice + World, orchestrates frame rendering (render_scene(FrameBuffer&) overload for offscreen)
     ├── render_system.cpp           # RenderSystem implementation (begin/end_frame, camera lookup, each<MeshRenderer> iteration, MVP + lighting uniform setting, light collection)
     └── phong/                      # Phong lighting module
         ├── phong_shaders.h         # Embedded GLSL 450 core vertex + fragment shader strings (constexpr std::string_view)
@@ -227,6 +230,7 @@ src/engine/
 - **Exception to ADR-001**: `RenderDevice::draw()` and `draw_indexed()` return `void` rather than `Result<void>`, because draw calls are on a performance-sensitive hot path where per-frame error checking is impractical. Precondition violations are undefined behaviour.
 - `RenderDeviceOpenGL::begin_frame()` sets clear colour to `(0.02, 0.02, 0.05)` (dark blue) via `glClearColor` before `glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)`, rather than the default black. A 24-bit depth buffer is allocated via `SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24)` before context creation, and `GL_DEPTH_TEST` (with `GL_LESS` comparison) is enabled in the constructor, providing correct 3D occlusion. (See SPEC-012.)
 - `RenderDeviceOpenGL::read_pixels()` calls `glReadBuffer(GL_BACK)` before `glReadPixels` to ensure the freshly rendered back buffer is read — this must be called before `end_frame()` (before the buffer swap).
+- **FrameBuffer / Render-to-Texture** (`SPEC-2026-06-RDFBO`): `RenderDevice` now supports offscreen rendering via `create_frame_buffer(w, h)` (returns a `FrameBuffer` with RGBA8 color + D24 depth attachments), `create_render_texture(w, h)` (creates a storage-only RGBA8 texture suitable as a color attachment), and `read_pixels(FrameBuffer&)` (reads pixel data from a custom FBO). The `FrameBuffer` class hierarchy consists of `FrameBuffer` (abstract base), `FrameBufferOpenGL` (DSA-based GL implementation with viewport save/restore), and `FrameBufferHeadless` (safe no-op). `RenderSystem::render_scene(FrameBuffer&)` binds the FBO, renders the scene into it, and unbinds it, enabling editor viewport rendering. Headless `FrameBuffer` is a no-op with no real GL calls.
 
 ## Architecture boundary
 

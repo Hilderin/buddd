@@ -10,6 +10,7 @@
 #include "render/glsl_util.h"
 #include "render/shader_program.h"
 #include "render/shader_program_headless.h"
+#include "render/frame_buffer_headless.h"
 
 #include <algorithm>
 #include <cctype>
@@ -329,6 +330,40 @@ auto RenderDeviceHeadless::create_texture(const Image& image) -> Result<std::uni
     return std::unique_ptr<Texture>(
         new TextureHeadless(image.width(), image.height(), ch,
                             image.data()));
+}
+
+// ============================================================================
+// Render texture / FBO / read_pixels(FBO)
+// ============================================================================
+
+auto RenderDeviceHeadless::create_render_texture(uint32_t width, uint32_t height)
+    -> Result<std::unique_ptr<Texture>>
+{
+    // Validate dimensions
+    if (width == 0 || height == 0) {
+        return make_error(Error::Category::InvalidArgument,
+            "Render texture dimensions must be positive");
+    }
+
+    std::vector<std::byte> data(static_cast<size_t>(width) * static_cast<size_t>(height) * 4, std::byte{0});
+
+    BUDDD_LOG_INFO("Render texture created (Headless, {}x{})", width, height);
+
+    return std::unique_ptr<Texture>(
+        new TextureHeadless(static_cast<int>(width), static_cast<int>(height), 4, std::move(data)));
+}
+
+auto RenderDeviceHeadless::create_frame_buffer(uint32_t width, uint32_t height)
+    -> Result<std::unique_ptr<FrameBuffer>>
+{
+    return FrameBufferHeadless::create(width, height);
+}
+
+auto RenderDeviceHeadless::read_pixels(FrameBuffer& /*fbo*/)
+    -> Result<ImageBuffer>
+{
+    return make_error(Error::Category::Unsupported,
+        "read_pixels with FBO is not supported in headless mode");
 }
 
 // ============================================================================

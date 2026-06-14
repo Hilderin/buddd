@@ -4,6 +4,7 @@ namespace buddd::engine {
 
 class RenderDevice;
 class World;
+class FrameBuffer;
 
 class RenderSystem {
 public:
@@ -19,6 +20,12 @@ public:
     /// but does not call begin_frame() or end_frame().
     /// Behaviour is undefined if called outside a begin_frame()/end_frame() pair.
     auto render_scene() -> void;
+
+    /// Renders the scene into the specified FBO.
+    /// Binds the FBO before rendering, unbinds it after.
+    /// Behaviour is undefined if called from within a render_scene() call.
+    /// @param target The FBO to render into.
+    auto render_scene(FrameBuffer& target) -> void;
 
 private:
     RenderDevice* device_;

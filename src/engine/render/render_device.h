@@ -19,6 +19,7 @@ class Texture;
 class ShaderProgram;
 class VertexBuffer;
 class IndexBuffer;
+class FrameBuffer;
 enum class ShaderType;
 enum class PrimitiveTopology;
 enum class IndexType;
@@ -65,6 +66,30 @@ public:
 
     [[nodiscard]] virtual auto create_texture(const Image& image)
         -> Result<std::unique_ptr<Texture>> = 0;
+
+    /// Creates a storage-only render texture (no initial CPU data).
+    /// Suitable as a color attachment for FrameBuffer.
+    /// The texture uses GL_LINEAR filtering and GL_CLAMP_TO_EDGE wrapping.
+    /// @return Error::TextureCreationFailed if the GPU cannot allocate the texture.
+    [[nodiscard]] virtual auto create_render_texture(uint32_t width, uint32_t height)
+        -> Result<std::unique_ptr<Texture>> = 0;
+
+    /// Creates a complete FrameBuffer with a color attachment (RGBA8 texture)
+    /// and a depth attachment (D24 renderbuffer).
+    /// @param width  Must be > 0.
+    /// @param height Must be > 0.
+    /// @return Error::InvalidArgument if dimensions are zero.
+    /// @return Error::ResourceCreationFailed if the FBO completeness check fails.
+    [[nodiscard]] virtual auto create_frame_buffer(uint32_t width, uint32_t height)
+        -> Result<std::unique_ptr<FrameBuffer>> = 0;
+
+    /// Reads pixel data from a custom FrameBuffer.
+    /// The returned ImageBuffer has bottom-left pixel origin (OpenGL convention).
+    /// @param fbo The FBO to read from.
+    /// @return Error::Unsupported in headless mode.
+    /// @return Error::ReadbackFailed if glReadPixels fails.
+    [[nodiscard]] virtual auto read_pixels(FrameBuffer& fbo)
+        -> Result<ImageBuffer> = 0;
 
     // -- Drawing --
     virtual auto draw(
