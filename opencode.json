@@ -16,6 +16,7 @@
           "implementation-contract-critic": "allow",
           "code-implementer": "allow",
           "code-reviewer": "allow",
+          "tester": "allow",
           "adr-agent": "allow",
           "wiki-agent": "allow",
           "governance-reviewer": "allow"
@@ -62,6 +63,12 @@
       "description": "Reviews implementation against the accepted spec, contract, and tests.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/code-reviewer.md}",
+      "temperature": 0.1
+    },
+    "tester": {
+      "description": "Tests implementation against spec, fills coverage gaps, runs E2E/visual verification, checks regressions.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/tester.md}",
       "temperature": 0.1
     },
     "adr-agent": {

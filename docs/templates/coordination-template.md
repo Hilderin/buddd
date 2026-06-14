@@ -81,6 +81,32 @@
 **Blocking issues**:
 <none, or a checklist of `- [ ]` items>
 
+## tester
+
+**Status**: pending | in-progress | completed | rejected | blocked
+**Summary**:
+<2–5 lines describing testing outcome>
+**Artifacts**:
+- `.specs/{{SPRINT}}/<feature>/test-report.md`
+**Questions for human**:
+<none, or a bullet list of questions>
+**Warnings**:
+<none, or a bullet list of non-blocking concerns>
+**Blocking issues**:
+<none, or a checklist of `- [ ]` items>
+**Manual tests required**:
+<none, or a step-by-step list of tests the human must perform manually>
+
+## Manual Test Validation
+
+**Status**: pending | passed | failed | skipped
+**Instructions**:
+<step-by-step test instructions from tester, or "none">
+**Human feedback**:
+<none, or the human's response after testing>
+**Date**: <date and time>
+**Notes**: <any additional notes>
+
 ## wiki-agent
 
 **Status**: pending | in-progress | completed | blocked
@@ -103,7 +129,7 @@
 
 - Use exact heading names as listed above (case-sensitive).
 - Use exact field names as listed above (bold markdown `**Field**`).
-- Sub-agent sections must appear in the exact order listed above (spec-author → Human Spec Validation → implementation-contract-author → implementation-contract-critic → Human Validation → code-implementer → wiki-agent).
+- Sub-agent sections must appear in the exact order listed above (spec-author → Human Spec Validation → implementation-contract-author → implementation-contract-critic → Human Validation → code-implementer → tester → Manual Test Validation → wiki-agent).
 - The `## Human Validation` section must appear between `## implementation-contract-critic` and `## code-implementer`.
 - The `## wiki-agent` section must include `**Changes made**` instead of `**Decisions needed**`.
 - **`{{SPRINT}}` must be replaced** with the actual sprint folder (e.g. `sprint-2026-06`) when the orchestrator creates coordination.md from this template.

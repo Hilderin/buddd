@@ -95,28 +95,7 @@ If any test fails:
 
 Do not change test logic to make tests pass — fix the implementation to meet the spec.
 
-### Step 7b — Visual verification (if the feature produces rendered/visual output)
-
-If the feature involves rendering, graphics, framebuffer capture, or any visual/on-screen output:
-
-1. **Build the binary**: `cmake --build --preset debug`
-2. **Capture visual output** using `buddd capture`:
-   ```bash
-   ./build/debug/buddd capture cube [--frame N] /tmp/buddd_verify_<feature>.png
-   ```
-   - Adjust `<scenario>`, `--frame N`, and output path as appropriate for the feature.
-   - If the feature adds a new capture scenario, use that scenario instead of `cube`.
-   - Refer to the spec and implementation contract for expected visual behavior.
-3. **Analyze the captured image** using the `vision_analyze_image` tool:
-   - Call it with the captured image path.
-   - Set `acceptance_criteria` describing what the spec says the visual output should look like (colors, shapes, dimensions, camera position, objects, etc.).
-   - Use `expected` to describe what a correct rendering should show.
-   - Optionally set `known_tolerances` for acceptable deviations.
-4. **Iterate if needed**: If visual analysis reveals issues (wrong colors, wrong camera angle, missing objects, incorrect dimensions, etc.), fix the implementation, rebuild, re-capture, and re-verify.
-
-> **When to skip**: If the feature has no visual/rendered output (e.g., a pure math utility, a CLI refactor, a build system change), skip this step.
-
-### Step 8 — Release build (if contract requires)
+### Step 7b — Release build (if contract requires)
 
 If the contract's `## Done criteria` includes a release preset, also run:
 
@@ -126,29 +105,10 @@ cmake --preset release && cmake --build --preset release
 
 ## Definition of Done
 
-Before reporting completion, verify every criterion below. Tick each box only when confirmed. If any criterion fails, fix it before proceeding.
+Before reporting completion, verify the following. If any criterion fails, fix it before proceeding.
 
-### Build & Compilation
-
-- [ ] The project builds with zero errors and zero warnings (`cmake --build --preset debug`)
-- [ ] If release build required by contract: release preset also builds cleanly
-
-### Tests
-
-- [ ] Every function, class, or module added or modified has at least one associated unit test
-- [ ] Every test case listed in the contract's `## Required tests` passes
-- [ ] All edge cases from the contract are covered and passing
-- [ ] Full test suite passes (`ctest --preset debug --output-on-failure`)
-- [ ] No existing tests were weakened, removed, or silently changed
-
-### E2E / Visual Verification
-
-- [ ] If the feature produces visual/rendered output: screenshot captured via `buddd capture` and analyzed with `vision_analyze_image`
-- [ ] Visual analysis confirms the output matches the spec (colors, shapes, camera, objects, dimensions)
-- [ ] If the feature has no visual output: confirmed explicitly (non-blocking skip)
-
-### Contract Fidelity
-
+- [ ] The project builds with zero errors (`cmake --build --preset debug`)
+- [ ] Full unit test suite passes (`ctest --preset debug --output-on-failure`)
 - [ ] Every item in the contract's `## Done criteria` is satisfied
 - [ ] All `## Files allowed to change` are implemented; no `## Files forbidden to change` were touched
 - [ ] No architectural decisions were made outside the contract

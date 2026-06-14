@@ -42,6 +42,7 @@ Prefer the `question` tool when asking the human for clarification or approval.
 | `implementation-contract-critic` | Critiques and validates implementation contracts. |
 | `code-implementer` | Implements only accepted and human-approved implementation contracts. |
 | `code-reviewer` | Reviews implementation against accepted spec, contract, and tests. Always use this agent to update the implementation contract. |
+| `tester` | Tests implementation against spec, fills coverage gaps, runs E2E/visual verification, checks for regressions. |
 | `adr-agent` | Creates ADR proposals for meaningful architectural decisions. |
 | `wiki-agent` | Maintains the operational project wiki after accepted changes. |
 | `governance-reviewer` | Performs final cross-document governance validation. |
@@ -204,6 +205,15 @@ code-implementer → implements code → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the code-implementer with the answers.
   ↓
+tester → runs tests, fills coverage gaps, E2E/vision analysis, regression checks → writes test-report.md → updates coordination.md
+  ↓  (gate: check coordination.md ## tester)
+  ↓  Status == rejected? → loop to code-implementer
+  ↓  Blocking issues unchecked? → loop to code-implementer
+  ↓  Manual tests required non-empty? → proceed to Manual Test Validation
+  ↓  No manual tests → skip
+  ↓
+**manual test validation gate** (conditional) — present manual test items to human via question tool, record feedback and explicit confirmation in coordination.md ## Manual Test Validation
+  ↓
 adr-agent (on-demand, if needed) → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the adr-agent with the answers.
@@ -212,7 +222,7 @@ wiki-agent → updates coordination.md
   ↓  Ask questions to the human if added on coordination.md
   ↓    Recall the wiki-agent with the answers.
   ↓
-when ever code is updated outside the normal workflow, restart the implementation-contract-critic and following steps.
+when ever code is updated outside the normal workflow, restart from implementation-contract-critic.
   ↓
 orchestrator sets ## Orchestrator Status to "completed" → reports to human
   ↓
@@ -378,13 +388,55 @@ Do not implement directly.
 Do not allow implementation from a raw user request.
 Do not allow implementation from a spec alone.
 
+The code-implementer must ensure the project builds and all unit tests pass. Detailed testing, coverage verification, E2E/visual checks, and regression detection are handled by the tester agent in the next step.
+
 Gate (after code-implementer reports completion):
 - Read coordination.md `## code-implementer` section ONLY.
 - Check **Status**, **Questions for human**, **Blocking issues**.
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke code-implementer or previous agent depending on the questions and answers.
+- Verify the build compiles (`cmake --build --preset debug`) and unit tests pass (`ctest --preset debug --output-on-failure`).
+- If build or tests fail → loop back to code-implementer.
 - Update `## Orchestrator` → **Current step**.
 
-### 8. Governance update
+### 8. Tester
+
+Ask `tester` to run comprehensive tests against the implementation. Pass `SPEC_DIR` so the agent knows the target path.
+
+Give the tester:
+- SPEC_DIR path
+- Any specific areas of concern or known risks
+
+The tester will:
+- Read the spec and implementation contract
+- Run the full test suite and verify every AC, success criterion, and required test is covered
+- Write missing tests and rerun until all pass
+- Perform E2E/visual verification using `buddd capture` + `vision_analyze_image`
+- Check for regressions in existing apps and modules
+- Identify manual-only tests and document them in coordination.md
+
+Gate (after tester reports completion):
+- Read coordination.md `## tester` section ONLY.
+- If **Status** is "rejected" → loop back to code-implementer (step 7).
+- If any unchecked `- [ ]` items under **Blocking issues** → loop back to code-implementer (step 7).
+- If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke tester or previous agent depending on the questions and answers.
+- Check `**Manual tests required**`:
+  - If non-empty (not "none") → proceed to Manual Test Validation (step 9).
+  - If empty or "none" → skip Manual Test Validation.
+- Update `## Orchestrator` → **Current step**.
+
+### 9. Manual test validation
+
+If the tester identified manual-only tests, present them to the human for execution and feedback.
+
+Use the `question` tool to show the manual test instructions (from `## tester` → `**Manual tests required**`) and ask the human to perform them and report results.
+
+After the human responds:
+- If the human reports all manual tests passed → update `## Manual Test Validation` → **Status** to "passed", record date and notes.
+- If the human reports failures or issues → update **Status** to "failed", record feedback, and loop back to code-implementer (step 7) with the human's report.
+
+Update `## Orchestrator` → **Current step**.
+
+### 10. Governance update
 
 If the orchestrator decides an ADR is needed, invoke `adr-agent` on-demand by delegating to it.
 The `adr-agent` is an on-demand tool, not a mandatory workflow step.
@@ -395,7 +447,7 @@ After `adr-agent` reports completion:
 - Check **Blocking issues**: if present, resolve.
 - Update `## Orchestrator` → **Current step**.
 
-### 9. Wiki update
+### 11. Wiki update
 
 Ask `wiki-agent` to update the wiki content.
 
@@ -405,7 +457,7 @@ Gate:
 - If **Questions for human** is non-empty, ask human immediately using the `question` tool and record answer in coordination.md and re-invoke wiki-agent or previous agent depending on the questions and answers.
 - Update `## Orchestrator` → **Current step**.
 
-### 10. Done
+### 12. Done
 
 Set `## Orchestrator` → **Status** to "completed".
 
@@ -429,6 +481,7 @@ All artifacts stay in `SPEC_DIR` (e.g. `.specs/sprint-2026-06/<feature>/`). No f
 - Never allow implementation from a spec alone.
 - Never skip the implementation contract critic.
 - Never skip human validation before implementation.
+- Never skip the tester step.
 - Never silently resolve critic or reviewer questions.
 - Never ask the scout for repository dumps in normal mode.
 - Never create or update ADR yourself, ask `adr-agent`.

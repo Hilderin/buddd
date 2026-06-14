@@ -19,7 +19,7 @@
 9. [Iteration #9: Specs Move to `.specs/` — Historical Snapshots Organized by Sprint](#iteration-9-specs-move-to-specs--historical-snapshots-organized-by-sprint)
 10. [Iteration #10: Remove the Constitution — Governance Simplification](#iteration-10-remove-the-constitution--governance-simplification)
 11. [Iteration #11: Definition of Done for Code Implementer](#iteration-11-definition-of-done-for-code-implementer)
-12. [Iteration #12: Workflow Simplification — Remove Spec Critic, Code Review, Governance](#iteration-12-workflow-simplification--remove-spec-critic-code-review-governance)
+12. [Iteration #12: Workflow Simplification — Remove Spec Critic, Code Review, Governance + Add Tester Agent](#iteration-12-workflow-simplification--remove-spec-critic-code-review-governance--add-tester-agent)
 13. [Cross-Cutting Observations](#cross-cutting-observations)
 14. [Ongoing Concerns](#ongoing-concerns)
 15. [Improvement Hypotheses](#improvement-hypotheses)
@@ -276,16 +276,22 @@ Scripted migration: (1) scout pass mapped 75+ references, (2) `scripts/migrate-s
 
 ---
 
-## Iteration #12: Workflow Simplification — Remove Spec Critic, Code Review, Governance
+## Iteration #12: Workflow Simplification — Remove Spec Critic, Code Review, Governance + Add Tester Agent
 
-**Hypothesis:** Removing spec-critic, code-reviewer, and governance-reviewer from the automated workflow — while keeping spec validation in human hands — will significantly reduce end-to-end loop time (currently ~30+ min per feature). The quality impact is unknown; these gates may have been catching real issues, or they may have been redundant with human review and the remaining critic steps.
+**Hypothesis:** Removing spec-critic, code-reviewer, and governance-reviewer from the automated workflow and replacing the testing role with a dedicated tester agent will reduce end-to-end loop time while maintaining or improving test coverage quality. The code-implementer focuses on building and passing unit tests; the tester agent independently verifies the spec's acceptance criteria, fills coverage gaps, runs E2E/visual checks, and detects regressions.
 
 **Method:**
 - Removed spec-critic, code-reviewer, and governance-reviewer from the required workflow diagram in `orchestrator.md`
-- Added a new "human spec validation" gate between spec-author and implementation-contract-author: after the spec is drafted, the human explicitly approves or requests changes before any contract work begins
-- Kept the existing human validation gate before code-implementer
+- Added a "human spec validation" gate between spec-author and implementation-contract-author: after the spec is drafted, the human explicitly approves or requests changes before any contract work begins
+- Added `.opencode/agents/tester.md` — a new subagent that reads the spec and implementation contract, runs all tests, creates missing tests, performs E2E capture + vision analysis regression checks on existing apps, and identifies manual-only tests
+- Added `docs/templates/test-report-template.md` with sections: Test Summary, Unit Tests, Integration/E2E Tests, Regression Checks, Manual Tests Required, Issues Found
+- Added a conditional "Manual Test Validation" gate after the tester: if the tester identified tests only a human can run, the orchestrator presents them to the human and asks for explicit confirmation
+- Simplified the code-implementer's Definition of Done to only require build + unit tests pass (E2E/visual verification moved to tester)
+- Registered `tester` agent in `opencode.json` with `vision_analyze_image` permission
+- Added `tester` section and `Manual Test Validation` section to `docs/templates/coordination-template.md`
 - Kept implementation-contract-critic as the only automated critic in the loop
-- Agent definitions and files were not deleted — only the orchestrator's workflow was adjusted
+
+**New workflow order:** spec-author → Human Spec Validation → implementation-contract-author → implementation-contract-critic → Human Validation → code-implementer → **tester** → **Manual Test Validation** (conditional) → adr-agent → wiki-agent → done
 
 **Observations:**
 - in progress
