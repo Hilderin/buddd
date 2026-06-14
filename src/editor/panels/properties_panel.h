@@ -1,9 +1,11 @@
 #pragma once
 
 #include "editor_panel.h"
+#include "editor_selection.h"
 
 #include "scene/entity_id.h"
 
+#include <cstdint>
 #include <imgui.h>
 #include <optional>
 #include <string>
@@ -22,6 +24,8 @@ private:
     // ── Entity name editing state ──
     std::optional<buddd::engine::EntityId> editing_entity_;
     std::string rename_buffer_;
+    Selection previous_selection_snapshot_;
+    uint64_t last_selection_gen_ = 0;
 
     // ── Helper methods ──
     auto draw_entity_name(EditorContext const& ctx, buddd::engine::EntityId entity_id) -> void;

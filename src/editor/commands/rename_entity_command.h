@@ -23,9 +23,22 @@ public:
         , new_name_(std::move(new_name))
     {}
 
+    RenameEntityCommand(buddd::engine::EntityId entity_id,
+                        std::string old_name,
+                        std::string new_name,
+                        Selection pre_selection)
+        : entity_id_(entity_id)
+        , old_name_(std::move(old_name))
+        , new_name_(std::move(new_name))
+        , pre_execution_selection_(std::move(pre_selection))
+        , use_pre_selection_(true)
+    {}
+
     auto execute(EditorContext const& ctx) -> void override {
-        // Save pre-execution selection for undo
-        pre_execution_selection_ = ctx.editor.selection().snapshot();
+        // Save pre-execution selection for undo (unless already set by constructor)
+        if (!use_pre_selection_) {
+            pre_execution_selection_ = ctx.editor.selection().snapshot();
+        }
 
         auto& world = ctx.editor.world();
         // Find entity and set name
@@ -94,6 +107,7 @@ private:
     std::string old_name_;
     std::string new_name_;
     Selection pre_execution_selection_;
+    bool use_pre_selection_ = false;
 };
 
 } // namespace buddd::editor

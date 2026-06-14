@@ -84,7 +84,8 @@ auto PropertiesPanel::draw_entity_name(EditorContext const& ctx,
                 auto cmd = std::make_unique<RenameEntityCommand>(
                     *editing_entity_,
                     std::string(old_entity.name()),
-                    rename_buffer_
+                    rename_buffer_,
+                    previous_selection_snapshot_
                 );
                 ctx.editor.command_stack().execute(std::move(cmd), ctx);
             }
@@ -132,6 +133,14 @@ auto PropertiesPanel::draw_entity_name(EditorContext const& ctx,
             // Revert to previous name (no command pushed)
             rename_buffer_ = current_name;
         }
+    }
+
+    // Save current selection snapshot for undo/redo correctness when
+    // auto-committing a rename on entity switch (only on actual change).
+    auto gen = ctx.editor.selection().generation();
+    if (gen != last_selection_gen_) {
+        previous_selection_snapshot_ = ctx.editor.selection().snapshot();
+        last_selection_gen_ = gen;
     }
 }
 

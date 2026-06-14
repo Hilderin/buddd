@@ -4,6 +4,7 @@
 
 #include <algorithm>       // std::find_if for callback removal
 #include <cstddef>         // size_t
+#include <cstdint>         // uint64_t
 #include <functional>      // std::function, std::hash
 #include <optional>
 #include <span>
@@ -92,6 +93,9 @@ public:
     [[nodiscard]] auto snapshot() const noexcept -> Selection;
     void restore(const Selection& saved);  // fires callbacks
 
+    // -- Generation counter (avoids unnecessary snapshots) --
+    [[nodiscard]] auto generation() const noexcept -> uint64_t { return generation_; }
+
     // -- Primary (last-selected) --
     [[nodiscard]] auto primary() const noexcept -> std::optional<EntityId>;
 
@@ -113,6 +117,7 @@ private:
     Selection current_;
     std::vector<std::pair<size_t, ChangeCallback>> callbacks_;
     size_t next_token_ = 0;
+    uint64_t generation_ = 0;
 };
 
 // ── Selection inline implementations ─────────────────────────────────
@@ -196,6 +201,7 @@ inline void EditorSelection::select(EntityId id, SelectionModifier modifier) {
     // Defensive guard: silently ignore EntityId::none()
     if (id == EntityId::none()) return;
 
+    ++generation_;
     if (modifier == SelectionModifier::Replace) {
         current_.selected_.clear();
         current_.selected_.insert(id);
@@ -214,6 +220,7 @@ inline void EditorSelection::select(EntityId id, SelectionModifier modifier) {
 }
 
 inline void EditorSelection::clear() {
+    ++generation_;
     current_.selected_.clear();
     current_.reset_primary();
     current_.reset_anchor();
@@ -221,6 +228,7 @@ inline void EditorSelection::clear() {
 }
 
 inline void EditorSelection::set_selection(std::span<const EntityId> ids) {
+    ++generation_;
     current_.selected_.clear();
     for (auto id : ids) {
         if (id != EntityId::none()) {
@@ -237,6 +245,7 @@ inline void EditorSelection::set_selection(std::span<const EntityId> ids) {
 }
 
 inline void EditorSelection::restore(const Selection& saved) {
+    ++generation_;
     current_ = saved;  // copy
     fire_callbacks();
 }
