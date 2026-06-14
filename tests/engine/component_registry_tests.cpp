@@ -18,6 +18,7 @@
 #include "window/window.h"
 
 // YAML::convert specializations for math types
+#include "math/vec2_yaml.h"
 #include "math/vec3_yaml.h"
 #include "math/vec4_yaml.h"
 #include "math/quat_yaml.h"
@@ -963,6 +964,118 @@ TEST_CASE("YAML_CONVERT_QUAT", "[component-registry]") {
     REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
     REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
     REQUIRE(decoded.z == Approx(original.z).margin(1e-5f));
+}
+
+TEST_CASE("YAML_CONVERT_VEC2", "[component-registry]") {
+    using namespace YAML;
+
+    math::Vec2 original{1.0f, 2.0f};
+    Node node = convert<math::Vec2>::encode(original);
+    REQUIRE(node.IsSequence());
+    REQUIRE(node.size() == 2);
+    REQUIRE(node[0].as<float>() == Approx(1.0f).margin(1e-5f));  // x
+    REQUIRE(node[1].as<float>() == Approx(2.0f).margin(1e-5f));  // y
+
+    // Also accept legacy mapping format
+    math::Vec2 decoded;
+    YAML::Node legacy_map;
+    legacy_map["x"] = 1.0f;
+    legacy_map["y"] = 2.0f;
+    REQUIRE(convert<math::Vec2>::decode(legacy_map, decoded));
+    REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
+    REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
+
+    // Also decode sequence format
+    REQUIRE(convert<math::Vec2>::decode(node, decoded));
+    REQUIRE(decoded.x == Approx(original.x).margin(1e-5f));
+    REQUIRE(decoded.y == Approx(original.y).margin(1e-5f));
+
+    // AC-018: Multi-value YAML roundtrip
+    std::vector<math::Vec2> values = {
+        {0.0f, 0.0f},
+        {-1.5f, -3.0f},
+        {1e10f, -1e10f},
+        {3.5f, -1.25f}
+    };
+    for (const auto& v : values) {
+        Node n = convert<math::Vec2>::encode(v);
+        math::Vec2 d;
+        REQUIRE(convert<math::Vec2>::decode(n, d));
+        REQUIRE(d.x == Approx(v.x).margin(1e-5f));
+        REQUIRE(d.y == Approx(v.y).margin(1e-5f));
+    }
+}
+
+TEST_CASE("YAML_CONVERT_VEC2_REJECTS_INVALID", "[component-registry]") {
+    using namespace YAML;
+
+    math::Vec2 decoded;
+
+    // Single-element sequence [x] → returns false
+    YAML::Node single_seq;
+    single_seq.push_back(1.0f);
+    REQUIRE_FALSE(convert<math::Vec2>::decode(single_seq, decoded));
+
+    // Three-element sequence [x, y, z] → returns false
+    YAML::Node triple_seq;
+    triple_seq.push_back(1.0f);
+    triple_seq.push_back(2.0f);
+    triple_seq.push_back(3.0f);
+    REQUIRE_FALSE(convert<math::Vec2>::decode(triple_seq, decoded));
+
+    // Incomplete mapping {x: 1.0} → returns false
+    YAML::Node incomplete_map;
+    incomplete_map["x"] = 1.0f;
+    REQUIRE_FALSE(convert<math::Vec2>::decode(incomplete_map, decoded));
+
+    // Scalar node → returns false
+    YAML::Node scalar = YAML::Node("hello");
+    REQUIRE_FALSE(convert<math::Vec2>::decode(scalar, decoded));
+
+    // Non-numeric element in sequence (AC-009)
+    YAML::Node mixed_seq;
+    mixed_seq.push_back(1.0f);
+    mixed_seq.push_back("abc");
+    REQUIRE_FALSE(convert<math::Vec2>::decode(mixed_seq, decoded));
+}
+
+TEST_CASE("VEC2_TYPE_REGISTRY", "[component-registry]") {
+    register_builtin_types();
+    TestEngine test_engine;
+    SerializationContext ctx{test_engine.mock_assets};
+
+    // AC-013: to_string format
+    auto strResult = TypeRegistry::to_string<math::Vec2>({1.5f, -3.0f}, ctx);
+    REQUIRE(strResult.has_value());
+    auto str = *strResult;
+    REQUIRE(str.find("1.5") != std::string::npos);
+    REQUIRE(str.find("-3") != std::string::npos);
+    REQUIRE(str.front() == '(');
+    REQUIRE(str.back() == ')');
+
+    // AC-014: from_string success
+    auto result = TypeRegistry::from_string<math::Vec2>("(1.5, -3.0)", ctx);
+    REQUIRE(result.has_value());
+    REQUIRE(result->x == Approx(1.5f).margin(1e-5f));
+    REQUIRE(result->y == Approx(-3.0f).margin(1e-5f));
+
+    // AC-015: from_string error cases (malformed)
+    auto r1 = TypeRegistry::from_string<math::Vec2>("hello", ctx);
+    REQUIRE_FALSE(r1.has_value());
+    auto r2 = TypeRegistry::from_string<math::Vec2>("(1.5)", ctx);
+    REQUIRE_FALSE(r2.has_value());
+
+    // AC-016: validate is no-op
+    auto valid = TypeRegistry::validate<math::Vec2>({1.0f, 2.0f}, ctx);
+    REQUIRE(valid.has_value());
+
+    // AC-019: string roundtrip
+    auto rtStr = TypeRegistry::to_string<math::Vec2>({1.5f, -3.0f}, ctx);
+    REQUIRE(rtStr.has_value());
+    auto rt = TypeRegistry::from_string<math::Vec2>(*rtStr, ctx);
+    REQUIRE(rt.has_value());
+    REQUIRE(rt->x == Approx(1.5f).margin(1e-5f));
+    REQUIRE(rt->y == Approx(-3.0f).margin(1e-5f));
 }
 
 // ===========================================================================

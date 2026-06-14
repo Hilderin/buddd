@@ -11,6 +11,7 @@
 #include "render/mesh_renderer.h"
 #include "render/model.h"
 #include "asset/asset_manager.h"
+#include "math/vec2_yaml.h"
 #include "math/vec3_yaml.h"
 #include "math/vec4_yaml.h"
 #include "math/quat_yaml.h"
@@ -206,6 +207,45 @@ void register_builtin_types() {
             return math::Vec4{x, y, z, w};
         },
         .validate = [](const math::Vec4&, const SerializationContext&) -> Result<void> { return {}; }
+    });
+
+    // ── math::Vec2 ──
+    TypeRegistry::register_type<math::Vec2>({
+        .yaml_encode = [](const math::Vec2& v, const SerializationContext&) -> YAML::Node {
+            return YAML::convert<math::Vec2>::encode(v);
+        },
+        .yaml_decode = [](const YAML::Node& n, const SerializationContext&) -> Result<math::Vec2> {
+            math::Vec2 v;
+            if (!YAML::convert<math::Vec2>::decode(n, v)) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Vec2: failed to decode YAML node (expected mapping with x, y)");
+            }
+            return v;
+        },
+        .to_string = [](const math::Vec2& v, const SerializationContext&) -> std::string {
+            return "(" + std::to_string(v.x) + ", " + std::to_string(v.y) + ")";
+        },
+        .from_string = [](const std::string& s, const SerializationContext&) -> Result<math::Vec2> {
+            if (s.size() < 2 || s.front() != '(' || s.back() != ')') {
+                return make_error(Error::Category::InvalidArgument,
+                    "Vec2: cannot parse '" + s + "' (expected format '(x, y)')");
+            }
+            auto inner = s.substr(1, s.size() - 2);
+            float x, y;
+            auto [px, ex] = std::from_chars(inner.data(), inner.data() + inner.size(), x);
+            if (ex != std::errc()) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Vec2: cannot parse '" + s + "' (expected format '(x, y)')");
+            }
+            while (px < inner.data() + inner.size() && (*px == ' ' || *px == ',')) ++px;
+            auto [py, ey] = std::from_chars(px, inner.data() + inner.size(), y);
+            if (ey != std::errc()) {
+                return make_error(Error::Category::InvalidArgument,
+                    "Vec2: cannot parse '" + s + "' (expected format '(x, y)')");
+            }
+            return math::Vec2{x, y};
+        },
+        .validate = [](const math::Vec2&, const SerializationContext&) -> Result<void> { return {}; }
     });
 
     // ── math::Quat ──

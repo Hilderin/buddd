@@ -217,7 +217,7 @@ Present in Scene, Prefab, and Game tabs.
 
 ##### Inspector Property Editors
 
-> **F-05 + F-06 implementation**: The `InspectorTypeEditorRegistry` (in `src/editor/inspector_editors.h/.cpp`) provides reusable ImGui editor widgets for the 8 built-in types listed below, with a fallback text-input path for unregistered types (uses `TypeRegistry::to_string()`/`from_string()`). The Transform section (Position, Rotation, Scale) uses these editors via `InspectorTypeEditorRegistry::draw<Vec3>()` and `InspectorTypeEditorRegistry::draw<Quat>()`. As of F-06, Vec2/Vec3/Vec4/Quat editors use composite axis input widgets (colored drag-handle + InputFloat) and no longer render a property-name label — the `id` parameter is used only for ImGui PushID scoping. Component property editors (for future use) will consume the same registry.
+> **F-05 + F-06 implementation**: The `InspectorTypeEditorRegistry` (in `src/editor/inspector_editors.h/.cpp`) provides reusable ImGui editor widgets for the 9 built-in types listed below, with a fallback text-input path for unregistered types (uses `TypeRegistry::to_string()`/`from_string()`). The Transform section (Position, Rotation, Scale) uses these editors via `InspectorTypeEditorRegistry::draw<Vec3>()` and `InspectorTypeEditorRegistry::draw<Quat>()`. As of F-06, Vec2/Vec3/Vec4/Quat editors use composite axis input widgets (colored drag-handle + InputFloat) and no longer render a property-name label — the `id` parameter is used only for ImGui PushID scoping. Component property editors (for future use) will consume the same registry.
 
 The Inspector renders each component property with a type-appropriate editor widget based on its registered type in the `ComponentRegistry` and `TypeRegistry`:
 
