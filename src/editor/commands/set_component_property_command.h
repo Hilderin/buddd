@@ -200,6 +200,44 @@ public:
         return "Set Component Property";
     }
 
+    [[nodiscard]] auto try_update_new_value(YAML::Node const& new_value,
+                                              EditorContext const& ctx,
+                                              std::string_view property_name) -> bool override {
+        // Property name must match — prevent merging edits from different properties
+        if (property_name != property_name_) {
+            return false;
+        }
+
+        // Reject empty/undefined YAML — not a component property merge request
+        if (!new_value.IsDefined() || new_value.IsNull()) {
+            return false;
+        }
+
+        // Safety: prevent cross-entity merge — command's entity_id_ must match
+        // the currently selected primary entity.
+        auto primary = ctx.editor.selection().primary();
+        if (!primary.has_value() || *primary != entity_id_) {
+            return false;
+        }
+
+        // Belt-and-suspenders: verify the target entity still exists.
+        auto& world = ctx.editor.world();
+        auto entity = world.entity(entity_id_);
+        if (entity.id() == buddd::engine::EntityId::none()) {
+            return false;
+        }
+
+        if (new_value == new_value_) {
+            return false;  // Same value — nothing to update
+        }
+
+        new_value_ = YAML::Clone(new_value);
+        BUDDD_LOG_TAGGED_DEBUG("Editor:Command",
+            "Merged SetComponentPropertyCommand: entity={} comp={} prop={}",
+            entity_id_.index, component_type_name_, property_name_);
+        return true;
+    }
+
 private:
     buddd::engine::EntityId entity_id_;
     std::string component_type_name_;

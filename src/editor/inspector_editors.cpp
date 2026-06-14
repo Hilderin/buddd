@@ -24,14 +24,14 @@ namespace {
 /// Draw a composite axis input widget.
 ///
 /// ┌──────────┬──────────┐
-/// │ [■ LABEL]│ [ 0.00 ] │
+/// │ [ 0.00 ] │ [■ LABEL] │
 /// └──────────┴──────────┘
 ///
-/// Left side: a colored rectangle (~20px wide) drawn via ImDrawList with white text label.
+/// Left side: an ImGui::InputFloat for single-click text entry, format "%.2f".
+///
+/// Right side: a colored rectangle (~20px wide) drawn via ImDrawList with white text label.
 /// An ImGui::InvisibleButton of the same size is overlaid for hit testing.
 /// Click+drag left/right on the handle scrubs the float value.
-///
-/// Right side: an ImGui::InputFloat for single-click text entry, format "%.2f".
 ///
 /// @param id     Short identifier and display text for the drag handle (e.g., "X", "Y", "Z").
 ///               Used for both PushID scoping and as the label text on the colored rectangle.
@@ -49,30 +49,38 @@ auto draw_axis_widget(const char* id, float* value, ImVec4 color,
     ImGui::PushID(id);
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
     float widget_height = ImGui::GetFrameHeight();
 
-    // ── Colored rectangle ──
+    // ── InputFloat (LEFT side) ──
+    ImGui::SetNextItemWidth(60.0f);
+    bool input_changed = ImGui::InputFloat("##input", value, 0.0f, 0.0f, "%.4f");
+
+    // ── Colored drag handle (RIGHT side, flush against input) ──
+    ImGui::SameLine(0.0f, 0.0f);
+
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+
+    // Colored rectangle
     draw_list->AddRectFilled(cursor_pos,
                               ImVec2(cursor_pos.x + 20.0f, cursor_pos.y + widget_height),
                               ImGui::ColorConvertFloat4ToU32(color));
 
-    // ── Centered text ──
+    // Centered text
     ImVec2 text_size = ImGui::CalcTextSize(id);
     draw_list->AddText(
         ImVec2(cursor_pos.x + (20.0f - text_size.x) * 0.5f,
                cursor_pos.y + (widget_height - text_size.y) * 0.5f),
         IM_COL32(255, 255, 255, 255), id);
 
-    // ── InvisibleButton for hit testing ──
+    // InvisibleButton for hit testing
     ImGui::InvisibleButton("##handle", ImVec2(20.0f, widget_height));
 
-    // ── Tooltip ──
+    // Tooltip
     if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
         ImGui::SetTooltip("%s", tooltip);
     }
 
-    // ── Drag handling ──
+    // Drag handling
     static std::unordered_map<const void*, float> initial_values;
     bool drag_changed = false;
 
@@ -92,11 +100,6 @@ auto draw_axis_widget(const char* id, float* value, ImVec4 color,
     if (ImGui::IsItemDeactivated()) {
         initial_values.erase(static_cast<const void*>(value));
     }
-
-    // ── InputFloat (flush against the drag handle, no gap) ──
-    ImGui::SameLine(0.0f, 0.0f);
-    ImGui::SetNextItemWidth(60.0f);
-    bool input_changed = ImGui::InputFloat("##input", value, 0.0f, 0.0f, "%.2f");
 
     ImGui::PopID();
 
@@ -139,14 +142,55 @@ auto draw_fallback_readonly(const std::string& label, std::type_index type,
 auto register_builtin_inspector_editors() -> void {
     using namespace buddd::engine;
 
-    // float
+    // float — composite widget: InputFloat + gray drag handle
     InspectorTypeEditorRegistry::register_editor<float>(
         [](const std::string& label, float& value, const EditorFlags& flags,
            const EditorContext& ctx) -> bool {
             float speed = (flags.step_value > 0.0f) ? flags.step_value : 0.1f;
-            bool changed = ImGui::DragFloat(label.c_str(), &value, speed,
-                                            flags.min_value, flags.max_value);
+
+            ImGui::PushID(label.c_str());
+
+            // ── InputFloat (left side) ──
+            ImGui::SetNextItemWidth(60.0f);
+            bool changed = ImGui::InputFloat("##val", &value, 0.0f, 0.0f, "%.4f");
+
+            // ── Gray drag handle (right side) ──
+            ImGui::SameLine(0.0f, 0.0f);
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+            float widget_height = ImGui::GetFrameHeight();
+
+            ImVec4 gray_color(0.5f, 0.5f, 0.5f, 1.0f);
+            draw_list->AddRectFilled(
+                cursor_pos,
+                ImVec2(cursor_pos.x + 20.0f, cursor_pos.y + widget_height),
+                ImGui::ColorConvertFloat4ToU32(gray_color));
+
+            ImGui::InvisibleButton("##handle", ImVec2(20.0f, widget_height));
+
+            // Drag-to-scrub
+            static std::unordered_map<const void*, float> initial_values;
+            if (ImGui::IsItemActive()) {
+                if (ImGui::IsItemActivated()) {
+                    initial_values[static_cast<const void*>(&value)] = value;
+                }
+                float pixel_delta = ImGui::GetMouseDragDelta().x;
+                float new_val = initial_values[static_cast<const void*>(&value)]
+                                + pixel_delta * speed * 0.01f;
+                if (new_val != value) {
+                    value = new_val;
+                    changed = true;
+                }
+            }
+            if (ImGui::IsItemDeactivated()) {
+                initial_values.erase(static_cast<const void*>(&value));
+            }
+
+            ImGui::PopID();
+
             if (changed) {
+                value = std::clamp(value, flags.min_value, flags.max_value);
                 ctx.editor.mark_dirty();
             }
             return changed;
@@ -157,7 +201,8 @@ auto register_builtin_inspector_editors() -> void {
     InspectorTypeEditorRegistry::register_editor<int>(
         [](const std::string& label, int& value, const EditorFlags& flags,
            const EditorContext& ctx) -> bool {
-            bool changed = ImGui::DragInt(label.c_str(), &value, 1.0f,
+            (void)label;
+            bool changed = ImGui::DragInt("##val", &value, 1.0f,
                                            static_cast<int>(flags.min_value),
                                            static_cast<int>(flags.max_value));
             if (changed) {
@@ -171,7 +216,8 @@ auto register_builtin_inspector_editors() -> void {
     InspectorTypeEditorRegistry::register_editor<bool>(
         [](const std::string& label, bool& value, const EditorFlags&,
            const EditorContext& ctx) -> bool {
-            bool changed = ImGui::Checkbox(label.c_str(), &value);
+            (void)label;
+            bool changed = ImGui::Checkbox("##val", &value);
             if (changed) {
                 ctx.editor.mark_dirty();
             }
@@ -183,12 +229,13 @@ auto register_builtin_inspector_editors() -> void {
     InspectorTypeEditorRegistry::register_editor<std::string>(
         [](const std::string& label, std::string& value, const EditorFlags&,
            const EditorContext& ctx) -> bool {
+            (void)label;
             // Use a local buffer for ImGui::InputText
             constexpr size_t BUF_SIZE = 1024;
             char buf[BUF_SIZE];
             std::strncpy(buf, value.c_str(), BUF_SIZE - 1);
             buf[BUF_SIZE - 1] = '\0';
-            if (ImGui::InputText(label.c_str(), buf, BUF_SIZE)) {
+            if (ImGui::InputText("##val", buf, BUF_SIZE)) {
                 value = buf;
                 ctx.editor.mark_dirty();
                 return true;

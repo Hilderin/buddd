@@ -28,6 +28,9 @@ public:
     /// Redo the most recently undone command. Returns false if redo stack is empty.
     [[nodiscard]] auto redo(EditorContext const& ctx) -> bool;
 
+    /// Returns a pointer to the most recent command on the undo stack, or nullptr if empty.
+    [[nodiscard]] auto peek_undo() noexcept -> Command*;
+
     /// Returns true if there is at least one command to undo.
     [[nodiscard]] auto can_undo() const -> bool;
 

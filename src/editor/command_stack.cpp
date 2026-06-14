@@ -48,6 +48,13 @@ auto CommandStack::redo(EditorContext const& ctx) -> bool {
     return true;
 }
 
+auto CommandStack::peek_undo() noexcept -> Command* {
+    if (undo_stack_.empty()) {
+        return nullptr;
+    }
+    return undo_stack_.back().get();
+}
+
 auto CommandStack::can_undo() const -> bool {
     return !undo_stack_.empty();
 }

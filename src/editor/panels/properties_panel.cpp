@@ -6,6 +6,7 @@
 #include "inspector_editors.h"
 #include "commands/rename_entity_command.h"
 #include "commands/set_component_property_command.h"
+#include "commands/set_transform_command.h"
 
 #include "log/log.h"
 #include "scene/entity.h"
@@ -169,11 +170,40 @@ auto PropertiesPanel::draw_transform_section(EditorContext const& ctx,
 
     if (!open) return;
 
+    // ── Snapshot old transform values BEFORE any edits ──
+    auto old_position = transform.position;
+    auto old_rotation = transform.rotation;
+    auto old_scale = transform.scale;
+
     // ── 2-column table (no headers) ──
     // Column 0: property name (fixed width based on "Rotation" text)
     // Column 1: value area (remaining width)
     constexpr int COLUMNS = 2;
+    EditorFlags scale_flags;
+    scale_flags.min_value = 0.001f;
+
+    // Helper: push or merge a SetTransformCommand for a specific property
+    auto push_or_merge = [&](TransformProperty prop, std::string_view prop_name) {
+        auto* last = ctx.editor.command_stack().peek_undo();
+        YAML::Node empty;
+        if (last && last->try_update_new_value(empty, ctx, prop_name)) {
+            BUDDD_LOG_TAGGED_DEBUG("Editor:Command",
+                "Merged SetTransformCommand for entity={} prop={}",
+                entity_id.index, prop_name);
+        } else {
+            auto cmd = std::make_unique<SetTransformCommand>(
+                entity_id, prop,
+                old_position, old_rotation, old_scale,
+                transform.position, transform.rotation, transform.scale
+            );
+            ctx.editor.command_stack().execute(std::move(cmd), ctx);
+        }
+    };
+
+    bool table_ok = false;
+
     if (ImGui::BeginTable("##transform_table", COLUMNS, ImGuiTableFlags_None)) {
+        table_ok = true;
         // Column 0: width derived from content (label text fits naturally)
         ImGui::TableSetupColumn("##label", ImGuiTableColumnFlags_WidthFixed,
                                 ImGui::CalcTextSize("Rotation").x + 16.0f);
@@ -185,16 +215,20 @@ auto PropertiesPanel::draw_transform_section(EditorContext const& ctx,
         ImGui::TableSetColumnIndex(0);
         ImGui::TextUnformatted("Position");
         ImGui::TableSetColumnIndex(1);
-        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
-            "Position", transform.position, EditorFlags{}, ctx));
+        if (InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+                "Position", transform.position, EditorFlags{}, ctx)) {
+            push_or_merge(TransformProperty::Position, "Position");
+        }
 
         // ── Rotation row ──
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::TextUnformatted("Rotation");
         ImGui::TableSetColumnIndex(1);
-        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
-            "Rotation", transform.rotation, EditorFlags{}, ctx));
+        if (InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
+                "Rotation", transform.rotation, EditorFlags{}, ctx)) {
+            push_or_merge(TransformProperty::Rotation, "Rotation");
+        }
 
         // ── Scale row ──
         // F-05 spec requires Scale minimum value of 0.001 to prevent negative/zero scale.
@@ -202,22 +236,28 @@ auto PropertiesPanel::draw_transform_section(EditorContext const& ctx,
         ImGui::TableSetColumnIndex(0);
         ImGui::TextUnformatted("Scale");
         ImGui::TableSetColumnIndex(1);
-        EditorFlags scale_flags;
-        scale_flags.min_value = 0.001f;
-        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
-            "Scale", transform.scale, scale_flags, ctx));
+        if (InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+                "Scale", transform.scale, scale_flags, ctx)) {
+            push_or_merge(TransformProperty::Scale, "Scale");
+        }
 
         ImGui::EndTable();
-    } else {
+    }
+
+    if (!table_ok) {
         // Graceful degradation: if BeginTable fails, fall back to inline layout
-        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
-            "Position", transform.position, EditorFlags{}, ctx));
-        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
-            "Rotation", transform.rotation, EditorFlags{}, ctx));
-        EditorFlags scale_flags;
-        scale_flags.min_value = 0.001f;
-        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
-            "Scale", transform.scale, scale_flags, ctx));
+        if (InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+                "Position", transform.position, EditorFlags{}, ctx)) {
+            push_or_merge(TransformProperty::Position, "Position");
+        }
+        if (InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
+                "Rotation", transform.rotation, EditorFlags{}, ctx)) {
+            push_or_merge(TransformProperty::Rotation, "Rotation");
+        }
+        if (InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+                "Scale", transform.scale, scale_flags, ctx)) {
+            push_or_merge(TransformProperty::Scale, "Scale");
+        }
     }
 }
 
@@ -352,15 +392,27 @@ auto PropertiesPanel::draw_component_sections(EditorContext const& ctx,
                         continue;
                     }
 
-                    // Create and execute command
-                    auto cmd = std::make_unique<SetComponentPropertyCommand>(
-                        entity_id,
-                        std::string(type_name),
-                        std::string(prop_name),
-                        yaml_node,
-                        std::move(*new_yaml)
-                    );
-                    ctx.editor.command_stack().execute(std::move(cmd), ctx);
+                    // Try merge with last command
+                    auto* last = ctx.editor.command_stack().peek_undo();
+                    if (last && last->try_update_new_value(*new_yaml, ctx, prop_name)) {
+                        // Merged into existing command — also execute to write
+                        // the updated value to the entity (the editor only modified
+                        // a local any_result, not the entity itself).
+                        last->execute(ctx);
+                        BUDDD_LOG_TAGGED_DEBUG("Editor:Command",
+                            "Merged SetComponentPropertyCommand for entity={} prop={}",
+                            entity_id.index, prop_name);
+                    } else {
+                        // Create and execute new command
+                        auto cmd = std::make_unique<SetComponentPropertyCommand>(
+                            entity_id,
+                            std::string(type_name),
+                            std::string(prop_name),
+                            yaml_node,
+                            std::move(*new_yaml)
+                        );
+                        ctx.editor.command_stack().execute(std::move(cmd), ctx);
+                    }
                 }
             }
 
