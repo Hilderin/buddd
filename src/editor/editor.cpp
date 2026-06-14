@@ -115,7 +115,18 @@ auto Editor::setup(be::EngineContext const& ctx) -> be::Result<void> {
     // ── Create menu bar ──
     auto menu_bar = std::make_unique<MenuBar>(command_stack_);
     menu_bar->set_on_about([this]() {
-        show_about_ = true;
+        open_dialog(std::make_unique<CustomDialog>(
+            "about",
+            "About Buddd Editor",
+            [this]() {
+                ImGui::Text("Buddd Engine v%s", be::version().data());
+            },
+            std::vector<DialogButton>{
+                {"Close", "close_btn", []() {
+                    // No-op: the framework auto-closes after any button click.
+                }}
+            }
+        ));
     });
     menu_bar->set_on_new_scene([this]() {
         if (dirty_) {
@@ -332,6 +343,20 @@ auto Editor::add_panel(std::unique_ptr<EditorPanel> panel) -> void {
     panels_.push_back(std::move(panel));
 }
 
+auto Editor::open_dialog(std::unique_ptr<Dialog> dialog) -> bool {
+    auto const& incoming_id = dialog->id();
+    for (auto const& existing : dialogs_) {
+        if (existing->id() == incoming_id) {
+            BUDDD_LOG_DEBUG("Dialog dedup: {} already open", incoming_id);
+            return false;
+        }
+    }
+    BUDDD_LOG_DEBUG("Dialog opened: {}", incoming_id);
+    opened_dialog_ids_.insert(incoming_id);
+    dialogs_.push_back(std::move(dialog));
+    return true;
+}
+
 auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     if (!initialized_) {
         return;
@@ -399,9 +424,35 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     }
 
     // ═══════════════════════════════════════════════
-    // Phase 4: About popup (rendered every frame if show_about_ is true)
+    // Phase 4: Dialog rendering
     // ═══════════════════════════════════════════════
-    draw_about_popup(ctx);
+    for (auto& dialog : dialogs_) {
+        // OpenPopup each frame (matching the pattern used by error modals and delete confirmation)
+        ImGui::OpenPopup(dialog->title().c_str());
+
+        // Also remove from tracking set if present (legacy, but harmless)
+        opened_dialog_ids_.erase(dialog->id());
+
+        if (ImGui::BeginPopupModal(dialog->title().c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            dialog->draw_content();
+            ImGui::EndPopup();
+        }
+    }
+
+    // Escape handling: only for the topmost dialog
+    if (!dialogs_.empty() && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        BUDDD_LOG_DEBUG("Escape on topmost dialog: {}", dialogs_.back()->id());
+        dialogs_.back()->handle_escape();
+    }
+
+    // Remove closed dialogs
+    std::erase_if(dialogs_, [](auto& d) {
+        if (d->should_close()) {
+            BUDDD_LOG_DEBUG("Dialog closed: {}", d->id());
+            return true;
+        }
+        return false;
+    });
 
     // ═══════════════════════════════════════════════
     // Phase 5: Save-prompt state machine
@@ -420,31 +471,6 @@ auto Editor::draw_ui(be::EngineContext const& ctx) -> void {
     // Phase 7: Error modals
     // ═══════════════════════════════════════════════
     draw_error_modals();
-}
-
-auto Editor::draw_about_popup(be::EngineContext const& /*ctx*/) -> void {
-    if (!show_about_) {
-        return;
-    }
-
-    ImGui::OpenPopup("About Buddd Editor");
-
-    // Modal popup
-    if (ImGui::BeginPopupModal("About Buddd Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Buddd Engine v%s", be::version().data());
-
-        ImGui::Separator();
-
-        if (ImGui::Button("Close")) {
-            ImGui::CloseCurrentPopup();
-            show_about_ = false;
-        }
-
-        ImGui::EndPopup();
-    } else {
-        // Popup was dismissed by Escape or click-outside
-        show_about_ = false;
-    }
 }
 
 auto Editor::shutdown() -> void {

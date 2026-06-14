@@ -13,7 +13,10 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <vector>
+
+#include "editor_dialog.h"
 
 namespace buddd::engine { struct EngineContext; class EngineService; class Window; }
 
@@ -110,10 +113,10 @@ public:
     /// When untitled, returns "./Untitled.yaml" (current directory, default name).
     [[nodiscard]] auto dialog_default_path() const -> std::string;
 
-private:
+    /// Open a dialog. Returns false if a dialog with the same id() is already open.
+    auto open_dialog(std::unique_ptr<Dialog> dialog) -> bool;
 
-    // ── About popup ──
-    auto draw_about_popup(buddd::engine::EngineContext const& ctx) -> void;
+private:
 
     // ── Scene management helpers ──
     auto update_window_title() -> void;
@@ -143,8 +146,9 @@ private:
     // Registered panels (drawn inside dockspace via panels_ iteration in draw_ui)
     std::vector<std::unique_ptr<EditorPanel>> panels_;
 
-    // Panel state flags
-    bool show_about_ = false;
+    // ── Dialog state ──
+    std::vector<std::unique_ptr<Dialog>> dialogs_;
+    std::unordered_set<std::string> opened_dialog_ids_;
 
     // ── Scene management state ──
     bool dirty_ = false;
