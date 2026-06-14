@@ -4,6 +4,8 @@
 #include "editor_selection.h"
 #include "editor_context.h"
 #include "inspector_editors.h"
+#include "commands/add_component_command.h"
+#include "commands/remove_component_command.h"
 #include "commands/rename_entity_command.h"
 #include "commands/set_component_property_command.h"
 #include "commands/set_transform_command.h"
@@ -12,10 +14,13 @@
 #include "scene/entity.h"
 #include "scene/world.h"
 #include "scene/component_registry/component_registry.h"
+#include "scene/component_registry/component_info.h"
 #include "scene/component_registry/type_registry.h"
 
 #include <imgui.h>
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -23,8 +28,23 @@
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace buddd::editor {
+
+// Local helper: InputText callback to catch Tab and Arrow Up/Down while in the
+// filter field and request focus transfer to the component list.
+static int AddComponentFilterCallback(ImGuiInputTextCallbackData* data) {
+    if (!data || !data->UserData) return 0;
+    auto* self = reinterpret_cast<PropertiesPanel*>(data->UserData);
+    // CallbackCompletion is triggered by Tab; CallbackHistory by Up/Down.
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackCompletion ||
+        data->EventFlag == ImGuiInputTextFlags_CallbackHistory) {
+        self->request_focus_list();
+        // Do not modify text, just request focus shift.
+    }
+    return 0;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // draw_ui — main entry point
@@ -59,6 +79,9 @@ auto PropertiesPanel::draw_ui(EditorContext const& ctx) -> void {
 
     // ── Component sections ──
     draw_component_sections(ctx, entity_id);
+
+    // ── Add Component button ──
+    draw_add_component_button(ctx, entity_id);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -317,10 +340,35 @@ auto PropertiesPanel::draw_component_sections(EditorContext const& ctx,
         BUDDD_LOG_TAGGED_DEBUG("Editor:Properties",
             "Drawing component section '{}' ({} properties)", type_name, prop_count);
 
-        // Collapsible header — default closed
+        // Auto-expand for newly added component (matched by index) and prepare focus on first property
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
+        if (pending_auto_expand_index_.has_value() && i == *pending_auto_expand_index_) {
+            // Prefer SetNextItemOpen for reliability
+            ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            // Also request focusing first property field in this section
+            pending_focus_first_prop_index_ = i;
+            pending_auto_expand_index_.reset();
+        }
+
+        // Use ImGui's built-in close button via p_open parameter.
+        // When the user clicks the X on the header, ImGui sets *p_open = false.
+        // We detect this and push a RemoveComponentCommand instead of hiding the section.
+        ImGui::PushID(static_cast<int>(i));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
-        bool open = ImGui::CollapsingHeader(type_name.data(), ImGuiTreeNodeFlags_None);
+        bool component_visible = true;
+        bool open = ImGui::CollapsingHeader(type_name.data(), &component_visible, flags);
         ImGui::PopStyleVar();
+        if (!component_visible) {
+            // ImGui's built-in close button was clicked → remove this component
+            auto cmd = std::make_unique<RemoveComponentCommand>(entity_id, std::string(type_name), i);
+            ctx.editor.command_stack().execute(std::move(cmd), ctx);
+            ImGui::PopID();
+            break; // Exit loop — component removed, indices have shifted
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+            ImGui::SetTooltip("Remove %s component", type_name.data());
+        }
+        ImGui::PopID();
 
         if (!open) continue;
 
@@ -378,6 +426,12 @@ auto PropertiesPanel::draw_component_sections(EditorContext const& ctx,
                 ImGui::TableSetColumnIndex(0);
                 ImGui::TextUnformatted(prop_name.data());
                 ImGui::TableSetColumnIndex(1);
+                // If this is the newly added component, focus the first property's input widget
+                if (pending_focus_first_prop_index_.has_value() && i == *pending_focus_first_prop_index_ && j == 0) {
+                    ImGui::SetKeyboardFocusHere();
+                    // clear so we don't repeatedly steal focus
+                    pending_focus_first_prop_index_.reset();
+                }
 
                 bool changed = InspectorTypeEditorRegistry::draw_any(
                     std::string(prop_name), *any_result, prop_type, editor_flags, ctx);
@@ -419,6 +473,174 @@ auto PropertiesPanel::draw_component_sections(EditorContext const& ctx,
             ImGui::EndTable();
         }
         ImGui::Unindent(4.0f);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// draw_add_component_button
+// ═══════════════════════════════════════════════════════════════════════════
+
+auto PropertiesPanel::draw_add_component_button(EditorContext const& ctx,
+                                                  buddd::engine::EntityId entity_id) -> void {
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
+    ImGui::Indent(8.0f);
+    float button_width = ImGui::GetContentRegionAvail().x;
+    // Draw button and capture its screen position (for popup positioning)
+    ImGui::Button("+ Add Component", ImVec2(button_width, 0.0f));
+    add_component_popup_pos_ = ImGui::GetItemRectMin();
+    if (ImGui::IsItemActivated()) {
+        ImGui::OpenPopup("Add Component");
+        add_component_filter_[0] = '\0';
+        auto& registry = ctx.engine.services.registry();
+        BUDDD_LOG_TAGGED_DEBUG("Editor:Properties",
+            "AddComponent popup opened, {} types available", registry.all_types().size());
+    }
+    ImGui::Unindent(8.0f);
+    draw_add_component_popup(ctx, entity_id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// draw_add_component_popup
+// ═══════════════════════════════════════════════════════════════════════════
+
+auto PropertiesPanel::draw_add_component_popup(EditorContext const& ctx,
+                                                 buddd::engine::EntityId entity_id) -> void {
+    if (!ImGui::IsPopupOpen("Add Component")) return;
+
+    auto& registry = ctx.engine.services.registry();
+    auto& world = ctx.editor.world();
+    auto entity = world.entity(entity_id);
+    if (entity.id() == buddd::engine::EntityId::none()) return;
+
+    // Position the popup below the Add Component button (dropdown style)
+    // Pivot (0.0, 0.0) = top-left of popup aligns with top-left of the button
+    ImGui::SetNextWindowPos(add_component_popup_pos_, ImGuiCond_Appearing, ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2(280, 320), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("Add Component", nullptr, ImGuiWindowFlags_None)) {
+        // Auto-focus filter on first frame the popup opens
+        if (ImGui::IsWindowAppearing()) {
+            ImGui::SetKeyboardFocusHere();
+            popup_selected_index_ = 0; // default to first item
+        }
+        // Use callback to catch Tab/Arrow keys while in filter field
+        ImGuiInputTextFlags filter_flags = ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_EnterReturnsTrue;
+        bool pressed_enter_in_filter = ImGui::InputTextWithHint("##filter", "Filter types...", add_component_filter_,
+                                  sizeof(add_component_filter_), filter_flags, AddComponentFilterCallback, this);
+        ImGui::Separator();
+
+        // Get filter string (lowercase)
+        std::string filter_str(add_component_filter_);
+        std::transform(filter_str.begin(), filter_str.end(), filter_str.begin(),
+            [](unsigned char c) { return static_cast<unsigned char>(std::tolower(c)); });
+
+        // Collect all registered types, sort alphabetically, and produce filtered visible list
+        std::vector<const buddd::engine::ComponentInfoBase*> types;
+        for (const auto* info : registry.all_types()) types.push_back(info);
+        std::sort(types.begin(), types.end(), [](const auto* a, const auto* b) { return a->type_name() < b->type_name(); });
+        std::vector<const buddd::engine::ComponentInfoBase*> visible_types;
+        visible_types.reserve(types.size());
+        for (const auto* info : types) {
+            auto tn = info->type_name();
+            if (!filter_str.empty()) {
+                std::string tn_lower(tn);
+                std::transform(tn_lower.begin(), tn_lower.end(), tn_lower.begin(),
+                    [](unsigned char c) { return static_cast<unsigned char>(std::tolower(c)); });
+                if (tn_lower.find(filter_str) == std::string::npos) continue;
+            }
+            visible_types.push_back(info);
+        }
+        // Clamp selection within visible range
+        if (visible_types.empty()) {
+            popup_selected_index_ = -1;
+        } else if (popup_selected_index_ < 0) {
+            popup_selected_index_ = 0;
+        } else if (popup_selected_index_ >= static_cast<int>(visible_types.size())) {
+            popup_selected_index_ = static_cast<int>(visible_types.size()) - 1;
+        }
+
+        // First visible type for Enter-in-filter
+        std::string first_visible_type;
+        if (!visible_types.empty()) first_visible_type = visible_types.front()->type_name();
+
+        // Enter in filter → add current selected item if any, else first visible; if none, no-op
+        if (pressed_enter_in_filter) {
+            if (!visible_types.empty()) {
+                int sel = popup_selected_index_;
+                if (sel < 0 || sel >= static_cast<int>(visible_types.size())) sel = 0; // default to first
+                auto tn = visible_types[sel]->type_name();
+                auto cmd = std::make_unique<AddComponentCommand>(entity_id, std::string(tn));
+                ctx.editor.command_stack().execute(std::move(cmd), ctx);
+                // Newly added component is at the back
+                pending_auto_expand_index_ = entity.component_count() - 1;
+                pending_focus_first_prop_index_ = *pending_auto_expand_index_;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        // Tab/Down in filter → request focusing first visible list item on NEXT frame (more reliable)
+        if (ImGui::IsItemActive() && (ImGui::IsKeyPressed(ImGuiKey_Tab) || ImGui::IsKeyPressed(ImGuiKey_DownArrow))) {
+            pending_focus_list_ = true;
+        }
+
+        // Scrollable list
+        ImGui::BeginChild("##comp_list", ImVec2(0, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing()),
+                          ImGuiChildFlags_Borders, ImGuiWindowFlags_NavFlattened);
+        bool any_visible = false;
+        // Handle Up/Down navigation when list has focus
+        bool list_focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows);
+        if (list_focused && !visible_types.empty()) {
+            if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) {
+                popup_selected_index_ = std::min(popup_selected_index_ + 1, static_cast<int>(visible_types.size()) - 1);
+            } else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
+                popup_selected_index_ = std::max(popup_selected_index_ - 1, 0);
+            }
+        }
+
+        bool focus_set_on_first = false;
+        for (int vi = 0; vi < static_cast<int>(visible_types.size()); ++vi) {
+            auto tn = visible_types[vi]->type_name();
+            any_visible = true;
+            bool is_selected = (vi == popup_selected_index_);
+            if (pending_focus_list_ && !focus_set_on_first) {
+                ImGui::SetItemDefaultFocus();
+                ImGui::SetKeyboardFocusHere();
+                focus_set_on_first = true;
+                pending_focus_list_ = false;
+            }
+            if (ImGui::Selectable(tn.data(), is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+                if (ImGui::IsMouseDoubleClicked(0)) {
+                    // Double-click: add component
+                    auto cmd = std::make_unique<AddComponentCommand>(entity_id, std::string(tn));
+                    ctx.editor.command_stack().execute(std::move(cmd), ctx);
+                    pending_auto_expand_index_ = entity.component_count() - 1;
+                    pending_focus_first_prop_index_ = *pending_auto_expand_index_;
+                    ImGui::CloseCurrentPopup();
+                } else {
+                    // Single-click: update selection only (do not add)
+                    popup_selected_index_ = vi;
+                }
+            }
+            // Keyboard Enter activates selected item
+            if (list_focused && is_selected && ImGui::IsKeyPressed(ImGuiKey_Enter)) {
+                auto cmd = std::make_unique<AddComponentCommand>(entity_id, std::string(tn));
+                ctx.editor.command_stack().execute(std::move(cmd), ctx);
+                pending_auto_expand_index_ = entity.component_count() - 1;
+                pending_focus_first_prop_index_ = *pending_auto_expand_index_;
+                ImGui::CloseCurrentPopup();
+                break;
+            }
+        }
+        if (!any_visible) {
+            ImGui::TextDisabled("No matching components");
+        }
+        ImGui::EndChild();
+
+        // Close button
+        if (ImGui::Button("Close", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 }
 

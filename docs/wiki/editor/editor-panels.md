@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + F-06 — inspector-component-properties + Editor Dialog Abstraction + right-click selection + F-07 — properties-panel-undo-polish, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + F-06 (component properties) + Editor Dialog Abstraction + F-07) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish + F-06 — inspector-component-properties + Editor Dialog Abstraction + right-click selection + F-07 — properties-panel-undo-polish + F-06b — inspector-add-remove-components, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06 + F-06 (component properties) + Editor Dialog Abstraction + F-07 + F-06b) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -213,7 +213,7 @@ Present in Scene, Prefab, and Game tabs.
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and edit the selected entity's components and properties
 - **Content (F-05 + F-06 + F-07 implemented):** Entity name field (editable, uses `RenameEntityCommand`), Transform section with Position/Rotation/Scale rows in a 2-column `ImGui::Table` layout (property name | value) with no column headers. Property-name labels ("Position", "Rotation", "Scale") are rendered in column 0 by the panel. In column 1, the editors use composite axis input widgets: an `ImGui::InputFloat` (single-click text entry, `"%.2f"` format) on the left and a colored drag-handle (colored rectangle with white text, click+drag to scrub) on the right (layout flipped in F-07 from the original left-handle placement). Axis colors: X/Pitch=red, Y/Yaw=green, Z/Roll=blue. Rotation preserves Pitch/Yaw/Roll labels with the same axis colors, values in degrees wrapped to [-180, 180] via `Quat::to_euler()`/`from_euler()` round-trip. Scale enforces `min_value=0.001`. The `id` parameter passed to editors is used only for ImGui PushID scoping (not displayed). All editors use `InspectorTypeEditorRegistry` with `EditorContext` for dirty marking. No-selection state shows centered "No entity selected". Multi-select shows `primary()` entity only. Transform edits now push `SetTransformCommand` (undoable via Ctrl+Z), with drag-undo merging via `peek_undo()` + `try_update_new_value()` — one Ctrl+Z reverts an entire drag gesture.
-- **Component sections (F-06 + F-07 component properties):** Below the Transform section, each component attached to the selected entity renders as a collapsible section via `ImGui::CollapsingHeader` (default closed, `ImGuiTreeNodeFlags_None`). Sections appear in the order returned by `Entity::component_at()`. Each component section contains a 2-column `ImGui::Table` (property name | value) matching the Transform layout. Properties are read via `ComponentInfoBase::property_serialize()`, decoded to `std::any` via `TypeRegistry::yaml_decode()`, edited via `InspectorTypeEditorRegistry::draw_any()`, and on change, re-encoded via `TypeRegistry::yaml_encode()` and committed via `SetComponentPropertyCommand`. As of F-07, edit merging is applied: before pushing a new command, the panel checks `peek_undo()` and calls `try_update_new_value()` — a continuous drag produces one undo step instead of one per frame. Float/int/bool/string editors use hidden `"##val"` labels to prevent duplicate label display. Component sections with zero properties show centered "No editable properties" in disabled text style. Transform is not part of the component iteration — it is always rendered first and always expanded.
+- **Component sections (F-06 + F-07 component properties + F-06b add/remove):** Below the Transform section, each component attached to the selected entity renders as a collapsible section via `ImGui::CollapsingHeader` (default closed, `ImGuiTreeNodeFlags_None`) except newly added components which auto-expand (see Add/Remove below). Sections appear in the order returned by `Entity::component_at()`. Each non-Transform component section header has a small ⓧ remove button on the far right (hidden on the Transform section). Each component section contains a 2-column `ImGui::Table` (property name | value) matching the Transform layout. Properties are read via `ComponentInfoBase::property_serialize()`, decoded to `std::any` via `TypeRegistry::yaml_decode()`, edited via `InspectorTypeEditorRegistry::draw_any()`, and on change, re-encoded via `TypeRegistry::yaml_encode()` and committed via `SetComponentPropertyCommand`. As of F-07, edit merging is applied: before pushing a new command, the panel checks `peek_undo()` and calls `try_update_new_value()` — a continuous drag produces one undo step instead of one per frame. Float/int/bool/string editors use hidden `"##val"` labels to prevent duplicate label display. Component sections with zero properties show centered "No editable properties" in disabled text style. Transform is not part of the component iteration — it is always rendered first and always expanded.
 - **Default position/size:** Right dock, ~300px width
 - **Read-only mode during Play:** Not yet implemented (deferred to F-15). Grayed-out fields, lock icon banner, hidden Add/Remove buttons are planned but not wired.
 
@@ -250,7 +250,42 @@ The Inspector renders each component property with a type-appropriate editor wid
 
 **SetComponentPropertyCommand** — Each component property edit creates a `SetComponentPropertyCommand` (in `src/editor/commands/set_component_property_command.h`) storing `entity_id`, `component_type_name`, `property_name`, and old/new YAML values. The command's `execute()` writes the new value via `ComponentInfoBase::property_deserialize()` and marks the scene dirty; `undo()` writes the old value back. An execute-time redundancy check compares the current value against the stored `new_value_` — if they match, the command is a no-op (avoids redundant undo entries). As of F-07, `SetComponentPropertyCommand` overrides `try_update_new_value()` for drag-undo merging: consecutive edits to the same entity+property update the command's `new_value_` instead of pushing a new command.
 
-The **Add Component** button at the bottom of the Inspector opens a searchable dropdown listing all registered component types — typing filters the list, clicking adds the component to the entity. Each component section has a **Remove component** button (ⓧ) on its header.
+#### Add/Remove Component (F-06b)
+
+**F-06b implementation** (`inspector-add-remove-components`): Two new Command classes and UI buttons for adding and removing components from the selected entity in the Properties Panel.
+
+##### Add Component
+
+A full-width **"+ Add Component"** button is rendered at the bottom of the component list (after all component sections, below a separator). Clicking it opens a **"Add Component" popup modal** (`ImGui::BeginPopupModal`):
+
+- **Filter field**: A text input at the top of the popup (`"Filter types..."` hint). As the user types, the list filters to show only types whose name contains the typed substring (case-insensitive).
+- **Type list**: All types registered in `ComponentRegistry::all_types()` are listed in alphabetical order. **Duplicate component types are allowed** — types already present on the entity are still shown; the user can add multiple instances of any type.
+- **Empty state**: If the filter text matches no types, the popup shows "No matching components".
+- **Click behavior**: Clicking a type name creates an `AddComponentCommand` and executes it on the `CommandStack`. The popup closes automatically.
+- **Keyboard**: Pressing Tab/Arrow keys navigates the list, Enter selects the highlighted type, Escape closes the popup.
+- **Auto-expand**: After adding a component, its collapsible section opens automatically (expanded) on the next frame. Other sections retain their previous expand/collapse state. This is tracked via `pending_auto_expand_type_` in `PropertiesPanel`.
+
+##### Remove Component
+
+Each non-Transform component section header has a small **ⓧ remove button** (`ImGui::SmallButton("X")`) positioned at the far right of the header row, on the same line as the collapsible header text and expand triangle. The button has a tooltip "Remove %s component".
+
+- **Hidden on Transform** — the Transform section never has a remove button.
+- Clicking the ⓧ button immediately removes the component (no confirmation dialog) and pushes a `RemoveComponentCommand` to the CommandStack.
+- The entity remains selected after removal.
+- Removing the last non-Transform component is allowed (undoable).
+
+##### Commands
+
+| Command | File | Behavior |
+|---------|------|----------|
+| `AddComponentCommand` | `src/editor/commands/add_component_command.h` | Creates a component via `ComponentRegistry::create(type_name)`, attaches it via `World::add_component_raw()`, stores the new component's index for undo. Undo removes the component at the stored index. Duplicate component types are permitted. |
+| `RemoveComponentCommand` | `src/editor/commands/remove_component_command.h` | Takes `entity_id`, `component_type_name`, and `component_index`. On execute: validates the type at the stored index matches (safety check), serializes full component state via `ComponentInfoBase::serialize()` into a `YAML::Node`, then removes via `World::remove_component_at()`. On undo: creates a fresh component, deserializes the stored state, and inserts it at the original index via `World::insert_component_raw_at()`. |
+
+**Component identification by index**: Components are identified by their index in the entity's `components_` vector (not by type name). This allows multiple components of the same type on a single entity and ensures correct undo restoration at the original position. The index is captured at command creation time (same frame as execution) and remains stable for the command's lifetime.
+
+**Safety check**: `RemoveComponentCommand` verifies that the component at the stored index matches the expected `type_name` via `type_index` comparison before removal. If indices have shifted (e.g., due to external operations), the command logs a warning and becomes a no-op.
+
+**Auto-expand**: After adding a component, `pending_auto_expand_type_` is set to the added type name. In the next `draw_component_sections()` pass, the matching section receives `ImGuiTreeNodeFlags_DefaultOpen` and the flag is consumed (cleared).
 
 #### Viewport Panel (3D View)
 
@@ -351,8 +386,8 @@ When ▶ Play is pressed:
 | **Delete entity** | Right-click entity → "Delete" OR Delete key (Scene Panel focused) | Removes entity. If any selected entity has children → confirmation dialog. Selection cleared after deletion. Undo restores entity identity, name, and hierarchy (component state not preserved in v1). Undo/redo via `DeleteEntityCommand`. |
 | **Rename entity** | Select + F2 OR right-click entity → "Rename" (exactly one selected) | Inline `ImGui::InputText` replaces tree node label. Enter confirms, Escape cancels, focus loss confirms. Empty name rejected (no command pushed). Same name → no-op. Undo/redo via `RenameEntityCommand`. |
 | **Undo delete** | Edit > Undo (Ctrl+Z) | Restores deleted entities with hierarchy preserved, selection restored via snapshot. Disabled during Play. |
-| **Add component** | "+ Add Component" button in Inspector | Opens searchable dropdown of registered component types. Selecting adds it to entity. |
-| **Remove component** | ⓧ button on component header | Removes component from entity. |
+| **Add component** | "+ Add Component" button in Inspector | Opens searchable popup of all registered component types (filter as you type). Selecting creates an `AddComponentCommand` — component is added at the back and auto-expanded. Duplicate types allowed. Undo via Ctrl+Z. |
+| **Remove component** | ⓧ button on non-Transform component header | Immediately removes the component (no confirmation) via `RemoveComponentCommand`. Full serialized state stored for undo. Entity remains selected. Undo via Ctrl+Z restores exact property values at original position. |
 | **Focus camera** | F key (entity selected) | Editor camera snaps to frame selected entity's bounding box. |
 | **Translate** | Drag gizmo arrow in viewport | Moves entity along the dragged axis. Inspector Transform fields update in real-time. Undo via `SetTransformCommand` (Ctrl+Z). |
 

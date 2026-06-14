@@ -242,6 +242,54 @@ auto World::add_component_raw(EntityId id, std::unique_ptr<Component> component)
 }
 
 // ---------------------------------------------------------------------------
+// Index-based component removal
+// ---------------------------------------------------------------------------
+auto World::remove_component_at(EntityId id, size_t index) -> bool {
+    auto* node = lookup_node(id);
+    if (!node || node->pending_destroy_) return false;
+    if (index >= node->components_.size()) return false;
+
+    // Handle Updatable cleanup
+    if (auto* upd = dynamic_cast<Updatable*>(node->components_[index].get())) {
+        std::erase(updatables_, upd);
+    }
+
+    node->components_.erase(node->components_.begin() + static_cast<std::ptrdiff_t>(index));
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Index-based component insertion
+// ---------------------------------------------------------------------------
+auto World::insert_component_raw_at(EntityId id, size_t index,
+                                     std::unique_ptr<Component> component) -> Component& {
+    auto* node = lookup_node(id);
+    BUDDD_ASSERT(node != nullptr && !node->pending_destroy_);
+
+    Component* ptr = component.get();
+    ptr->world_ = this;
+    ptr->entity_id_ = id;
+
+    // Clamp index to valid range
+    if (index > node->components_.size()) {
+        index = node->components_.size();
+    }
+
+    node->components_.insert(
+        node->components_.begin() + static_cast<std::ptrdiff_t>(index),
+        std::move(component));
+
+    ptr->on_attach();
+
+    // Auto-register Updatable components
+    if (auto* upd = dynamic_cast<Updatable*>(ptr)) {
+        updatables_.push_back(upd);
+    }
+
+    return *ptr;
+}
+
+// ---------------------------------------------------------------------------
 // Hierarchy
 // ---------------------------------------------------------------------------
 auto World::create_child(EntityId parent_id) -> Entity {

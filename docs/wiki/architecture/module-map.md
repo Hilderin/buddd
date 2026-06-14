@@ -318,6 +318,8 @@ The editor library provides the interactive editor for `buddd edit`. It links `b
 |---|---|---|
 | `quit_command.h` | `QuitCommand` | Header-only. `execute()` calls `ctx.request_exit()`. `undo()` is a no-op (cannot un-request exit). `name()` returns `"Quit"`. |
 | `set_component_property_command.h` | `SetComponentPropertyCommand` | Header-only. Stores `entity_id`, `component_type_name`, `property_name`, old/new `YAML::Node` values. `execute()` writes the new value via `ComponentInfoBase::property_deserialize()` (with redundancy check — no-op if current value already matches new), `undo()` writes the old value back. Uses SceneSaver `typeid` pattern for component resolution. **F-06 (component properties)**. |
+| `add_component_command.h` | `AddComponentCommand` | Header-only. Creates a component via `ComponentRegistry::create(type_name)`, attaches via `World::add_component_raw()`, stores component index for undo. Allows duplicate types. Undo removes the component at the stored index. **F-06b (inspector-add-remove-components)**. |
+| `remove_component_command.h` | `RemoveComponentCommand` | Header-only. Takes `entity_id`, `component_type_name`, `component_index`. On execute: validates type at index, serializes full component state via `ComponentInfoBase::serialize()`, removes via `World::remove_component_at()`. On undo: creates component, deserializes state, inserts at original index via `World::insert_component_raw_at()`. Includes safety check for index-shift detection. **F-06b (inspector-add-remove-components)**. |
 
 ### Shortcut registry (`src/editor/`)
 

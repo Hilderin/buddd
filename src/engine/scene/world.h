@@ -115,6 +115,17 @@ public:
     /// The component is moved into the World's storage.
     auto add_component_raw(EntityId id, std::unique_ptr<Component> component) -> Component&;
 
+    /// Remove a component from an entity by index.
+    /// Handles Updatable cleanup via dynamic_cast.
+    /// Returns false if id is invalid, node is pending_destroy, or index out of bounds.
+    auto remove_component_at(EntityId id, size_t index) -> bool;
+
+    /// Insert a runtime-typed component at a specific index.
+    /// The component is moved into the World's storage at the given position.
+    /// If index > component_count, pushes at the back.
+    /// Calls on_attach() and auto-registers Updatable components.
+    auto insert_component_raw_at(EntityId id, size_t index, std::unique_ptr<Component> component) -> Component&;
+
 private:
     friend class Entity;
     friend class SceneSaver;
