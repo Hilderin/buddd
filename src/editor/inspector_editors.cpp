@@ -18,6 +18,91 @@
 #include <typeindex>
 
 namespace buddd::editor {
+namespace {
+
+/// Draw a composite axis input widget.
+///
+/// ┌──────────┬──────────┐
+/// │ [■ LABEL]│ [ 0.00 ] │
+/// └──────────┴──────────┘
+///
+/// Left side: a colored rectangle (~20px wide) drawn via ImDrawList with white text label.
+/// An ImGui::InvisibleButton of the same size is overlaid for hit testing.
+/// Click+drag left/right on the handle scrubs the float value.
+///
+/// Right side: an ImGui::InputFloat for single-click text entry, format "%.2f".
+///
+/// @param id     Short identifier and display text for the drag handle (e.g., "X", "Y", "Z").
+///               Used for both PushID scoping and as the label text on the colored rectangle.
+/// @param value     Pointer to the float value being edited.
+/// @param color     Axis color as ImVec4 (e.g., red for X, green for Y, blue for Z).
+/// @param drag_speed Sensitivity for drag-to-scrub (0.1 for position/scale, 0.5 for rotation).
+/// @param ctx       EditorContext (reserved for future use).
+/// @param tooltip   Optional tooltip text shown on hover over the drag handle (e.g., "Pitch").
+/// @return true if the value changed this frame.
+auto draw_axis_widget(const char* id, float* value, ImVec4 color,
+                      float drag_speed, const EditorContext& ctx,
+                      const char* tooltip = nullptr) -> bool {
+    (void)ctx;  // reserved for future use
+
+    ImGui::PushID(id);
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+    float widget_height = ImGui::GetFrameHeight();
+
+    // ── Colored rectangle ──
+    draw_list->AddRectFilled(cursor_pos,
+                              ImVec2(cursor_pos.x + 20.0f, cursor_pos.y + widget_height),
+                              ImGui::ColorConvertFloat4ToU32(color));
+
+    // ── Centered text ──
+    ImVec2 text_size = ImGui::CalcTextSize(id);
+    draw_list->AddText(
+        ImVec2(cursor_pos.x + (20.0f - text_size.x) * 0.5f,
+               cursor_pos.y + (widget_height - text_size.y) * 0.5f),
+        IM_COL32(255, 255, 255, 255), id);
+
+    // ── InvisibleButton for hit testing ──
+    ImGui::InvisibleButton("##handle", ImVec2(20.0f, widget_height));
+
+    // ── Tooltip ──
+    if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
+        ImGui::SetTooltip("%s", tooltip);
+    }
+
+    // ── Drag handling ──
+    static std::unordered_map<const void*, float> initial_values;
+    bool drag_changed = false;
+
+    if (ImGui::IsItemActive()) {
+        if (ImGui::IsItemActivated()) {
+            initial_values[static_cast<const void*>(value)] = *value;
+        }
+        float pixel_delta = ImGui::GetMouseDragDelta().x;
+        float new_val = initial_values[static_cast<const void*>(value)]
+                        + pixel_delta * drag_speed * 0.01f;
+        if (new_val != *value) {
+            *value = new_val;
+            drag_changed = true;
+        }
+    }
+
+    if (ImGui::IsItemDeactivated()) {
+        initial_values.erase(static_cast<const void*>(value));
+    }
+
+    // ── InputFloat (flush against the drag handle, no gap) ──
+    ImGui::SameLine(0.0f, 0.0f);
+    ImGui::SetNextItemWidth(60.0f);
+    bool input_changed = ImGui::InputFloat("##input", value, 0.0f, 0.0f, "%.2f");
+
+    ImGui::PopID();
+
+    return drag_changed || input_changed;
+}
+
+} // anonymous namespace
 
 // ── static registry map ──
 auto InspectorTypeEditorRegistry::map()
@@ -110,22 +195,22 @@ auto register_builtin_inspector_editors() -> void {
 
     // math::Vec2
     InspectorTypeEditorRegistry::register_editor<buddd::engine::math::Vec2>(
-        [](const std::string& label, buddd::engine::math::Vec2& value,
+        [](const std::string& id, buddd::engine::math::Vec2& value,
            const EditorFlags& flags,
            const EditorContext& ctx) -> bool {
             float vals[2] = {value.x, value.y};
-            ImGui::TextUnformatted(label.c_str());
-            ImGui::SameLine();
-            ImGui::PushID(label.c_str());
-            ImGui::PushItemWidth(80.0f);
+            ImGui::PushID(id.c_str());
             bool changed = false;
             float speed = (flags.step_value > 0.0f) ? flags.step_value : 0.1f;
-            changed |= ImGui::DragFloat("##x", &vals[0], speed, flags.min_value, flags.max_value, "X: %.2f");
+
+            changed |= draw_axis_widget("X", &vals[0], ImVec4(0.7f, 0.1f, 0.1f, 1.0f), speed, ctx);
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##y", &vals[1], speed, flags.min_value, flags.max_value, "Y: %.2f");
-            ImGui::PopItemWidth();
+            changed |= draw_axis_widget("Y", &vals[1], ImVec4(0.0f, 0.55f, 0.0f, 1.0f), speed, ctx);
+
             ImGui::PopID();
             if (changed) {
+                vals[0] = std::clamp(vals[0], flags.min_value, flags.max_value);
+                vals[1] = std::clamp(vals[1], flags.min_value, flags.max_value);
                 value.x = vals[0];
                 value.y = vals[1];
                 ctx.editor.mark_dirty();
@@ -136,24 +221,25 @@ auto register_builtin_inspector_editors() -> void {
 
     // math::Vec3
     InspectorTypeEditorRegistry::register_editor<buddd::engine::math::Vec3>(
-        [](const std::string& label, buddd::engine::math::Vec3& value,
+        [](const std::string& id, buddd::engine::math::Vec3& value,
            const EditorFlags& flags,
            const EditorContext& ctx) -> bool {
             float vals[3] = {value.x, value.y, value.z};
-            ImGui::TextUnformatted(label.c_str());
-            ImGui::SameLine();
-            ImGui::PushID(label.c_str());
-            ImGui::PushItemWidth(80.0f);
+            ImGui::PushID(id.c_str());
             bool changed = false;
             float speed = (flags.step_value > 0.0f) ? flags.step_value : 0.1f;
-            changed |= ImGui::DragFloat("##x", &vals[0], speed, flags.min_value, flags.max_value, "X: %.2f");
+
+            changed |= draw_axis_widget("X", &vals[0], ImVec4(0.7f, 0.1f, 0.1f, 1.0f), speed, ctx);
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##y", &vals[1], speed, flags.min_value, flags.max_value, "Y: %.2f");
+            changed |= draw_axis_widget("Y", &vals[1], ImVec4(0.0f, 0.55f, 0.0f, 1.0f), speed, ctx);
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##z", &vals[2], speed, flags.min_value, flags.max_value, "Z: %.2f");
-            ImGui::PopItemWidth();
+            changed |= draw_axis_widget("Z", &vals[2], ImVec4(0.27f, 0.27f, 1.0f, 1.0f), speed, ctx);
+
             ImGui::PopID();
             if (changed) {
+                vals[0] = std::clamp(vals[0], flags.min_value, flags.max_value);
+                vals[1] = std::clamp(vals[1], flags.min_value, flags.max_value);
+                vals[2] = std::clamp(vals[2], flags.min_value, flags.max_value);
                 value.x = vals[0];
                 value.y = vals[1];
                 value.z = vals[2];
@@ -165,26 +251,28 @@ auto register_builtin_inspector_editors() -> void {
 
     // math::Vec4
     InspectorTypeEditorRegistry::register_editor<buddd::engine::math::Vec4>(
-        [](const std::string& label, buddd::engine::math::Vec4& value,
+        [](const std::string& id, buddd::engine::math::Vec4& value,
            const EditorFlags& flags,
            const EditorContext& ctx) -> bool {
             float vals[4] = {value.x, value.y, value.z, value.w};
-            ImGui::TextUnformatted(label.c_str());
-            ImGui::SameLine();
-            ImGui::PushID(label.c_str());
-            ImGui::PushItemWidth(60.0f);
+            ImGui::PushID(id.c_str());
             bool changed = false;
             float speed = (flags.step_value > 0.0f) ? flags.step_value : 0.1f;
-            changed |= ImGui::DragFloat("##x", &vals[0], speed, flags.min_value, flags.max_value, "X: %.2f");
+
+            changed |= draw_axis_widget("X", &vals[0], ImVec4(0.7f, 0.1f, 0.1f, 1.0f), speed, ctx);
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##y", &vals[1], speed, flags.min_value, flags.max_value, "Y: %.2f");
+            changed |= draw_axis_widget("Y", &vals[1], ImVec4(0.0f, 0.55f, 0.0f, 1.0f), speed, ctx);
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##z", &vals[2], speed, flags.min_value, flags.max_value, "Z: %.2f");
+            changed |= draw_axis_widget("Z", &vals[2], ImVec4(0.27f, 0.27f, 1.0f, 1.0f), speed, ctx);
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##w", &vals[3], speed, flags.min_value, flags.max_value, "W: %.2f");
-            ImGui::PopItemWidth();
+            changed |= draw_axis_widget("W", &vals[3], ImVec4(0.7f, 0.7f, 0.7f, 1.0f), speed, ctx);
+
             ImGui::PopID();
             if (changed) {
+                vals[0] = std::clamp(vals[0], flags.min_value, flags.max_value);
+                vals[1] = std::clamp(vals[1], flags.min_value, flags.max_value);
+                vals[2] = std::clamp(vals[2], flags.min_value, flags.max_value);
+                vals[3] = std::clamp(vals[3], flags.min_value, flags.max_value);
                 value.x = vals[0];
                 value.y = vals[1];
                 value.z = vals[2];
@@ -197,10 +285,10 @@ auto register_builtin_inspector_editors() -> void {
 
     // math::Quat — displayed as Euler angles in degrees
     InspectorTypeEditorRegistry::register_editor<buddd::engine::math::Quat>(
-        [](const std::string& label, buddd::engine::math::Quat& value,
+        [](const std::string& id, buddd::engine::math::Quat& value,
            const EditorFlags&,
            const EditorContext& ctx) -> bool {
-            // ── Helper: degrees ↔ radians without GLM ──
+            // ── Helper: degrees ↔ radians ──
             static constexpr double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
             static constexpr double DEG_TO_RAD = 3.14159265358979323846 / 180.0;
 
@@ -220,21 +308,21 @@ auto register_builtin_inspector_editors() -> void {
             yaw_deg   = wrap(yaw_deg);
             roll_deg  = wrap(roll_deg);
 
-            ImGui::TextUnformatted(label.c_str());
-            ImGui::SameLine();
-            ImGui::PushID(label.c_str());
-            ImGui::PushItemWidth(80.0f);
+            ImGui::PushID(id.c_str());
             bool changed = false;
-            const float speed = 0.5f;
-            const float no_min = -std::numeric_limits<float>::max();
-            const float no_max = std::numeric_limits<float>::max();
+            constexpr float speed = 0.5f;
 
-            changed |= ImGui::DragFloat("##pitch", &pitch_deg, speed, no_min, no_max, "Pitch: %.1f");
+            changed |= draw_axis_widget("X", &pitch_deg,
+                                         ImVec4(0.7f, 0.1f, 0.1f, 1.0f), speed, ctx,
+                                         "Pitch (rotation around X axis)");
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##yaw",   &yaw_deg,   speed, no_min, no_max, "Yaw: %.1f");
+            changed |= draw_axis_widget("Y", &yaw_deg,
+                                         ImVec4(0.0f, 0.55f, 0.0f, 1.0f), speed, ctx,
+                                         "Yaw (rotation around Y axis)");
             ImGui::SameLine();
-            changed |= ImGui::DragFloat("##roll",  &roll_deg,  speed, no_min, no_max, "Roll: %.1f");
-            ImGui::PopItemWidth();
+            changed |= draw_axis_widget("Z", &roll_deg,
+                                         ImVec4(0.27f, 0.27f, 1.0f, 1.0f), speed, ctx,
+                                         "Roll (rotation around Z axis)");
             ImGui::PopID();
 
             if (changed) {

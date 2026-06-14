@@ -76,9 +76,26 @@ auto PropertiesPanel::draw_entity_name(EditorContext const& ctx,
 
     // Detect selection change and update buffer
     if (editing_entity_ != entity_id) {
+        // Commit any pending rename for the previous entity before switching
+        if (editing_entity_.has_value()) {
+            auto old_entity = world.entity(*editing_entity_);
+            if (old_entity.id() != buddd::engine::EntityId::none()
+                && rename_buffer_ != old_entity.name()) {
+                auto cmd = std::make_unique<RenameEntityCommand>(
+                    *editing_entity_,
+                    std::string(old_entity.name()),
+                    rename_buffer_
+                );
+                ctx.editor.command_stack().execute(std::move(cmd), ctx);
+            }
+        }
         editing_entity_ = entity_id;
         rename_buffer_ = current_name;
     }
+
+    // Save the pending rename BEFORE any sync, so we can detect
+    // deactivation-after-edit even if the sync resets rename_buffer_.
+    std::string pending_rename = rename_buffer_;
 
     // Sync buffer with external name changes (e.g., Scene Panel rename)
     if (rename_buffer_ != current_name && !ImGui::IsItemActive()) {
@@ -98,8 +115,10 @@ auto PropertiesPanel::draw_entity_name(EditorContext const& ctx,
     rename_buffer_ = buf;
 
     if (confirmed || ImGui::IsItemDeactivatedAfterEdit()) {
-        // Confirm: push RenameEntityCommand if name changed and non-empty
-        std::string new_name(rename_buffer_);
+        // Use the actual input buffer on Enter, or the pre-sync value if
+        // the user clicked away (deactivated) to avoid losing edits from the
+        // sync reset above.
+        std::string new_name = confirmed ? rename_buffer_ : pending_rename;
         if (!new_name.empty() && new_name != current_name) {
             auto cmd = std::make_unique<RenameEntityCommand>(
                 entity_id,
@@ -126,28 +145,63 @@ auto PropertiesPanel::draw_transform_section(EditorContext const& ctx,
     auto entity = world.entity(entity_id);
     auto& transform = entity.transform();
 
-    // Transform section header — always expanded
+    // Transform section header
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 2.0f));
     bool open = ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen);
     ImGui::PopStyleVar();
 
-    if (!open) return;  // Should never happen with DefaultOpen, but defensive
+    if (!open) return;
 
-    // ── Position row ──
-    // The Vec3 editor handles dirty marking internally via ctx.editor.mark_dirty()
-    // when the value changes.
-    static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
-        "Position", transform.position, EditorFlags{}, ctx));
+    // ── 2-column table (no headers) ──
+    // Column 0: property name (fixed width based on "Rotation" text)
+    // Column 1: value area (remaining width)
+    constexpr int COLUMNS = 2;
+    if (ImGui::BeginTable("##transform_table", COLUMNS, ImGuiTableFlags_None)) {
+        // Column 0: width derived from content (label text fits naturally)
+        ImGui::TableSetupColumn("##label", ImGuiTableColumnFlags_WidthFixed,
+                                ImGui::CalcTextSize("Rotation").x + 16.0f);
+        // Column 1: stretches to fill remaining width
+        ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch);
 
-    // ── Rotation row ──
-    // The Quat editor handles dirty marking internally.
-    // The editor converts Quat→Euler degrees for display and Euler→Quat on edit.
-    static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
-        "Rotation", transform.rotation, EditorFlags{}, ctx));
+        // ── Position row ──
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Position");
+        ImGui::TableSetColumnIndex(1);
+        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+            "Position", transform.position, EditorFlags{}, ctx));
 
-    // ── Scale row ──
-    static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
-        "Scale", transform.scale, EditorFlags{}, ctx));
+        // ── Rotation row ──
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Rotation");
+        ImGui::TableSetColumnIndex(1);
+        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
+            "Rotation", transform.rotation, EditorFlags{}, ctx));
+
+        // ── Scale row ──
+        // F-05 spec requires Scale minimum value of 0.001 to prevent negative/zero scale.
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted("Scale");
+        ImGui::TableSetColumnIndex(1);
+        EditorFlags scale_flags;
+        scale_flags.min_value = 0.001f;
+        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+            "Scale", transform.scale, scale_flags, ctx));
+
+        ImGui::EndTable();
+    } else {
+        // Graceful degradation: if BeginTable fails, fall back to inline layout
+        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+            "Position", transform.position, EditorFlags{}, ctx));
+        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Quat>(
+            "Rotation", transform.rotation, EditorFlags{}, ctx));
+        EditorFlags scale_flags;
+        scale_flags.min_value = 0.001f;
+        static_cast<void>(InspectorTypeEditorRegistry::draw<buddd::engine::math::Vec3>(
+            "Scale", transform.scale, scale_flags, ctx));
+    }
 }
 
 } // namespace buddd::editor

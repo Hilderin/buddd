@@ -1,6 +1,6 @@
 # Editor Panels
 
-> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04) includes:
+> **Current status (F-01 — editor-scene-load-save + F-02 — scene-panel-entity-tree + F-03 — entity-selection-multi-select + F-04 — entity-operations + F-05 — inspector-transform + F-06 — properties-panel-ux-polish, June 2026):** This document describes the **north-star vision** for the editor's panel system (tabs, Play mode, prefabs, viewport, inspector, toolbar). The currently implemented foundation (F-01 + F-02 + F-03 + F-04 + F-05 + F-06) includes:
 > - A **main menu bar** with three menus: **File** (New Scene, Open Scene, Save Scene, Save Scene As, Quit), **Edit** (Undo/Redo), **Help** (About → modal popup with engine version).
 > - **Five dockable placeholder panels**: Scene, Properties, Console, Project, Assets — each empty with only a title bar and 100×100 minimum size.
 > - **Docking persistence** via `buddd_editor.ini` (layout saved/restored between sessions).
@@ -17,6 +17,7 @@
 > - **F-04 additions**: Three new Command classes in `src/editor/commands/`: `CreateEntityCommand`, `DeleteEntityCommand`, `RenameEntityCommand`. `Command::execute()` and `undo()` now accept `EditorContext const&` (breaking change). `Editor::command_stack()` accessor added. Context menu on entity (Create Empty, Delete, Rename) and on empty area (Create Empty). Delete key (focused) and F2 key (rename) keyboard shortcuts. Confirmation dialog for deletion of entities with children. `World::flush_destroyed()` called each frame in `Editor::update()`. Selection snapshot/restore via `EditorSelection::snapshot()`/`restore()` in Commands. Entity hierarchy preserved on delete undo (component state not preserved in v1). See [F-04 spec](/.specs/sprint-2026-06/entity-operations/spec.md).
 >
 > - **F-05 additions**: `InspectorTypeEditor` registry system (`src/editor/inspector_editors.h/.cpp`) provides a static registry mapping C++ types to reusable ImGui editor widgets. Base class `InspectorTypeEditor` + typed template `TypedInspectorEditor<T>` + 8 built-in editors (float, int, bool, string, Vec2, Vec3, Vec4, Quat) registered at startup. `EditorFlags` struct for numeric constraints (min, max, step). Fallback to `TypeRegistry::to_string()`/`from_string()` text input when no editor is registered. `PropertiesPanel` now implements `draw_ui()` with entity name field (editable, uses `RenameEntityCommand`), Transform section (Position editable via Vec3 editor, Rotation editable as Euler degrees via Quat editor, Scale editable via Vec3 editor), and centered "No entity selected" no-selection state. Multi-select shows `primary()` entity only. `EditorSelection::primary()` accessor added — returns last `select()`-ed entity, updated on every select, reset on clear. `Selection` value class now includes `primary_` and `anchor_` fields for correct snapshot/restore. `Quat::to_euler()` added to engine math (`src/engine/math/quat.h`). `World::entity(EntityId)` public factory method added to `src/engine/scene/world.h`. Read-only mode during Play is not yet implemented (deferred to F-15). See [F-05 spec](/.specs/sprint-2026-06/inspector-transform/spec.md).
+> > - **F-06 additions**: The Transform section was upgraded to a 2-column `ImGui::Table` layout (property name | value) with no column headers. Vec2/Vec3/Vec4/Quat editors now use composite axis input widgets: a colored drag-handle (colored rectangle with white text, click+drag to scrub value) on the left and an `ImGui::InputFloat` (single-click text entry, `"%.2f"` format) on the right. Axis colors: X/Pitch=red (`#FF4444`), Y/Yaw=green (`#44FF44`), Z/Roll=blue (`#4444FF`), W=gray. Property-name labels are no longer rendered by Vec/Quat editors — the caller (e.g., `draw_transform_section()`) renders them in table column 0. The editor API parameter `label` was renamed to `id` to clarify it is used only for ImGui PushID scoping, not visual display. Rotation preserves Pitch/Yaw/Roll labels with the same axis colors. Scale enforces `min_value=0.001`. See [F-06 spec](/.specs/sprint-2026-06/properties-panel-ux-polish/spec.md).
 > >
 > > The north-star design below (tabs, viewport, inspector, toolbar, Play mode, prefabs) is **planned for future sprints** and is not yet implemented.
 
@@ -209,13 +210,13 @@ Present in Scene, Prefab, and Game tabs.
 
 - **Appears in:** Scene tab, Prefab tab
 - **Purpose:** Display and edit the selected entity's components and properties
-- **Content (F-05 implemented):** Entity name field (editable, uses `RenameEntityCommand`), Transform section with Position (editable Vec3 via `InspectorTypeEditorRegistry`), Rotation (editable Euler degrees via Quat editor with `Quat::to_euler()`/`from_euler()` round-trip, wrapped to [-180, 180]), and Scale (editable Vec3 via `InspectorTypeEditorRegistry`). All editors use `InspectorTypeEditorRegistry` with `EditorContext` for dirty marking. No-selection state shows centered "No entity selected". Multi-select shows `primary()` entity only.
+- **Content (F-05 + F-06 implemented):** Entity name field (editable, uses `RenameEntityCommand`), Transform section with Position/Rotation/Scale rows in a 2-column `ImGui::Table` layout (property name | value) with no column headers. Property-name labels ("Position", "Rotation", "Scale") are rendered in column 0 by the panel. In column 1, the editors use composite axis input widgets: a colored drag-handle (colored rectangle with white text, click+drag to scrub) on the left and an `ImGui::InputFloat` (single-click text entry, `"%.2f"` format) on the right. Axis colors: X/Pitch=red, Y/Yaw=green, Z/Roll=blue. Rotation preserves Pitch/Yaw/Roll labels with the same axis colors, values in degrees wrapped to [-180, 180] via `Quat::to_euler()`/`from_euler()` round-trip. Scale enforces `min_value=0.001`. The `id` parameter passed to editors is used only for ImGui PushID scoping (not displayed). All editors use `InspectorTypeEditorRegistry` with `EditorContext` for dirty marking. No-selection state shows centered "No entity selected". Multi-select shows `primary()` entity only.
 - **Default position/size:** Right dock, ~300px width
 - **Read-only mode during Play:** Not yet implemented (deferred to F-15). Grayed-out fields, lock icon banner, hidden Add/Remove buttons are planned but not wired.
 
 ##### Inspector Property Editors
 
-> **F-05 implementation**: The `InspectorTypeEditorRegistry` (in `src/editor/inspector_editors.h/.cpp`) now provides reusable ImGui editor widgets for the 8 built-in types listed below, with a fallback text-input path for unregistered types (uses `TypeRegistry::to_string()`/`from_string()`). The Transform section (Position, Rotation, Scale) uses these editors via `InspectorTypeEditorRegistry::draw<Vec3>()` and `InspectorTypeEditorRegistry::draw<Quat>()`. Component property editors (for future use) will consume the same registry.
+> **F-05 + F-06 implementation**: The `InspectorTypeEditorRegistry` (in `src/editor/inspector_editors.h/.cpp`) provides reusable ImGui editor widgets for the 8 built-in types listed below, with a fallback text-input path for unregistered types (uses `TypeRegistry::to_string()`/`from_string()`). The Transform section (Position, Rotation, Scale) uses these editors via `InspectorTypeEditorRegistry::draw<Vec3>()` and `InspectorTypeEditorRegistry::draw<Quat>()`. As of F-06, Vec2/Vec3/Vec4/Quat editors use composite axis input widgets (colored drag-handle + InputFloat) and no longer render a property-name label — the `id` parameter is used only for ImGui PushID scoping. Component property editors (for future use) will consume the same registry.
 
 The Inspector renders each component property with a type-appropriate editor widget based on its registered type in the `ComponentRegistry` and `TypeRegistry`:
 
@@ -225,13 +226,13 @@ The Inspector renders each component property with a type-appropriate editor wid
 | `int` | Integer drag/input field |
 | `float` | Float drag/input field |
 | `std::string` | Text input field |
-| `Vec2` | Two float fields (X, Y) |
-| `Vec3` | Three float fields (X, Y, Z) |
-| `Vec4` | Four float fields (X, Y, Z, W) |
+| `Vec2` | Composite axis widgets: colored drag-handle (red=X, green=Y) + InputFloat |
+| `Vec3` | Composite axis widgets: colored drag-handle (red=X, green=Y, blue=Z) + InputFloat |
+| `Vec4` | Composite axis widgets: colored drag-handle (red=X, green=Y, blue=Z, gray=W) + InputFloat |
 | `Color` (Vec3/Vec4 interpreted as RGB/RGBA) | Color picker + float fields (not yet implemented) |
 | `Entity reference` | Text field showing entity name (read-only in MVP1) |
 | `Asset reference` | Text field showing asset path + drag-accept target (not yet implemented) |
-| `Quat` | Euler angles in degrees (Pitch, Yaw, Roll), editable, wrapped to [-180, 180] |
+| `Quat` | Euler angles in degrees via composite axis widgets (Pitch=red, Yaw=green, Roll=blue), wrapped to [-180, 180] |
 
 The **Add Component** button at the bottom of the Inspector opens a searchable dropdown listing all registered component types — typing filters the list, clicking adds the component to the entity. Each component section has a **Remove component** button (ⓧ) on its header.
 
@@ -486,6 +487,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 - `EditorSelection::primary()` accessor added — returns the last `select()`-ed entity (`std::optional<EntityId>`). Updated on every `select()` call, reset on `clear()`. `Selection` value class now includes `primary_` and `anchor_` members so `snapshot()`/`restore()` capture the full selection state atomically (required for correct Command undo).
 - `Quat::to_euler()` added to `src/engine/math/quat.h` — returns `Vec3` (pitch, yaw, roll) in radians via `glm::eulerAngles()`. Matches `from_euler()` convention. Round-trips within single-precision epsilon (non-gimbal-lock).
 - `World::entity(EntityId)` public factory method added to `src/engine/scene/world.h` — validates the slot and returns an `Entity` handle or default-constructed Entity (invalid ID). Required by PropertiesPanel for entity lookup from primary ID.
+- **F-06 additions**: `draw_axis_widget()` file-local helper added to `inspector_editors.cpp` — composite axis input widget with colored drag-handle (ImDrawList colored rectangle + InvisibleButton for drag-to-scrub) and `ImGui::InputFloat` for single-click text entry, format `"%.2f"`. Vec2/Vec3/Vec4/Quat editors rewritten to use composite axis widgets with axis colors (X/Pitch=red, Y/Yaw=green, Z/Roll=blue, W=gray). Label rendering removed from all Vec/Quat editors — the `id` parameter is used only for `PushID` scoping, not display. `draw_transform_section()` in `properties_panel.cpp` rewritten to use a 2-column `ImGui::Table` (property name | value) with no column headers. Property-name labels ("Position", "Rotation", "Scale") are rendered in column 0; editors are called in column 1. Scale row passes `EditorFlags{min_value=0.001f}`. All Vec editors clamp component values to `[flags.min_value, flags.max_value]` after change. Graceful degradation if `BeginTable` returns `false`. See [F-06 spec](/.specs/sprint-2026-06/properties-panel-ux-polish/spec.md).
 
 ### North-star (future — not yet implemented)
 
@@ -505,6 +507,7 @@ This is now the standard context-passing mechanism for all editor panels and men
 - [SPEC-2026-06 — Editor UX Design (North-Star)](/.specs/sprint-2026-06/editor-ux-design/spec.md) — Complete editor UX design document (future vision)
 - [SPEC-F-04 — Entity Operations](/.specs/sprint-2026-06/entity-operations/spec.md) — Create Empty, Delete, Rename, context menu, keyboard shortcuts, Command signature change, flush_destroyed lifecycle
 - [SPEC-Editor-Scaffolding](/.specs/sprint-2026-06/editor-scaffolding/spec.md) — Editor scaffolding and architecture setup
+- [SPEC-F-06 — Properties Panel UX Polish](/.specs/sprint-2026-06/properties-panel-ux-polish/spec.md) — Table layout, composite axis widgets, axis colors, label→id rename
 
 ## Related ADRs
 
@@ -517,4 +520,4 @@ This is now the standard context-passing mechanism for all editor panels and men
 
 ## Last reviewed
 
-2026-06-12 — Updated for F-01 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension. Updated for F-02: `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation. Updated for F-04: entity operations (Create, Delete, Rename), context menu, keyboard shortcuts, Command signature change, `flush_destroyed()` lifecycle.
+2026-06-13 — Updated for F-01 (SPEC-028): command system, menus, shortcuts, five placeholder panels, docking persistence, two-phase lifecycle, `App::update()` extension. Updated for F-02: `EditorContext` struct, `EditorPanel`/`EditorMenu` signature changes, `ScenePanel` entity tree implementation. Updated for F-04: entity operations (Create, Delete, Rename), context menu, keyboard shortcuts, Command signature change, `flush_destroyed()` lifecycle. Updated for F-06: composite axis widgets, table layout, axis colors, label→id rename, Scale min_value.
